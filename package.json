@@ -1,0 +1,21 @@
+{
+  "name": "karteikarten-manager",
+  "version": "1.0.0",
+  "description": "Karteikarten Manager - Flashcard learning application",
+  "main": "index.html",
+  "scripts": {
+    "build": "echo 'Build complete'",
+    "lint": "echo 'No linter configured'",
+    "test": "echo 'No tests configured'"
+  },
+  "keywords": [
+    "flashcards",
+    "learning",
+    "spaced-repetition"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  }
+}
