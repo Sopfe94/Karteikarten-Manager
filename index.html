@@ -297,32 +297,6 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 .legal-body ul{padding-left:18px;margin-bottom:10px}
 .legal-h{font-weight:800;color:var(--c-txt);margin-bottom:3px;display:block}
 
-/* Audiobook */
-.ab-wrap{background:var(--c-surf);border:1px solid var(--c-bor);border-radius:16px;padding:24px;margin-top:20px}
-.ab-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
-.ab-title{font-size:1.05rem;font-weight:800;background:linear-gradient(135deg,#fff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.provider-row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px}
-.prov-btn{padding:14px 8px;border-radius:12px;border:2px solid var(--c-bor);background:rgba(255,255,255,.04);cursor:pointer;font-family:"Nunito",sans-serif;font-size:.8rem;font-weight:700;color:var(--c-txt);transition:all .18s;text-align:center;line-height:1.4}
-.prov-btn:hover{background:rgba(139,92,246,.15);border-color:var(--c-pur);transform:translateY(-1px)}
-.prov-btn.sel{background:rgba(139,92,246,.25);border-color:var(--c-pur);color:var(--c-pur2);box-shadow:0 0 14px rgba(139,92,246,.25)}
-.genre-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
-.genre-btn{padding:14px 6px;border-radius:12px;border:2px solid var(--c-bor);background:rgba(255,255,255,.04);cursor:pointer;font-family:"Nunito",sans-serif;font-size:.78rem;font-weight:700;color:var(--c-txt);transition:all .18s;text-align:center;line-height:1.4}
-.genre-btn:hover{background:rgba(139,92,246,.15);border-color:var(--c-pur);transform:translateY(-1px)}
-.genre-btn.sel{background:linear-gradient(135deg,rgba(139,92,246,.3),rgba(167,139,250,.15));border-color:var(--c-pur);color:var(--c-pur2);box-shadow:0 0 14px rgba(139,92,246,.25)}
-.key-row{display:flex;gap:9px;margin-bottom:6px}
-.ab-story{background:rgba(0,0,0,.25);border:1px solid var(--c-bor);border-radius:12px;padding:18px;font-size:.88rem;line-height:1.9;color:rgba(255,255,255,.88);max-height:290px;overflow-y:auto;white-space:pre-wrap;margin-bottom:16px;font-weight:500}
-.ab-player{background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.25);border-radius:12px;padding:16px}
-.ab-player-top{display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap}
-.ab-ctrl{padding:10px 20px;border-radius:22px;border:none;cursor:pointer;font-size:.86rem;font-weight:700;font-family:"Nunito",sans-serif;transition:all .15s}
-.ab-play{background:var(--c-pur);color:#fff;box-shadow:var(--s-pur)}
-.ab-play:hover{background:#7c3aed;transform:scale(1.03)}
-.ab-stop{background:rgba(255,255,255,.12);color:var(--c-dim)}
-.ab-stop:hover{background:rgba(255,255,255,.2);color:var(--c-txt)}
-.ab-speed{display:flex;align-items:center;gap:7px;font-size:.78rem;color:var(--c-dim);font-weight:700}
-.ab-speed select{background:var(--c-surf);color:var(--c-txt);border:1px solid var(--c-bor);border-radius:7px;padding:4px 8px;font-family:"Nunito",sans-serif;font-size:.78rem;font-weight:700}
-.ab-gen-info{font-size:.76rem;color:var(--c-dim);font-weight:600;text-align:center;margin-top:8px}
-.ab-error{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#fca5a5;border-radius:10px;padding:12px 14px;font-size:.83rem;font-weight:700;margin-bottom:14px}
-.spinner-inline{display:inline-block;width:16px;height:16px;border:2.5px solid var(--c-bor);border-top-color:var(--c-pur);border-radius:50%;animation:pendingspin .7s linear infinite;vertical-align:middle;margin-right:6px}
 
 </style>
 </head>
@@ -340,6 +314,7 @@ var LOGO = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMj
 var EMOJIS = ["📚","🧠","🔬","🌍","✏️","🎵","💡","🏛️","🧮","🌱","💻","🗺️","⚗️","📐","🎨"];
 var SRS_DAYS = [0,1,2,4,8,16,30];
 var STORE_KEY = "kkm-v2";
+
 
 // -- Helpers -------------------------------------------------------------------
 function uid(){ return Math.random().toString(36).slice(2,10); }
@@ -612,7 +587,6 @@ function DeckDetail(p){
   var ec=useState(null); var editC=ec[0]; var setEditC=ec[1];
   var sv=useState(false); var study=sv[0]; var setStudy=sv[1];
   var sm=useState(false); var showShare=sm[0]; var setShowShare=sm[1];
-  var abs=useState(false); var showAb=abs[0]; var setShowAb=abs[1];
   var tm=useToast(); var toast=tm[0]; var showToast=tm[1];
   var due=getDue(p.deck);
   function addCard(d){ p.onUpdate(Object.assign({},p.deck,{cards:p.deck.cards.concat([Object.assign({id:uid()},d,{lvl:0,nextReview:todayStr()})])})); setShowAdd(false); }
@@ -628,12 +602,10 @@ function DeckDetail(p){
       h("div",{style:{display:"flex",gap:"8px",flexWrap:"wrap"}},
         due.length>0&&h("button",{className:"btn btn-o",onClick:function(){setStudy(true);}},"Lernen ("+due.length+")"),
         h("button",{className:"btn btn-p",onClick:function(){setShowAdd(true);}},"+Karte"),
-        h("button",{className:"btn btn-g",onClick:doShare},"Teilen"),
-        p.betaOn&&h("button",{className:"btn btn-p",style:{background:"linear-gradient(135deg,#7c3aed,#4c1d95)"},onClick:function(){setShowAb(!showAb);}},showAb?"Hörbuch schließen":"Hörbuch"))),
+        h("button",{className:"btn btn-g",onClick:doShare},"Teilen"))),
     p.deck.cards.length===0?
       h("div",{className:"empty"},h("div",{className:"empty-i"},"📭"),h("p",null,"Noch keine Karten."),h("button",{className:"btn btn-p",onClick:function(){setShowAdd(true);}},"Erste Karte erstellen")):
       h("div",{className:"clist"},p.deck.cards.map(function(c){return h("div",{className:"citem",key:c.id},h("div",{className:"citxt"},h("div",{className:"cf"},c.front),h("div",{className:"cb"},c.back)),h("div",{className:"ctag"},c.nextReview<=todayStr()?"fällig":"📅 "+c.nextReview),h("div",{style:{display:"flex",gap:"5px"}},h("button",{className:"ibtn",onClick:function(){setEditC(c);}},"✏️"),h("button",{className:"ibtn ibtn-del",onClick:function(){delCard(c.id);}},"🗑️")));})),
-    showAb&&p.betaOn&&h(AudiobookView,{deck:p.deck}),
     showAdd&&h(CardModal,{onSave:addCard,onClose:function(){setShowAdd(false);}}),
     editC&&h(CardModal,{card:editC,onSave:saveCard,onClose:function(){setEditC(null);}}),
     showShare&&h(ShareModal,{deck:p.deck,onClose:function(){setShowShare(false);}}),
@@ -710,218 +682,7 @@ function DeckOrderModal(p){
 }
 
 
-// == BETA GATE ================================================================
-var BETA_KEY = "kkm-beta-v1";
-var BETA_CODE_VAL = "KARTEN2026";
-function isBetaUnlocked(){ try{return localStorage.getItem(BETA_KEY)==="1";}catch(e){return false;} }
-function unlockBeta(){ try{localStorage.setItem(BETA_KEY,"1");}catch(e){} }
-function lockBeta(){ try{localStorage.removeItem(BETA_KEY);}catch(e){} }
 
-function BetaLoginModal(p){
-  var cs=useState(""); var code=cs[0]; var setCode=cs[1];
-  var es=useState(""); var err=es[0]; var setErr=es[1];
-  function tryUnlock(){
-    if(code.trim().toUpperCase()===BETA_CODE_VAL){ unlockBeta(); p.onSuccess(); }
-    else { setErr("Falscher Code. Bitte erneut versuchen."); setCode(""); }
-  }
-  return h("div",{className:"ov",onClick:p.onClose},
-    h("div",{className:"modal",style:{maxWidth:"360px"},onClick:function(ev){ev.stopPropagation();}},
-      h("div",{className:"modal-title"},"Beta-Zugang"),
-      h("div",{style:{fontSize:".86rem",color:"var(--c-dim)",lineHeight:1.7,fontWeight:600,marginBottom:"18px"}},
-        "Gib den Beta-Code ein um Zugang zu den Testfunktionen zu erhalten."
-      ),
-      h("div",{className:"fg"},
-        h("label",{className:"fl"},"Beta-Code"),
-        h("input",{className:"fi",type:"password",value:code,
-          placeholder:"Code eingeben...",autoFocus:true,
-          onInput:function(ev){setCode(ev.target.value);setErr("");},
-          onKeyDown:function(ev){if(ev.key==="Enter")tryUnlock();}})
-      ),
-      err&&h("div",{style:{background:"rgba(239,68,68,.12)",border:"1px solid rgba(239,68,68,.25)",color:"#fca5a5",borderRadius:"9px",padding:"10px 13px",fontSize:".82rem",fontWeight:700,marginBottom:"12px"}},err),
-      h("div",{className:"modal-foot"},
-        h("button",{className:"btn btn-g",onClick:p.onClose},"Abbrechen"),
-        h("button",{className:"btn btn-p",onClick:tryUnlock},"Freischalten")
-      )
-    )
-  );
-}
-// == END BETA GATE ============================================================
-
-// == AUDIOBOOK FEATURE ========================================================
-var AB_KEY = "kkm-ab-v1";
-var AB_PROVIDERS = [
-  {id:"openai",     label:"OpenAI",     icon:"🤖", hint:"sk-..."},
-  {id:"gemini",     label:"Gemini",     icon:"✨", hint:"AIza..."},
-  {id:"claude",     label:"Claude",     icon:"🧠", hint:"sk-ant-..."},
-  {id:"openrouter", label:"OpenRouter", icon:"🔀", hint:"sk-or-..."},
-];
-var AB_GENRES = [
-  {id:"horror",    label:"Horror",    icon:"👻"},
-  {id:"krimi",     label:"Krimi",     icon:"🔪"},
-  {id:"romanze",   label:"Romanze",   icon:"💕"},
-  {id:"fantasy",   label:"Fantasy",   icon:"⚔️"},
-  {id:"scifi",     label:"Sci-Fi",    icon:"🚀"},
-  {id:"abenteuer", label:"Abenteuer", icon:"🌍"},
-];
-function loadAbStore(){ try{var r=localStorage.getItem(AB_KEY);return r?JSON.parse(r):{keys:{},stories:{}};}catch(e){return {keys:{},stories:{}};}  }
-function saveAbStore(d){ try{localStorage.setItem(AB_KEY,JSON.stringify(d));}catch(e){} }
-function generateStory(deck,genre,provider,apiKey){
-  return new Promise(function(resolve,reject){
-    _generateStory(deck,genre,provider,apiKey).then(resolve).catch(reject);
-  });
-}
-async function _generateStory(deck,genre,provider,apiKey){
-  var genreMap={horror:"Horror/Grusel",krimi:"Krimi/Thriller",romanze:"Romantik",fantasy:"Fantasy/Magie",scifi:"Science-Fiction",abenteuer:"Abenteuer/Action"};
-  var cards=deck.cards.map(function(c,i){return (i+1)+". Frage: "+c.front+"\n   Antwort: "+c.back;}).join("\n\n");
-  var prompt="Schreibe eine fesselnde Kurzgeschichte auf Deutsch im Genre \""+genreMap[genre]+"\" (ca. 700-900 W\u00f6rter).\n\nDie Geschichte muss folgende Lernkarten NAT\u00dcRLICH einbinden:\n\n"+cards+"\n\nRegeln:\n- Alle Inhalte einbinden und erkl\u00e4ren\n- Fesselnd und unterhaltsam\n- Nur die Geschichte, kein Kommentar\n- Auf Deutsch\n- Thema: "+deck.name;
-  if(provider==="openai"){
-    var res=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+apiKey},body:JSON.stringify({model:"gpt-4o-mini",messages:[{role:"user",content:prompt}],max_tokens:1500})});
-    if(!res.ok){var e=await res.json().catch(function(){return {};});throw new Error(e.error&&e.error.message?e.error.message:"OpenAI Fehler "+res.status);}
-    return (await res.json()).choices[0].message.content;
-  }
-  if(provider==="gemini"){
-    var res=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key="+apiKey,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:1500}})});
-    if(!res.ok){var e=await res.json().catch(function(){return {};});throw new Error(e.error&&e.error.message?e.error.message:"Gemini Fehler "+res.status);}
-    return (await res.json()).candidates[0].content.parts[0].text;
-  }
-  if(provider==="claude"){
-    var res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:1500,messages:[{role:"user",content:prompt}]})});
-    if(!res.ok){var e=await res.json().catch(function(){return {};});throw new Error(e.error&&e.error.message?e.error.message:"Claude Fehler "+res.status);}
-    return (await res.json()).content[0].text;
-  }
-  if(provider==="openrouter"){
-    var res=await fetch("https://openrouter.ai/api/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+apiKey,"HTTP-Referer":"https://karteikarten-manager.vercel.app","X-Title":"Karteikarten Manager"},body:JSON.stringify({model:"google/gemini-flash-1.5",messages:[{role:"user",content:prompt}],max_tokens:1500})});
-    if(!res.ok){var e=await res.json().catch(function(){return {};});throw new Error(e.error&&e.error.message?e.error.message:"OpenRouter Fehler "+res.status);}
-    return (await res.json()).choices[0].message.content;
-  }
-  throw new Error("Unbekannter Anbieter");
-}
-function AbInfoModal(p){
-  var rows=[
-    {n:"Gemini",     c:"Kostenlos (Free Tier)",      k:"aistudio.google.com",  col:"rgba(16,185,129,.15)",bc:"rgba(16,185,129,.3)",tc:"#34d399"},
-    {n:"OpenRouter", c:"ab 0,00 \u20ac / Geschichte", k:"openrouter.ai",         col:"rgba(139,92,246,.15)",bc:"rgba(139,92,246,.3)",tc:"#a78bfa"},
-    {n:"OpenAI",     c:"ca. 0,01 \u20ac / Geschichte",k:"platform.openai.com",   col:"rgba(251,191,36,.1)", bc:"rgba(251,191,36,.3)",tc:"#fbbf24"},
-    {n:"Claude",     c:"ca. 0,01 \u20ac / Geschichte",k:"console.anthropic.com", col:"rgba(249,115,22,.1)", bc:"rgba(249,115,22,.3)",tc:"#fb923c"},
-  ];
-  return h("div",{className:"ov",onClick:p.onClose},
-    h("div",{className:"modal",style:{maxWidth:"480px"},onClick:function(ev){ev.stopPropagation();}},
-      h("div",{className:"modal-title"},"H\u00f6rbuch Generator"),
-      h("div",{style:{fontSize:".86rem",color:"var(--c-dim)",lineHeight:1.75,fontWeight:600,marginBottom:"14px"}},
-        "Erstellt eine Geschichte im gew\u00e4hlten Genre, die alle Karteikarten einbettet. "+
-        "Vorlesen funktioniert offline \u00fcber die Sprachausgabe des Ger\u00e4ts. "+
-        "Internet wird nur f\u00fcr die Generierung ben\u00f6tigt."
-      ),
-      h("div",{style:{fontWeight:800,fontSize:".87rem",color:"var(--c-txt)",marginBottom:"9px"}},"Anbieter & Kosten:"),
-      h("div",{style:{display:"flex",flexDirection:"column",gap:"7px",marginBottom:"14px"}},
-        rows.map(function(r,i){return h("div",{key:i,style:{background:r.col,border:"1px solid "+r.bc,borderRadius:"9px",padding:"10px 12px"}},
-          h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"3px"}},
-            h("span",{style:{fontWeight:800,fontSize:".87rem",color:r.tc}},r.n),
-            h("span",{style:{fontWeight:700,fontSize:".78rem",color:"#fff",background:"rgba(0,0,0,.25)",padding:"2px 8px",borderRadius:"20px"}},r.c)
-          ),
-          h("div",{style:{fontSize:".74rem",color:"var(--c-dim)",fontWeight:600}},"Key: "+r.k)
-        );})),
-      h("div",{style:{background:"rgba(255,255,255,.04)",border:"1px solid var(--c-bor)",borderRadius:"9px",padding:"11px",fontSize:".79rem",color:"var(--c-dim)",lineHeight:1.7,fontWeight:600,marginBottom:"8px"}},
-        h("strong",{style:{color:"var(--c-txt)"}},"Empfehlung: "),
-        "OpenRouter \u2013 ein Key f\u00fcr viele Modelle (Gemini, GPT-4o, Llama, Mistral etc.)."
-      ),
-      h("div",{style:{background:"rgba(139,92,246,.08)",border:"1px solid var(--c-bor)",borderRadius:"9px",padding:"11px",fontSize:".79rem",color:"var(--c-dim)",lineHeight:1.7,fontWeight:600}},
-        h("strong",{style:{color:"var(--c-txt)"}},"Datenschutz: "),
-        "Key und Geschichten werden nur lokal auf deinem Ger\u00e4t gespeichert."
-      ),
-      h("div",{className:"modal-foot"},h("button",{className:"btn btn-gold",onClick:p.onClose},"Verstanden!"))
-    )
-  );
-}
-function AudiobookView(p){
-  var deck=p.deck;
-  var store=loadAbStore();
-  var pvs=useState(store.keys&&store.keys.provider?store.keys.provider:"gemini"); var prov=pvs[0]; var setProv=pvs[1];
-  var ks=useState(store.keys&&store.keys[store.keys.provider||"gemini"]?store.keys[store.keys.provider||"gemini"]:""); var key=ks[0]; var setKey=ks[1];
-  var gs=useState(store.stories&&store.stories[deck.id]?store.stories[deck.id].genre||"krimi":"krimi"); var genre=gs[0]; var setGenre=gs[1];
-  var ss=useState(store.stories&&store.stories[deck.id]?store.stories[deck.id].text||"":""); var story=ss[0]; var setStory=ss[1];
-  var ls=useState(false); var loading=ls[0]; var setLoading=ls[1];
-  var es=useState(""); var err=es[0]; var setErr=es[1];
-  var pls=useState(false); var playing=pls[0]; var setPlaying=pls[1];
-  var sps=useState(1); var speed=sps[0]; var setSpeed=sps[1];
-  var ifs=useState(false); var showInfo=ifs[0]; var setShowInfo=ifs[1];
-  var tm=useToast(); var toast=tm[0]; var showToast=tm[1];
-  function saveKey(pr,k){var s=loadAbStore();s.keys=s.keys||{};s.keys[pr]=k;s.keys.provider=pr;saveAbStore(s);}
-  function saveStory(text,g){var s=loadAbStore();s.stories=s.stories||{};s.stories[deck.id]={text:text,genre:g,cards:deck.cards.length,updated:new Date().toISOString()};saveAbStore(s);}
-  function stopAudio(){if(window.speechSynthesis)window.speechSynthesis.cancel();setPlaying(false);}
-  function doGenerate(){
-    if(!key.trim()){setErr("Bitte erst einen API Key eingeben!");return;}
-    if(deck.cards.length===0){setErr("Dieser Stapel hat noch keine Karten!");return;}
-    setLoading(true);setErr("");stopAudio();saveKey(prov,key.trim());
-    generateStory(deck,genre,prov,key.trim()).then(function(text){setStory(text);saveStory(text,genre);setLoading(false);showToast("Geschichte erstellt!");}).catch(function(e){setErr("Fehler: "+e.message);setLoading(false);});
-  }
-  function togglePlay(){
-    if(!story)return;
-    if(playing){window.speechSynthesis.cancel();setPlaying(false);}
-    else{var u=new SpeechSynthesisUtterance(story);u.lang="de-DE";u.rate=speed;u.onend=function(){setPlaying(false);};u.onerror=function(){setPlaying(false);};window.speechSynthesis.speak(u);setPlaying(true);}
-  }
-  var savedInfo=store.stories&&store.stories[deck.id]?store.stories[deck.id]:null;
-  var needsUpdate=savedInfo&&savedInfo.cards!==deck.cards.length;
-  var curGenre=AB_GENRES.find(function(g){return g.id===genre;})||AB_GENRES[1];
-  var curProv=AB_PROVIDERS.find(function(pr){return pr.id===prov;})||AB_PROVIDERS[0];
-  return h("div",{className:"ab-wrap"},
-    h("div",{className:"ab-header"},
-      h("div",{style:{display:"flex",alignItems:"center",gap:"8px"}},
-        h("div",{className:"ab-title"},"H\u00f6rbuch Generator"),
-        h("button",{style:{width:"22px",height:"22px",borderRadius:"50%",border:"1.5px solid rgba(139,92,246,.5)",background:"rgba(139,92,246,.2)",color:"var(--c-pur2)",fontSize:".72rem",fontWeight:900,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"\"Nunito\",sans-serif",flexShrink:0},onClick:function(){setShowInfo(true);}},"?")
-      ),
-      story&&h("button",{className:"btn btn-g",style:{padding:"5px 11px",fontSize:".76rem"},onClick:function(){if(confirm("H\u00f6rbuch neu generieren?"))doGenerate();}},needsUpdate?"Aktualisieren":"Neu generieren")
-    ),
-    h("div",{className:"fg"},
-      h("label",{className:"fl"},"KI-Anbieter ausw\u00e4hlen"),
-      h("div",{className:"provider-row"},
-        AB_PROVIDERS.map(function(pr){return h("button",{key:pr.id,className:"prov-btn"+(prov===pr.id?" sel":""),onClick:function(){setProv(pr.id);var s=loadAbStore();setKey(s.keys&&s.keys[pr.id]?s.keys[pr.id]:"");}},
-          h("div",{style:{fontSize:"1.3rem",marginBottom:"3px"}},pr.icon),
-          h("div",null,pr.label)
-        );})
-      )
-    ),
-    h("div",{className:"fg"},
-      h("label",{className:"fl"},"API Key f\u00fcr "+curProv.label+" eingeben"),
-      h("div",{className:"key-row"},
-        h("input",{className:"fi",type:"password",value:key,placeholder:curProv.hint+"...",onInput:function(ev){setKey(ev.target.value);},style:{flex:1}}),
-        h("button",{className:"btn btn-p",style:{padding:"9px 14px",fontSize:".82rem",whiteSpace:"nowrap"},onClick:function(){saveKey(prov,key);showToast("Key gespeichert!");}},"\u2713 Key speichern")
-      ),
-      h("div",{style:{fontSize:".72rem",color:"var(--c-dim)",fontWeight:600,marginTop:"5px"}},"Wird ausschlie\u00dflich lokal auf deinem Ger\u00e4t gespeichert.")
-    ),
-    (!story||loading)&&h("div",{className:"fg"},
-      h("label",{className:"fl"},"Genre ausw\u00e4hlen"),
-      h("div",{className:"genre-grid"},
-        AB_GENRES.map(function(g){return h("button",{key:g.id,className:"genre-btn"+(genre===g.id?" sel":""),onClick:function(){setGenre(g.id);}},
-          h("div",{style:{fontSize:"1.4rem",marginBottom:"3px"}},g.icon),
-          h("div",null,g.label)
-        );})
-      )
-    ),
-    err&&h("div",{className:"ab-error"},err),
-    !story&&!loading&&h("button",{className:"btn btn-gold",style:{width:"100%",justifyContent:"center",padding:"13px"},onClick:doGenerate},"H\u00f6rbuch erstellen"),
-    loading&&h("div",{style:{textAlign:"center",padding:"24px",color:"var(--c-dim)",fontWeight:700}},h("span",{className:"spinner-inline"}),"Geschichte wird geschrieben\u2026"),
-    story&&!loading&&h("div",null,
-      h("div",{style:{marginBottom:"10px",display:"flex",alignItems:"center",gap:"7px",flexWrap:"wrap"}},
-        h("div",{style:{background:"rgba(139,92,246,.15)",border:"1px solid var(--c-bor)",borderRadius:"20px",padding:"3px 10px",fontSize:".74rem",fontWeight:700,color:"var(--c-pur2)"}},curGenre.icon+" "+curGenre.label),
-        needsUpdate&&h("div",{style:{background:"rgba(251,191,36,.12)",border:"1px solid rgba(251,191,36,.25)",borderRadius:"20px",padding:"3px 10px",fontSize:".74rem",fontWeight:700,color:"#fcd34d"}},"Neue Karten \u2013 bitte aktualisieren")
-      ),
-      h("div",{className:"ab-story"},story),
-      h("div",{className:"ab-player"},
-        h("div",{className:"ab-player-top"},
-          h("button",{className:"ab-ctrl ab-play",onClick:togglePlay},playing?"Pause":"Play"),
-          playing&&h("button",{className:"ab-ctrl ab-stop",onClick:stopAudio},"Stop"),
-          h("div",{className:"ab-speed"},"Geschwindigkeit:",
-            h("select",{value:speed,onChange:function(ev){var s=parseFloat(ev.target.value);setSpeed(s);if(playing){window.speechSynthesis.cancel();setPlaying(false);}}},
-              ["0.7","0.85","1","1.25","1.5","1.75","2"].map(function(v){return h("option",{key:v,value:v},v+"x");})))
-        ),
-        h("div",{className:"ab-gen-info"},playing?"Wird vorgelesen\u2026":"Tippe auf Play zum Anh\u00f6ren")
-      )
-    ),
-    h(Toast,{msg:toast}),
-    showInfo&&h(AbInfoModal,{onClose:function(){setShowInfo(false);}})
-  );
-}
-// == END AUDIOBOOK =============================================================
 
 // -- Reminder ------------------------------------------------------------------
 function ReminderView(p){
@@ -1029,8 +790,6 @@ function App(){
   var shs=useState(false); var showHelp=shs[0]; var setShowHelp=shs[1];
   var sims=useState(false); var showImp=sims[0]; var setShowImp=sims[1];
   var sdts=useState(false); var showDat=sdts[0]; var setShowDat=sdts[1];
-  var sbls=useState(false); var showBetaLogin=sbls[0]; var setShowBetaLogin=sbls[1];
-  var bls=useState(function(){return isBetaUnlocked();}); var betaOn=bls[0]; var setBetaOn=bls[1];
   // QuickStudy
   var qss=useState(null); var qsStep=qss[0]; var setQsStep=qss[1];
   var qds=useState([]); var qsDecks=qds[0]; var setQsDecks=qds[1];
@@ -1096,14 +855,10 @@ function App(){
           h("button",{className:"btn btn-g",onClick:function(){setShowImport(true);}},"Stapel importieren")),
         h("div",{className:"footer-btns"},
           h("button",{className:"foot-btn",onClick:function(){setShowImp(true);}},"Impressum"),
-          h("button",{className:"foot-btn",onClick:function(){setShowDat(true);}},"Datenschutz"),
-          h("button",{
-            style:{background:"none",border:"none",color:"rgba(255,255,255,.18)",fontSize:".72rem",fontWeight:600,cursor:"pointer",fontFamily:"\"Nunito\",sans-serif",padding:"6px 10px",borderRadius:"6px",transition:"all .2s"},
-            onClick:function(){betaOn?(confirm("Beta-Modus deaktivieren?")&&(lockBeta(),setBetaOn(false))):setShowBetaLogin(true);}
-          },betaOn?"\u2713 Beta aktiv":"Beta"))),
+          h("button",{className:"foot-btn",onClick:function(){setShowDat(true);}},"Datenschutz"))),
 
       // DECK DETAIL
-      view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,onBack:function(){setDeckId(null);},onUpdate:updateDeck,betaOn:betaOn}),
+      view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,onBack:function(){setDeckId(null);},onUpdate:updateDeck}),
 
       // QUICK STUDY
       qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs}),
@@ -1124,8 +879,7 @@ function App(){
     qsStep==="mode"&&h(StudyModeModal,{decks:qsDecks,onStart:function(cfg){setQsConfig(cfg);setQsStep("study");},onNext:function(){setQsStep("order");},onBack:function(){setQsStep("select");},onClose:function(){setQsStep(null);}}),
     qsStep==="order"&&h(DeckOrderModal,{decks:qsDecks,onStart:function(cfg){setQsConfig(cfg);setQsStep("study");},onBack:function(){setQsStep("mode");},onClose:function(){setQsStep(null);}}),
 
-    h(Toast,{msg:toast}),
-    showBetaLogin&&h(BetaLoginModal,{onClose:function(){setShowBetaLogin(false);},onSuccess:function(){setBetaOn(true);setShowBetaLogin(false);showToast("Beta-Modus aktiviert! Öffne einen Stapel für den Hörbuch Generator.");}}));
+    h(Toast,{msg:toast}));
 }
 
 // -- Boot ----------------------------------------------------------------------
@@ -1150,12 +904,7 @@ if("serviceWorker" in navigator){
     navigator.serviceWorker.register("./sw.js").then(function(reg){
       reg.update().catch(function(){});
     }).catch(function(){});
-    // Listen for SW_UPDATED message - reload to get new version
-    navigator.serviceWorker.addEventListener("message",function(e){
-      if(e.data&&e.data.type==="SW_UPDATED"){
-        window.location.reload();
-      }
-    });
+
   });
 }
 </script>
