@@ -1,20 +1,18 @@
-// Service Worker v8 - Online: immer frisch | Offline: cached version
-const CACHE = 'kkm-v8';
-const SHELL = ['/index.html', '/manifest.json', '/icon.svg', '/logo.svg'];
+// Service Worker v9 - 24h Cache für index.html
+const CACHE = 'kkm-v9';
+const CACHE_TS_KEY = 'kkm-html-ts';
+const ONE_DAY = 24 * 60 * 60 * 1000;
+const STATIC = ['/manifest.json', '/icon.svg', '/logo.svg'];
 
-// ── Install: cache alles sofort ───────────────────────────────────────────────
 self.addEventListener('install', function(e){
   self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE).then(function(c){
-      return c.addAll(SHELL.map(function(url){
-        return new Request(url, {cache:'no-store'});
-      })).catch(function(){});
+      return c.addAll(STATIC).catch(function(){});
     })
   );
 });
 
-// ── Activate: alte Caches löschen, alle Clients neu laden ─────────────────────
 self.addEventListener('activate', function(e){
   e.waitUntil(
     caches.keys().then(function(keys){
@@ -22,58 +20,65 @@ self.addEventListener('activate', function(e){
         keys.filter(function(k){ return k !== CACHE; })
             .map(function(k){ return caches.delete(k); })
       );
-    })
-    .then(function(){ return self.clients.claim(); })
-    .then(function(){
-      // Frische index.html holen und Cache aktualisieren
-      return fetch('/index.html', {cache:'no-store'}).then(function(res){
-        if(res && res.status === 200){
-          return caches.open(CACHE).then(function(c){ return c.put('/index.html', res); });
-        }
-      }).catch(function(){});
-    })
-    
+    }).then(function(){ return self.clients.claim(); })
   );
 });
 
-// ── Fetch: Network-first für HTML, Cache-first für Assets ─────────────────────
 self.addEventListener('fetch', function(e){
   if(e.request.method !== 'GET') return;
   var url = new URL(e.request.url);
 
-  // sw.js: immer vom Netzwerk
+  // sw.js: immer frisch
   if(url.pathname === '/sw.js'){
-    e.respondWith(fetch(e.request).catch(function(){
-      return new Response('', {status:503});
-    }));
+    e.respondWith(fetch(e.request).catch(function(){ return new Response('',{status:503}); }));
     return;
   }
 
-  // index.html und /: Network-first, Cache als Fallback (= offline support)
-  if(url.pathname === '/' || url.pathname === '/index.html'){
+  // updates.json: immer frisch (App regelt 24h selbst)
+  if(url.pathname === '/updates.json'){
     e.respondWith(
-      fetch(new Request(e.request, {cache:'no-store'}))
-        .then(function(res){
-          // Neue Version in Cache speichern
-          if(res && res.status === 200){
-            var clone = res.clone();
-            caches.open(CACHE).then(function(c){ c.put('/index.html', clone); });
-          }
-          return res;
-        })
-        .catch(function(){
-          // Offline: aus Cache laden
-          return caches.match('/index.html').then(function(cached){
-            return cached || new Response('<h1>Offline</h1><p>Bitte einmal online öffnen um die App zu laden.</p>', {
-              headers:{'Content-Type':'text/html'}
-            });
-          });
-        })
+      fetch(new Request(e.request,{cache:'no-store'}))
+        .catch(function(){ return caches.match('/updates.json'); })
     );
     return;
   }
 
-  // Alle anderen Assets: Cache-first mit Netzwerk-Fallback
+  // index.html: max einmal pro 24h vom Server holen
+  if(url.pathname === '/' || url.pathname === '/index.html'){
+    e.respondWith(
+      caches.open(CACHE).then(function(c){
+        return c.match('/index.html').then(function(cached){
+          var now = Date.now();
+          // Check timestamp
+          return c.match(CACHE_TS_KEY).then(function(tsRes){
+            return tsRes ? tsRes.text() : '0';
+          }).then(function(tsStr){
+            var ts = parseInt(tsStr)||0;
+            var expired = (now - ts) > ONE_DAY;
+            if(cached && !expired){
+              // Aus Cache servieren - noch frisch genug
+              return cached;
+            }
+            // Frisch vom Server holen
+            return fetch(new Request('/index.html',{cache:'no-store'})).then(function(res){
+              if(res && res.status === 200){
+                var clone = res.clone();
+                c.put('/index.html', clone);
+                c.put(CACHE_TS_KEY, new Response(String(now)));
+              }
+              return res;
+            }).catch(function(){
+              // Offline: cached Version nutzen
+              return cached || new Response('<p>Bitte einmal online öffnen.</p>',{headers:{'Content-Type':'text/html'}});
+            });
+          });
+        });
+      })
+    );
+    return;
+  }
+
+  // Alles andere: Cache-first
   e.respondWith(
     caches.match(e.request).then(function(cached){
       return cached || fetch(e.request).then(function(res){
@@ -83,16 +88,15 @@ self.addEventListener('fetch', function(e){
         }
         return res;
       });
-    }).catch(function(){ return new Response('', {status:503}); })
+    }).catch(function(){ return new Response('',{status:503}); })
   );
 });
 
-// ── IDB Helpers ───────────────────────────────────────────────────────────────
+// IDB
 function openDB(){ return new Promise(function(res,rej){ var r=indexedDB.open('kk-sw',1); r.onupgradeneeded=function(e){e.target.result.createObjectStore('kv');}; r.onsuccess=function(e){res(e.target.result);}; r.onerror=function(){rej(r.error);}; }); }
 function dbGet(k){ return openDB().then(function(db){ return new Promise(function(res,rej){ var q=db.transaction('kv','readonly').objectStore('kv').get(k); q.onsuccess=function(){res(q.result);}; q.onerror=function(){rej(q.error);}; }); }).catch(function(){return undefined;}); }
 function dbSet(k,v){ return openDB().then(function(db){ return new Promise(function(res,rej){ var tx=db.transaction('kv','readwrite'); tx.objectStore('kv').put(v,k); tx.oncomplete=res; tx.onerror=function(){rej(tx.error);}; }); }).catch(function(){}); }
 
-// ── Benachrichtigungen ────────────────────────────────────────────────────────
 function maybeNotify(){
   return Promise.all([dbGet('notifyTime'),dbGet('lastNotified'),dbGet('dueCount')]).then(function(v){
     var t=v[0],last=v[1]||0,due=v[2]||0;
