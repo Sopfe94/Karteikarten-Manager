@@ -28,7 +28,7 @@ textContent: `Betreff: ${name || '(kein Betreff)'}\n\n${message}`,
 }),
 });
 
-```
+
 const data = await response.text();
 
 if (response.ok) {
@@ -37,7 +37,6 @@ if (response.ok) {
   console.error('Brevo Fehler:', response.status, data);
   return res.status(500).json({ error: 'Brevo Fehler', status: response.status, detail: data });
 }
-```
 
 } catch (err) {
 console.error(‘Fetch Fehler:’, err.message);
