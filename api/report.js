@@ -28,7 +28,6 @@ textContent: `Betreff: ${name || '(kein Betreff)'}\n\n${message}`,
 }),
 });
 
-
 const data = await response.text();
 
 if (response.ok) {
