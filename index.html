@@ -316,22 +316,52 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 
 /* ---- Personalisierte Startseite ---- */
 .personal-header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:2rem}
-.greeting-card{flex:2;min-width:200px;background:var(--c-card);border-radius:20px;padding:1.25rem 1.5rem;box-shadow:var(--s-pur);border:1px solid var(--c-bor)}
-.greeting-text{font-size:1.6rem;font-weight:700;background:linear-gradient(135deg,#fff,var(--c-pur2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0 0 .25rem 0}
+.greeting-card{flex:2;min-width:200px;background:linear-gradient(135deg,var(--c-card) 0%,rgba(139,92,246,.18) 100%);border-radius:20px;padding:1.25rem 1.5rem;box-shadow:var(--s-pur);border:1px solid rgba(139,92,246,.35)}
+.greeting-text{font-size:1.5rem;font-weight:700;background:linear-gradient(135deg,#fff,var(--c-pur2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0 0 .3rem 0;line-height:1.3;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px}
+.greeting-name-btn{background:none;border:none;border-bottom:1.5px dotted rgba(167,139,250,.6);color:inherit;font:inherit;cursor:pointer;padding:0;font-weight:800;-webkit-text-fill-color:inherit;transition:.2s}
+.greeting-name-btn:hover{border-bottom-color:var(--c-pur2)}
 .greeting-sub{font-size:.85rem;color:var(--c-dim);margin:0;display:flex;align-items:center;gap:6px}
-.edit-name-btn{background:none;border:none;color:var(--c-pur);cursor:pointer;font-size:.9rem;padding:2px 6px;border-radius:20px;transition:.2s;font-family:"Nunito",sans-serif}
-.edit-name-btn:hover{background:var(--c-pdim)}
-.stats-card{flex:3;min-width:240px;background:var(--c-surf);border-radius:20px;padding:1rem 1.5rem;border:1px solid var(--c-bor)}
-.stats-title{font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--c-pur);margin:0 0 .5rem 0;font-weight:800}
+.stats-card{flex:3;min-width:240px;background:linear-gradient(135deg,var(--c-surf) 0%,rgba(251,191,36,.06) 100%);border-radius:20px;padding:1rem 1.5rem;border:1px solid rgba(251,191,36,.18)}
+.stats-title{font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--c-pur2);margin:0 0 .5rem 0;font-weight:800}
 .stats-row{display:flex;justify-content:space-between;gap:.8rem;flex-wrap:wrap}
-.stat-item{text-align:center;flex:1}
+.stat-item{text-align:center;flex:1;padding:.3rem .2rem;border-radius:10px;background:rgba(0,0,0,.15)}
 .stat-value{display:block;font-size:1.6rem;font-weight:700;color:var(--c-gold);line-height:1.2}
-.stat-label{font-size:.7rem;color:var(--c-dim);text-transform:uppercase;font-weight:700}
+.stat-label{font-size:.68rem;color:var(--c-dim);text-transform:uppercase;font-weight:700}
 .name-modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.8);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:1000}
 .name-modal-box{max-width:360px;width:90%;background:var(--c-surf);border-radius:28px;padding:1.8rem;border:1px solid var(--c-bor2);box-shadow:var(--s-pur)}
 .name-modal-box .modal-title{font-size:1.4rem;margin-bottom:1rem}
 .name-input{background:var(--c-card);border:1px solid var(--c-bor);border-radius:40px;padding:12px 16px;width:100%;color:var(--c-txt);font-family:"Nunito",sans-serif;font-size:1rem;margin:1rem 0;outline:none}
 .name-input:focus{border-color:var(--c-pur)}
+select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b5cf6' stroke-width='2' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+
+/* ==== Hamburger Menu ==== */
+.ham-btn{background:none;border:none;color:var(--c-txt);cursor:pointer;font-size:1.5rem;padding:8px 10px;border-radius:12px;transition:.2s;line-height:1;font-family:inherit;flex-shrink:0}
+.ham-btn:hover,.ham-btn:active{background:rgba(139,92,246,.18)}
+.menu-ov{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:600;display:flex;justify-content:flex-end;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.menu-panel{width:270px;max-width:82vw;background:var(--c-surf);height:100%;padding:1.4rem;display:flex;flex-direction:column;gap:3px;border-left:1px solid var(--c-bor);animation:slideIn .2s ease}
+@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.menu-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;padding-bottom:.8rem;border-bottom:1px solid var(--c-bor)}
+.menu-close{background:none;border:none;color:var(--c-dim);font-size:1.2rem;cursor:pointer;padding:4px 8px;border-radius:8px;font-family:inherit;transition:.2s}
+.menu-close:hover{color:var(--c-txt)}
+.menu-logo{font-size:1rem;font-weight:800;color:var(--c-pur2)}
+.menu-item{background:none;border:none;color:var(--c-txt);text-align:left;padding:13px 14px;border-radius:14px;font-size:.95rem;font-family:"Nunito",sans-serif;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:10px;transition:.2s;width:100%}
+.menu-item:hover,.menu-item:active{background:rgba(139,92,246,.12);color:var(--c-pur2)}
+.menu-item.mact{color:var(--c-pur);background:rgba(139,92,246,.15)}
+.menu-sep{height:1px;background:var(--c-bor);margin:8px 0}
+/* ==== Home Deck Liste ==== */
+.home-add-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;margin-top:.25rem}
+.home-add-btn{background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.3);color:var(--c-pur2);font-size:1.5rem;line-height:1;cursor:pointer;padding:4px 12px;border-radius:12px;transition:.2s;font-family:inherit;font-weight:700}
+.home-add-btn:hover,.home-add-btn:active{background:rgba(139,92,246,.28)}
+.home-decks{display:flex;flex-direction:column;gap:9px;margin-top:.5rem}
+.home-deck-row{background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.18);border-radius:14px;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:.2s}
+.home-deck-row:hover,.home-deck-row:active{border-color:rgba(139,92,246,.5);background:var(--c-surf)}
+.home-deck-row-name{font-size:1rem;font-weight:700;color:var(--c-pur2)}
+.home-to-decks{text-align:center;color:var(--c-pur);font-size:.9rem;font-weight:700;cursor:pointer;padding:16px 0 4px 0;transition:.2s}
+.home-to-decks:hover,.home-to-decks:active{color:var(--c-pur2)}
+.manage-back{display:inline-flex;align-items:center;gap:6px;color:var(--c-pur);font-size:.85rem;font-weight:700;cursor:pointer;margin-bottom:12px;background:none;border:none;font-family:"Nunito",sans-serif;padding:0}
+.home-decks-card{background:var(--c-card);border:1px solid rgba(139,92,246,.25);border-radius:20px;padding:1.25rem 1.5rem;box-shadow:0 4px 20px rgba(139,92,246,.1)}
+.home-empty{text-align:center;padding:2rem 1rem;color:var(--c-dim)}
+.home-empty-icon{font-size:2.5rem;margin-bottom:.5rem}
 </style>
 </head>
 <body>
@@ -364,6 +394,75 @@ function loadStore(){ try{ var r=localStorage.getItem(STORE_KEY); return r?JSON.
 function saveStore(d){ try{ localStorage.setItem(STORE_KEY,JSON.stringify(d)); }catch(e){} }
 function swMsg(m){ if(navigator.serviceWorker&&navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage(m); }
 function idbPut(k,v){ try{ var r=indexedDB.open("kk-sw",1); r.onupgradeneeded=function(e){e.target.result.createObjectStore("kv")}; r.onsuccess=function(e){var tx=e.target.result.transaction("kv","readwrite");tx.objectStore("kv").put(v,k)}; }catch(e){} }
+// -- Report Modal ------------------------------------------------------------
+function ReportModal(p){
+  var ts=useState(""); var text=ts[0]; var setText=ts[1];
+  var ns=useState(""); var name=ns[0]; var setName=ns[1];
+  var oss=useState(""); var os=oss[0]; var setOs=oss[1];
+  var tm=useToast(); var toast=tm[0]; var showToast=tm[1];
+  var ss=useState(false); var sending=ss[0]; var setSending=ss[1];
+  function send(){
+    if(!text.trim()){showToast("Bitte das Problem beschreiben.");return;}
+    setSending(true);
+    fetch("/api/report",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({name:name||"Anonym",message:text})
+    }).then(function(r){
+      setSending(false);
+      if(r.ok){showToast("Gesendet! Danke.");setTimeout(function(){p.onClose();},1500);}
+      else{showToast("Fehler beim Senden. Bitte erneut versuchen.");}
+    }).catch(function(){
+      setSending(false);
+      showToast("Fehler beim Senden. Bitte erneut versuchen.");
+    });
+  }
+  return h("div",{className:"ov",onClick:p.onClose},
+    h("div",{className:"modal",style:{maxWidth:"400px"},onClick:function(e){e.stopPropagation();}},
+      h("div",{className:"modal-title"},"Problem melden"),
+      h("label",{style:{fontSize:".8rem",color:"var(--c-dim)",display:"block",marginBottom:"4px"}},"Betreff"),
+      h("input",{type:"text",className:"fi",placeholder:"Betreff",value:name,
+        onInput:function(e){setName(e.target.value);},style:{marginBottom:"12px"}}),
+      h("label",{style:{fontSize:".8rem",color:"var(--c-dim)",display:"block",marginBottom:"4px"}},"Betriebssystem"),
+      h("select",{className:"fi",value:os,onChange:function(e){setOs(e.target.value);},style:{marginBottom:"12px"}},
+        h("option",{value:""},"Bitte wählen..."),
+        h("option",{value:"iOS/iPadOS"},"iOS / iPadOS"),
+        h("option",{value:"Android"},"Android"),
+        h("option",{value:"Sonstiges"},"Sonstiges")),
+      h("label",{style:{fontSize:".8rem",color:"var(--c-dim)",display:"block",marginBottom:"4px"}},"Problem beschreiben *"),
+      h("textarea",{className:"fi",placeholder:"Was ist passiert?",value:text,
+        onInput:function(e){setText(e.target.value);},
+        rows:5,style:{resize:"vertical",minHeight:"100px",marginBottom:"16px"}}),
+      h("div",{className:"modal-foot"},
+        h("button",{className:"btn btn-g",onClick:p.onClose},"Abbrechen"),
+        h("button",{className:"btn btn-p",onClick:send,disabled:sending},sending?"Sende...":"Senden")),
+      h(Toast,{msg:toast})));
+}
+
+// -- Hamburger Menu ----------------------------------------------------------
+function HamburgerMenu(p){
+  return h("div",{className:"menu-ov",onClick:p.onClose},
+    h("div",{className:"menu-panel",onClick:function(e){e.stopPropagation();}},
+      h("div",{className:"menu-top"},
+        h("span",{className:"menu-logo"},"Menu"),
+        h("button",{className:"menu-close",onClick:p.onClose},"X")),
+      h("button",{className:"menu-item"+(p.view==="decks"&&p.deckMode==="home"?" mact":""),
+        onClick:function(){p.onNav("decks");}},
+        h("span",null,"🏠"),h("span",null,"Startseite"),
+        p.dueTotal>0?h("span",{className:"bdg"},p.dueTotal):null),
+      h("button",{className:"menu-item"+(p.view==="decks"&&p.deckMode==="manage"?" mact":""),
+        onClick:function(){p.onManage();}},
+        h("span",null,"📚"),h("span",null,"Stapel")),
+      h("button",{className:"menu-item"+(p.view==="reminder"?" mact":""),
+        onClick:function(){p.onNav("reminder");}},
+        h("span",null,"🔔"),h("span",null,"Erinnerung")),
+      h("div",{className:"menu-sep"}),
+      h("button",{className:"menu-item",onClick:function(){p.onHelp();p.onClose();}},
+        h("span",null,"?"),h("span",null,"Hilfe")),
+      h("button",{className:"menu-item",onClick:function(){p.onReport();p.onClose();}},
+        h("span",null,"!"),h("span",null,"Problem melden"))));
+}
+
 // -- Personalisierung (Username + Lernlog) ------------------------------------
 var USERNAME_KEY = "kkm-username-v1";
 var LEARN_LOG_KEY = "kkm-learn-log-v1";
@@ -416,6 +515,25 @@ function getGreetingEmoji(){
   if(hr>=12&&hr<18) return "☀️";
   if(hr>=18&&hr<22) return "🌙";
   return "🌜";
+}
+
+var MOTIVATIONS=[
+  "Bereit für eine neue Runde?",
+  "Wissen macht stark!",
+  "Heute ist ein guter Tag zum Lernen.",
+  "Kleine Schritte, großes Wissen.",
+  "Du schaffst das!",
+  "Dein Gehirn wartet schon.",
+  "Eine Karte nach der anderen.",
+  "Lernen öffnet Türen.",
+  "Heute besser als gestern.",
+  "Mach weiter so!",
+  "Jeder Tag zählt.",
+  "Auf geht's!"
+];
+function getMotivation(){
+  var d=new Date();
+  return MOTIVATIONS[(d.getDay()*4+Math.floor(d.getHours()/6))%MOTIVATIONS.length];
 }
 
 
@@ -521,7 +639,7 @@ function ImportModal(p){
     var rd=new FileReader();
     rd.onload=function(e){
       var deck=parseDeckFile(e.target.result);
-      if(!deck){setSt("err");setMsg("Ungueltige Datei.");return;}
+      if(!deck){setSt("err");setMsg("Ungültige Datei.");return;}
       setPrev(deck); setSt("preview");
     };
     rd.readAsText(file);
@@ -533,7 +651,7 @@ function ImportModal(p){
         h("div",{style:{background:"rgba(139,92,246,.1)",border:"2px dashed var(--c-bor)",borderRadius:"11px",padding:"22px",textAlign:"center"}},
           h("div",{style:{fontSize:"2.3rem",marginBottom:"7px"}},"📂"),
           h("div",{style:{fontWeight:700,marginBottom:"5px"}},"Stapel-Datei auswählen"),
-          h("div",{style:{fontSize:".81rem",color:"var(--c-dim)",marginBottom:"13px"}},"Waehle eine .kkm.json Datei"),
+          h("div",{style:{fontSize:".81rem",color:"var(--c-dim)",marginBottom:"13px"}},"Wähle eine .kkm.json Datei"),
           h("label",{style:{cursor:"pointer"}},
             h("span",{className:"btn btn-p"},"Datei auswählen"),
             h("input",{type:"file",accept:".json,.kkm.json",style:{display:"none"},onChange:onFile})))),
@@ -584,7 +702,7 @@ function ShareModal(p){
           }},
           "JSON kopieren")),
       h("div",{style:{background:"rgba(251,191,36,.08)",border:"1px solid rgba(251,191,36,.2)",borderRadius:"9px",padding:"11px",fontSize:".79rem",color:"#fcd34d",fontWeight:600,lineHeight:1.6}},
-        "Datei speichern, in WhatsApp anhaengen senden. Empfaenger: App öffnen, Stapel importieren, Datei wählen."),
+        "Datei speichern, in WhatsApp anhängen senden. Empfänger: App öffnen, Stapel importieren, Datei wählen."),
       h("div",{className:"modal-foot"},h("button",{className:"btn btn-g",onClick:p.onClose},"Schließen"))));
 }
 
@@ -927,7 +1045,8 @@ function ReminderView(p){
   function disable(){ swMsg({type:"DISABLE_NOTIFY"}); idbPut("notifyTime",null); p.onSave(null); showToast("Erinnerung deaktiviert."); }
   return h("div",null,
     h("div",{className:"pg-title"},"Erinnerung"),
-    h("div",{className:"pg-sub"},"Täglich zur gewaaehlten Uhrzeit erinnert werden."),
+    h("div",{className:"pg-sub"},"Täglich zur gewählten Uhrzeit erinnert werden."),
+    /iPhone|iPad|iPod/.test(navigator.userAgent)&&h("div",{style:{background:"rgba(251,191,36,.12)",border:"1px solid rgba(251,191,36,.3)",borderRadius:"12px",padding:"10px 14px",fontSize:".82rem",color:"#fde68a",marginTop:"8px",lineHeight:"1.5"}},"Auf iOS: Benachrichtigungen funktionieren nur wenn die App zum Homescreen hinzugefügt wurde. Öffne die App einmal täglich damit der Timer auslösen kann."),
     h("div",{className:"rbox"},
       h("div",{className:"rbox-t"},"Täglich erinnern um ..."),
       h("div",{className:"rbox-s"},"Genau einmal täglich - zur Uhrzeit deiner Wahl."),
@@ -948,13 +1067,13 @@ function HelpModal(p){
     {bg:"rgba(139,92,246,.1)",bc:"rgba(139,92,246,.25)",tc:"var(--c-pur2)",icon:"📚",title:"Stapel erstellen",
      body:"Tippe auf Neuer Stapel, gib einen Namen und Symbol. Dann oeffne den Stapel und erstelle Karteikarten."},
     {bg:"rgba(251,191,36,.08)",bc:"rgba(251,191,36,.2)",tc:"#fbbf24",icon:"?",title:"Jetzt lernen",
-     body:"Klicke auf Jetzt lernen, waehle Stapel und entscheide ob alle Karten durcheinander oder Stapel für Stapel."},
+     body:"Klicke auf Jetzt lernen, wähle Stapel und entscheide ob alle Karten durcheinander oder Stapel für Stapel."},
     {bg:"rgba(16,185,129,.08)",bc:"rgba(16,185,129,.2)",tc:"#34d399",icon:"🧠",title:"Spaced Repetition (SRS)",
      body:"Bewerte dich selbst: Gewusst oder Noch üben. Bekannte Karten kommen nach 1-2-4-8-16-30 Tagen wieder."},
     {bg:"rgba(249,115,22,.08)",bc:"rgba(249,115,22,.2)",tc:"#fb923c",icon:"📤",title:"Teilen & Importieren",
      body:"Oeffne Stapel -> Teilen. Andere: Startseite -> Stapel importieren -> Datei auswählen."},
     {bg:"rgba(255,255,255,.04)",bc:"rgba(139,92,246,.3)",tc:"var(--c-txt)",icon:"🔒",title:"Datenschutz",
-     body:"Alle Daten bleiben ausschliesslich auf deinem Geraet. Keine Daten werden uebertragen."}
+     body:"Alle Daten bleiben ausschließlich auf deinem Geraet. Keine Daten werden übertragen."}
   ];
   return h("div",{className:"ov",onClick:p.onClose},
     h("div",{className:"modal",style:{maxWidth:"480px"},onClick:function(ev){ev.stopPropagation();}},
@@ -974,8 +1093,8 @@ function ImpressumModal(p){
     h("div",{className:"modal",style:{maxWidth:"480px"},onClick:function(ev){ev.stopPropagation();}},
       h("div",{className:"modal-title"},"Impressum"),
       h("div",{className:"legal-body"},
-        h("span",{className:"legal-h"},"Angaben gemaess 5 TMG"),
-        h("p",null,"Sophie Gross"),h("p",null,"Bahnhofstrasse 43"),h("p",null,"46414 Rhede"),
+        h("span",{className:"legal-h"},"Angaben gemäß 5 TMG"),
+        h("p",null,"Sophie Groß"),h("p",null,"Bahnhofstraße 43"),h("p",null,"46414 Rhede"),
         h("span",{className:"legal-h",style:{marginTop:"10px"}},"Kontakt"),
         h("p",null,"Diese App wird privat und nicht kommerziell betrieben."),
         h("span",{className:"legal-h",style:{marginTop:"10px"}},"Hosting"),
@@ -989,22 +1108,22 @@ function ImpressumModal(p){
 function DatenschutzModal(p){
   return h("div",{className:"ov",onClick:p.onClose},
     h("div",{className:"modal",style:{maxWidth:"480px"},onClick:function(ev){ev.stopPropagation();}},
-      h("div",{className:"modal-title"},"Datenschutzerklaerung"),
+      h("div",{className:"modal-title"},"Datenschutzerklärung"),
       h("div",{className:"legal-body"},
         h("span",{className:"legal-h"},"1. Verantwortliche Person"),
-        h("p",null,"Sophie Gross, Bahnhofstrasse 43, 46414 Rhede"),
+        h("p",null,"Sophie Groß, Bahnhofstraße 43, 46414 Rhede"),
         h("span",{className:"legal-h"},"2. Lokale Datenspeicherung"),
-        h("p",null,"Diese App speichert alle Daten ausschliesslich lokal auf deinem Geraet. Keine personenbezogenen Daten werden uebertragen."),
+        h("p",null,"Diese App speichert alle Daten ausschließlich lokal auf deinem Geraet. Keine personenbezogenen Daten werden übertragen."),
         h("span",{className:"legal-h"},"3. Gespeicherte Daten"),
         h("ul",null,h("li",null,"Karteikarten und Stapel"),h("li",null,"Lernfortschritt (SRS-Intervalle)"),h("li",null,"Erinnerungszeit")),
         h("span",{className:"legal-h"},"4. Hosting"),
-        h("ul",null,h("li",null,"GitHub: Quellcode-Hosting"),h("li",null,"Vercel: Server Frankfurt (EU). Server-Logs moeglich (IP, Zeitstempel, Browser).")),
+        h("ul",null,h("li",null,"GitHub: Quellcode-Hosting"),h("li",null,"Vercel: Server Frankfurt (EU). Server-Logs möglich (IP, Zeitstempel, Browser).")),
         h("span",{className:"legal-h"},"5. Push-Benachrichtigungen"),
-        h("p",null,"Erinnerungen laufen lokal ueber den Service Worker. Keine externen Push-Dienste."),
+        h("p",null,"Erinnerungen laufen lokal über den Service Worker. Keine externen Push-Dienste."),
         h("span",{className:"legal-h"},"6. Cookies & Tracking"),
         h("p",null,"Keine Cookies, kein Tracking, keine Werbung."),
-        h("span",{className:"legal-h"},"7. Minderjaehrige"),
-        h("p",null,"Keine Datenerhebung, daher keine gesonderte Einwilligung noetig."),
+        h("span",{className:"legal-h"},"7. Kontaktformular & E-Mail-Versand"),h("p",null,"Für das Kontaktformular (Problem melden) wird der Dienst Brevo (Sendinblue SAS, 106 Boulevard Haussmann, 75008 Paris, Frankreich) als Auftragsverarbeiter genutzt. Die Server befinden sich in der EU. Es werden ausschließlich die eingegebenen Nachrichten übermittelt. Es werden keine personenbezogenen Daten wie E-Mail-Adressen erhoben oder gespeichert."),h("span",{className:"legal-h"},"8. Minderjährige"),
+        h("p",null,"Keine Datenerhebung, daher keine gesonderte Einwilligung nötig."),
         h("p",{style:{marginTop:"14px",fontSize:".76rem",color:"rgba(255,255,255,.3)",fontWeight:600}},"Stand: Mai 2026")),
       h("div",{className:"modal-foot"},h("button",{className:"btn btn-g",onClick:p.onClose},"Schließen"))));
 }
@@ -1025,11 +1144,13 @@ function Greeting(){
   function openModal(){ setTempName(userName||""); setShowModal(true); }
   var displayName=userName||"Freund/in";
   return h("div",{className:"greeting-card"},
-    h("div",{className:"greeting-text"},getTimeBasedGreeting()+", "+displayName+"! "+getGreetingEmoji()),
+    h("div",{className:"greeting-text"},
+      getTimeBasedGreeting()+", ",
+      h("button",{className:"greeting-name-btn",onClick:openModal,title:"Namen ändern"},displayName),
+      "! "+getGreetingEmoji()),
     h("div",{className:"greeting-sub"},
       h("span",null,"✨"),
-      h("span",null,"Lass uns heute etwas lernen"),
-      h("button",{className:"edit-name-btn",onClick:openModal,title:"Namen ändern"},"✏️")),
+      h("span",null,getMotivation())),
     showModal&&h("div",{className:"name-modal-overlay"},
       h("div",{className:"name-modal-box"},
         h("div",{className:"modal-title"},"Wie heißt du?"),
@@ -1079,6 +1200,9 @@ function App(){
   var uds=useState(null); var updData=uds[0]; var setUpdData=uds[1];
   var uos=useState(false); var showUpdOverlay=uos[0]; var setShowUpdOverlay=uos[1];
   var upds=useState(null); var pendingUpd=upds[0]; var setPendingUpd=upds[1];
+  var sms=useState(false); var showMenu=sms[0]; var setShowMenu=sms[1];
+  var srs=useState(false); var showReport=srs[0]; var setShowReport=srs[1];
+  var dlms=useState("home"); var deckListMode=dlms[0]; var setDeckListMode=dlms[1];
   // QuickStudy
   var qss=useState(null); var qsStep=qss[0]; var setQsStep=qss[1];
   var qds=useState([]); var qsDecks=qds[0]; var setQsDecks=qds[1];
@@ -1147,24 +1271,46 @@ function App(){
   return h("div",{style:{minHeight:"100vh",background:"var(--c-bg)"}},
     // HEADER
     h("header",{className:"hdr"},
-      h("div",{className:"logo-wrap",onClick:function(){setView("decks");setDeckId(null);}},
+      h("div",{className:"logo-wrap",onClick:function(){setView("decks");setDeckId(null);setDeckListMode("home");}},
         h("img",{className:"logo-img",src:LOGO,alt:"Logo"})),
-      h("nav",{className:"nav"},
-        h("button",{className:"nb"+(view==="decks"?" on":""),onClick:function(){setView("decks");setDeckId(null);}},
-          "Stapel",dueTotal>0?h("span",{className:"bdg"},dueTotal):null),
-        h("button",{className:"nb"+(view==="reminder"?" on":""),onClick:function(){setView("reminder");setDeckId(null);}},
-          "Erinnerung"),
-        h("button",{className:"nb-q",onClick:function(){setShowHelp(true);},"aria-label":"Hilfe"},"?"))),
+      h("button",{className:"ham-btn","aria-label":"Menu",onClick:function(){setShowMenu(true);}},"☰")),
 
     // CONTENT
     h("main",{className:"main"},
-      // DECK LIST
-      view==="decks"&&!activeDeck&&!qsStep&&h("div",null,
+      // DECK LIST – HOME
+      view==="decks"&&!activeDeck&&!qsStep&&deckListMode==="home"&&h("div",null,
         h(PersonalizedHeader,null),
+        h("div",{className:"home-decks-card"},
+          h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"12px"}},
+            h("span",{style:{fontWeight:800,fontSize:"1rem",color:"var(--c-pur2)"}},"Meine Stapel"),
+            h("div",{style:{display:"flex",gap:"8px",alignItems:"center"}},
+              h("button",{className:"home-add-btn",title:"Neuen Stapel anlegen",onClick:function(){setShowNew(true);}},"+"),
+              decks.length>0&&h("button",{className:"btn btn-gold",style:{fontSize:".8rem",padding:"6px 14px"},onClick:function(){setQsStep("select");}},"> Lernen"))),
+        decks.length===0
+          ?h("div",{className:"home-empty"},h("div",{className:"home-empty-icon"},"📚"),h("p",null,"Noch keine Stapel. Tippe + um loszulegen."))
+          :h("div",{className:"home-decks"},
+              decks.map(function(deck){
+                var due=getDue(deck);
+                return h("div",{className:"home-deck-row",key:deck.id,onClick:function(){setDeckId(deck.id);}},
+                  h("span",{className:"home-deck-row-name"},deck.name),
+                  due.length>0?h("span",{className:"bdg"},due.length+" fällig"):null);
+              })),
+        decks.length>0&&h("div",{className:"home-to-decks",onClick:function(){setDeckListMode("manage");}},
+          "Zu den Stapeln >")),
+        h("div",{className:"footer-btns"},
+          h("button",{className:"foot-btn",onClick:function(){setShowImp(true);}},"Impressum"),
+          h("button",{className:"foot-btn",onClick:function(){setShowDat(true);}},"Datenschutz"),
+          h("button",{className:"foot-btn",style:view==="updates"?{background:"rgba(251,191,36,.2)",borderColor:"rgba(251,191,36,.4)",color:"#fbbf24"}:{},onClick:function(){setView("updates");setDeckId(null);}},
+          "Updates",updData&&updData.current.version!==loadUpdStore().installed&&h("span",{className:"foot-notify"},"1")))),
+
+      // DECK LIST – MANAGE
+      view==="decks"&&!activeDeck&&!qsStep&&deckListMode==="manage"&&h("div",null,
+        h("button",{className:"manage-back",onClick:function(){setDeckListMode("home");}},
+          "< Startseite"),
         h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"4px",flexWrap:"wrap",gap:"9px"}},
           h("div",{className:"pg-title"},"Meine Stapel"),
           decks.length>0&&h("button",{className:"btn btn-gold",onClick:function(){setQsStep("select");}},"Jetzt lernen")),
-        h("div",{className:"pg-sub"},"Alles wird nur lokal auf deinem Geraet gespeichert."),
+        h("div",{className:"pg-sub"},"Alles wird nur lokal auf deinem Gerät gespeichert."),
         h("div",{className:"dgrid"},
           decks.map(function(deck){
             var due=getDue(deck);
@@ -1208,6 +1354,8 @@ function App(){
     editDeck&&h(DeckModal,{deck:editDeck,onSave:saveEditDeck,onClose:function(){setEditDeck(null);}}),
     showImport&&h(ImportModal,{onImport:doImport,onClose:function(){setShowImport(false);}}),
     showHelp&&h(HelpModal,{onClose:function(){setShowHelp(false);}}),
+      showMenu&&h(HamburgerMenu,{view:view,dueTotal:dueTotal,deckMode:deckListMode,onNav:function(v){setView(v);setDeckId(null);setDeckListMode("home");setShowMenu(false);},onManage:function(){setView("decks");setDeckId(null);setDeckListMode("manage");setShowMenu(false);},onHelp:function(){setShowHelp(true);},onReport:function(){setShowReport(true);},onClose:function(){setShowMenu(false);}}),
+      showReport&&h(ReportModal,{onClose:function(){setShowReport(false);}}),
     showImp&&h(ImpressumModal,{onClose:function(){setShowImp(false);}}),
     showDat&&h(DatenschutzModal,{onClose:function(){setShowDat(false);}}),
 
