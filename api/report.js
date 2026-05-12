@@ -15,27 +15,26 @@ if (!token) {
 return res.status(500).json({ error: ‘Server nicht konfiguriert’ });
 }
 
-var issueBody = ’**Betriebssystem:** ’ + os + ‘\n\n**Beschreibung:**\n’ + message;
-
 var response = await fetch(‘https://api.github.com/repos/Sopfe94/Karteikarten-Manager/issues’, {
 method: ‘POST’,
 headers: {
 ‘Authorization’: ’Bearer ’ + token,
 ‘Content-Type’: ‘application/json’,
 ‘Accept’: ‘application/vnd.github+json’,
+‘X-GitHub-Api-Version’: ‘2022-11-28’
 },
 body: JSON.stringify({
-title: ’Problem gemeldet: ’ + name,
-body: issueBody,
-labels: [‘bug’, ‘user-report’],
-}),
+title: ’Problem: ’ + name,
+body: ’**Betriebssystem:** ’ + os + ‘\n\n**Beschreibung:**\n’ + message
+})
 });
+
+var data = await response.text();
 
 if (response.ok) {
 return res.status(200).json({ ok: true });
 } else {
-var err = await response.text();
-console.error(‘GitHub Fehler:’, response.status, err);
-return res.status(500).json({ error: ‘GitHub Fehler’, status: response.status });
+console.error(‘GitHub Error:’, response.status, data);
+return res.status(500).json({ error: response.status, detail: data });
 }
 }
