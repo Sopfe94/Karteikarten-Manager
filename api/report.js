@@ -2,42 +2,40 @@ export default async function handler(req, res) {
 if (req.method !== ‘POST’) return res.status(405).end();
 
 var body = req.body || {};
-var name = body.name || ‘’;
+var name = body.name || ‘(kein Betreff)’;
+var os = body.os || ‘Nicht angegeben’;
 var message = body.message || ‘’;
 
-if (!message || !message.trim()) {
+if (!message.trim()) {
 return res.status(400).json({ error: ‘Nachricht fehlt’ });
 }
 
-var apiKey = process.env.BREVO_API_KEY;
-var toEmail = process.env.REPORT_EMAIL;
-
-if (!apiKey || !toEmail) {
+var token = process.env.GITHUB_TOKEN;
+if (!token) {
 return res.status(500).json({ error: ‘Server nicht konfiguriert’ });
 }
 
-var mailBody = ’Betreff: ’ + (name || ‘(kein Betreff)’) + ‘\n\n’ + message;
+var issueBody = ’**Betriebssystem:** ’ + os + ‘\n\n**Beschreibung:**\n’ + message;
 
-var response = await fetch(‘https://api.brevo.com/v3/smtp/email’, {
+var response = await fetch(‘https://api.github.com/repos/Sopfe94/Karteikarten-Manager/issues’, {
 method: ‘POST’,
 headers: {
-‘api-key’: apiKey,
+‘Authorization’: ’Bearer ’ + token,
 ‘Content-Type’: ‘application/json’,
+‘Accept’: ‘application/vnd.github+json’,
 },
 body: JSON.stringify({
-sender: { name: ‘Karteikarten Manager’, email: toEmail },
-to: [{ email: toEmail }],
-subject: ‘Problem gemeldet - Karteikarten Manager’,
-textContent: mailBody,
+title: ’Problem gemeldet: ’ + name,
+body: issueBody,
+labels: [‘bug’, ‘user-report’],
 }),
 });
-
-var data = await response.text();
 
 if (response.ok) {
 return res.status(200).json({ ok: true });
 } else {
-console.error(‘Brevo Fehler:’, response.status, data);
-return res.status(500).json({ error: ‘Brevo Fehler’, status: response.status, detail: data });
+var err = await response.text();
+console.error(‘GitHub Fehler:’, response.status, err);
+return res.status(500).json({ error: ‘GitHub Fehler’, status: response.status });
 }
 }
