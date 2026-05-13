@@ -1,37 +1,26 @@
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
-
-  const { name, message } = req.body || {};
-  if (!message || !message.trim()) {
-    return res.status(400).json({ error: 'Nachricht fehlt' });
+module.exports = async function handler(req, res) {
+  if (req.method !== "POST") return res.status(405).end();
+  try {
+    var b = req.body || {};
+    var token = process.env.GITHUB_TOKEN;
+    if (!token) return res.status(500).json({ error: "no token" });
+    var r = await fetch("https://api.github.com/repos/Sopfe94/Karteikarten-Manager/issues", {
+      method: "POST",
+      headers: {
+        "Authorization": "token " + token,
+        "Content-Type": "application/json",
+        "User-Agent": "App"
+      },
+      body: JSON.stringify({
+        title: "Problem: " + (b.name || "-"),
+        body: (b.os || "-") + "\n\n" + (b.message || "-")
+      })
+    });
+    var d = await r.text();
+    console.log("GitHub:", r.status, d.substring(0, 200));
+    return res.status(r.ok ? 200 : 500).json({ ok: r.ok });
+  } catch (e) {
+    console.error("err:", e.message);
+    return res.status(500).json({ error: e.message });
   }
-
-  const apiKey  = process.env.BREVO_API_KEY;
-  const toEmail = process.env.REPORT_EMAIL;
-
-  if (!apiKey || !toEmail) {
-    return res.status(500).json({ error: 'Server nicht konfiguriert' });
-  }
-
-  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-    method: 'POST',
-    headers: {
-      'api-key': apiKey,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      sender: { name: 'Karteikarten Manager', email: toEmail },
-      to: [{ email: toEmail }],
-      subject: 'Problem gemeldet - Karteikarten Manager',
-      textContent: `Von: ${name || 'Anonym'}\n\n${message}`,
-    }),
-  });
-
-  if (response.ok) {
-    return res.status(200).json({ ok: true });
-  } else {
-    const err = await response.text();
-    console.error('Brevo error:', err);
-    return res.status(500).json({ error: 'Fehler beim Senden' });
-  }
-}
+};
