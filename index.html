@@ -400,16 +400,22 @@ function ReportModal(p){
   var ns=useState(""); var name=ns[0]; var setName=ns[1];
   var oss=useState(""); var os=oss[0]; var setOs=oss[1];
   var tm=useToast(); var toast=tm[0]; var showToast=tm[1];
+  var ss=useState(false); var sending=ss[0]; var setSending=ss[1];
   function send(){
     if(!text.trim()){showToast("Bitte das Problem beschreiben.");return;}
-    var subject=encodeURIComponent("Problem gemeldet - Karteikarten Manager");
-    var body=encodeURIComponent(
-      "Betreff: "+(name||"(kein Betreff)")+
-      "\nBetriebssystem: "+(os||"Nicht angegeben")+
-      "\n\nBeschreibung:\n"+text
-    );
-    window.location.href="mailto:"+window.REPORT_MAIL+"?subject="+subject+"&body="+body;
-    setTimeout(function(){p.onClose();},500);
+    setSending(true);
+    fetch("/api/report",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({name:name||"(kein Betreff)",os:os||"Nicht angegeben",message:text})
+    }).then(function(r){
+      setSending(false);
+      if(r.ok){showToast("Gesendet! Danke.");setTimeout(function(){p.onClose();},1500);}
+      else{showToast("Fehler beim Senden.");}
+    }).catch(function(){
+      setSending(false);
+      showToast("Fehler beim Senden.");
+    });
   }
   return h("div",{className:"ov",onClick:p.onClose},
     h("div",{className:"modal",style:{maxWidth:"400px"},onClick:function(e){e.stopPropagation();}},
@@ -429,7 +435,7 @@ function ReportModal(p){
         rows:5,style:{resize:"vertical",minHeight:"100px",marginBottom:"16px"}}),
       h("div",{className:"modal-foot"},
         h("button",{className:"btn btn-g",onClick:p.onClose},"Abbrechen"),
-        h("button",{className:"btn btn-p",onClick:send},"Senden")),
+        h("button",{className:"btn btn-p",onClick:send,disabled:sending},sending?"Sende...":"Senden")),
       h(Toast,{msg:toast})));
 }
 
