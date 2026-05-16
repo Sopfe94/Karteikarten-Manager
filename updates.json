@@ -1,0 +1,16 @@
+{
+  "current": {
+    "version": "1.1.0",
+    "name": "Version 1.1.0",
+    "date": "Mai 2026",
+    "description": "• Personalisierte Startseite mit Begrüßung & Tagesstatistik\n• Hamburger-Menü für bessere Navigation\n• Ordner-Struktur innerhalb von Stapeln\n• Problem melden Formular\n• Datenschutz & Impressum aktualisiert\n• Viele kleine Verbesserungen & Bugfixes"
+  },
+  "history": [
+    {
+      "version": "1.0.0",
+      "name": "Version 1.0.0",
+      "date": "April 2026",
+      "description": "Erste Version des Karteikarten Managers."
+    }
+  ]
+}
