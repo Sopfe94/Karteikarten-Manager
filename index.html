@@ -845,6 +845,7 @@ function ReminderView(p){
   function doSave(){ idbPut("notifyTime",time);idbPut("dueCount",total);idbPut("lastNotified",null);swMsg({type:"SET_NOTIFY_TIME",time:time,dueCount:total});p.onSave({time:time});showToast("Erinnerung gesetzt!"); }
   function disable(){ swMsg({type:"DISABLE_NOTIFY"});idbPut("notifyTime",null);p.onSave(null);showToast("Erinnerung deaktiviert."); }
   return h("div",null,
+    h("button",{className:"back-btn",onClick:p.onBack},"\u2190 Startseite"),
     h("div",{className:"pg-title"},"Erinnerung"),
     h("div",{className:"pg-sub"},"T\u00e4glich zur gew\u00e4hlten Uhrzeit erinnert werden."),
     /iPhone|iPad|iPod/.test(navigator.userAgent)&&h("div",{style:{background:"rgba(251,191,36,.12)",border:"1px solid rgba(251,191,36,.3)",borderRadius:"12px",padding:"10px 14px",fontSize:".82rem",color:"#fde68a",marginTop:"8px",marginBottom:"16px",lineHeight:"1.7"}},"\u26a0\ufe0f iOS-Hinweis: Auf iPhone und iPad k\u00f6nnen Web-Apps technisch bedingt keine Benachrichtigungen im Hintergrund senden. Auf Android funktioniert die Erinnerung problemlos. Tipp f\u00fcr iOS: Stelle dir zus\u00e4tzlich eine t\u00e4gliche Erinnerung in der Uhr-App des iPhones."),
@@ -1101,11 +1102,11 @@ function App(){
       view==="decks"&&!activeDeck&&!qsStep&&deckListMode==="manage"&&h("div",null,
         h("button",{className:"manage-back",onClick:function(){setDeckListMode("home");}},"\u2190 Startseite"),
         renderManage(),
-        h("div",{style:{marginTop:"18px",paddingTop:"18px",borderTop:"1px solid var(--c-bor)"}},h("button",{className:"btn btn-g",onClick:function(){setShowImport(true);}},"Stapel importieren")),
+        h("div",{style:{marginTop:"18px"}},h("button",{className:"btn btn-g",style:{boxShadow:"0 0 18px rgba(139,92,246,.5)",borderColor:"var(--c-bor2)",color:"var(--c-pur2)"},onClick:function(){setShowImport(true);}},"Stapel importieren")),
         renderFooter()),
-      view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,onBack:function(){setDeckId(null);},onUpdate:updateDeck}),
+      view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck}),
       qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs}),
-      view==="reminder"&&!qsStep&&h(ReminderView,{reminder:data.reminder,decks:decks,onSave:function(r){patch({reminder:r});}}),
+      view==="reminder"&&!qsStep&&h("div",null,h(ReminderView,{reminder:data.reminder,decks:decks,onBack:function(){setView("decks");setDeckListMode("home");},onSave:function(r){patch({reminder:r});}}),renderFooter()),
       view==="updates"&&!qsStep&&h(UpdatesView,{onBack:function(){setView("decks");setDeckListMode("home");},onShowImp:function(){setShowImp(true);},onShowDat:function(){setShowDat(true);}})),
     showNew&&h(DeckModal,{folders:folders,onSave:addDeck,onClose:function(){setShowNew(false);}}),
     editDeck&&h(DeckModal,{deck:editDeck,folders:folders,onSave:saveEditDeck,onClose:function(){setEditDeck(null);}}),
