@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover">
 <title>Karteikarten Manager</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1e1260">
@@ -110,6 +110,12 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
   display:flex;align-items:center;justify-content:center;transition:all .15s}
 .ibtn:hover{background:var(--c-pdim);color:var(--c-txt)}
 .ibtn-del:hover{background:rgba(239,68,68,.2);color:var(--c-red)}
+.dots-btn{padding:4px 10px;border-radius:20px;border:1.5px solid var(--c-bor);background:rgba(255,255,255,.07);color:var(--c-dim);cursor:pointer;font-size:1.1rem;letter-spacing:2px;transition:.15s;font-family:"Nunito",sans-serif;line-height:1}
+.dots-btn:hover{background:var(--c-pdim);color:var(--c-txt)}
+.dots-menu{position:absolute;right:0;top:calc(100% + 6px);background:var(--c-surf);border:1px solid var(--c-bor2);border-radius:12px;padding:6px;z-index:50;min-width:148px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.dots-item{display:flex;align-items:center;gap:8px;width:100%;padding:9px 12px;border:none;background:none;color:var(--c-txt);font-family:"Nunito",sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;border-radius:8px;transition:.15s;text-align:left}
+.dots-item:hover{background:rgba(139,92,246,.15)}
+.dots-item-del{color:var(--c-red)}.dots-item-del:hover{background:rgba(239,68,68,.15)}
 .ov{position:fixed;inset:0;background:rgba(8,5,26,.8);z-index:200;
   display:flex;align-items:center;justify-content:center;padding:16px;
   padding-top:max(env(safe-area-inset-top),16px);
@@ -126,7 +132,7 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 .fl{display:block;font-size:.73rem;font-weight:800;color:var(--c-pur2);
   margin-bottom:5px;letter-spacing:.06em;text-transform:uppercase}
 .fi,.fta,.fsel{width:100%;padding:9px 12px;border:1.5px solid var(--c-bor);border-radius:9px;
-  font-family:"Nunito",sans-serif;font-size:.92rem;color:var(--c-txt);
+  font-family:"Nunito",sans-serif;font-size:16px;color:var(--c-txt);
   background:rgba(255,255,255,.05);outline:none;transition:border-color .15s}
 .fi:focus,.fta:focus,.fsel:focus{border-color:var(--c-pur);background:rgba(139,92,246,.08)}
 .fta{resize:vertical;min-height:78px}
@@ -265,13 +271,13 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 .upd-status-done{background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.25);color:#34d399}
 .upd-err{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#fca5a5;border-radius:9px;padding:10px 13px;font-size:.8rem;font-weight:700;margin-top:10px}
 .foot-notify{display:flex;align-items:center;justify-content:center;width:17px;height:17px;background:var(--c-gold);color:#000;border-radius:50%;font-size:.6rem;font-weight:900;margin-left:4px}
-.personal-header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:2rem}
-.greeting-card{flex:2;min-width:200px;background:linear-gradient(135deg,var(--c-card) 0%,rgba(139,92,246,.18) 100%);border-radius:20px;padding:1.25rem 1.5rem;box-shadow:var(--s-pur);border:1px solid rgba(139,92,246,.35)}
+.personal-header{display:flex;flex-direction:column;gap:1.5rem;margin-bottom:1.5rem}
+.greeting-card{background:linear-gradient(135deg,var(--c-card) 0%,rgba(139,92,246,.18) 100%);border-radius:20px;padding:1.25rem 1.5rem;box-shadow:var(--s-pur);border:1px solid rgba(139,92,246,.35)}
 .greeting-text{font-size:clamp(.95rem,5vw,1.4rem);font-weight:700;background:linear-gradient(135deg,#fff,var(--c-pur2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0 0 .3rem 0;line-height:1.3;display:flex;flex-wrap:nowrap;align-items:baseline;gap:3px;overflow:hidden;white-space:nowrap}
 .greeting-name-btn{background:none;border:none;border-bottom:1.5px dotted rgba(167,139,250,.6);color:inherit;font:inherit;cursor:pointer;padding:0;font-weight:800;-webkit-text-fill-color:inherit;transition:.2s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:35vw}
 .greeting-name-btn:hover{border-bottom-color:var(--c-pur2)}
 .greeting-sub{font-size:.85rem;color:var(--c-dim);margin:0;display:flex;align-items:center;gap:6px}
-.stats-card{flex:3;min-width:240px;background:linear-gradient(135deg,var(--c-surf) 0%,rgba(251,191,36,.06) 100%);border-radius:20px;padding:1rem 1.5rem;border:1px solid rgba(251,191,36,.18)}
+.stats-card{background:linear-gradient(135deg,var(--c-surf) 0%,rgba(251,191,36,.06) 100%);border-radius:20px;padding:1rem 1.5rem;border:1px solid rgba(251,191,36,.18)}
 .stats-title{font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--c-pur2);margin:0 0 .5rem 0;font-weight:800}
 .stats-row{display:flex;justify-content:space-between;gap:.8rem;flex-wrap:wrap}
 .stat-item{text-align:center;flex:1;padding:.3rem .2rem;border-radius:10px;background:rgba(0,0,0,.15)}
@@ -412,9 +418,9 @@ function HamburgerMenu(p){
         h("span",{className:"menu-logo"},"Men\u00fc"),
         h("button",{className:"menu-close",onClick:p.onClose},"\u2715")),
       h("button",{className:"menu-item"+(p.view==="decks"&&p.deckMode==="home"?" mact":""),onClick:function(){p.onNav("decks");}},
-        h("span",null,"\uD83C\uDFE0"),h("span",null,"Startseite"),p.dueTotal>0?h("span",{className:"bdg"},p.dueTotal):null),
+        h("span",null,"\uD83C\uDFE0"),h("span",null,"Startseite")),
       h("button",{className:"menu-item"+(p.view==="decks"&&p.deckMode==="manage"?" mact":""),onClick:function(){p.onManage();}},
-        h("span",null,"\uD83D\uDCDA"),h("span",null,"Stapel")),
+        h("span",null,"\uD83D\uDCDA"),h("span",null,"Stapel"),p.dueTotal>0?h("span",{className:"bdg"},p.dueTotal):null),
       h("button",{className:"menu-item"+(p.view==="reminder"?" mact":""),onClick:function(){p.onNav("reminder");}},
         h("span",null,"\uD83D\uDD14"),h("span",null,"Erinnerung")),
       h("div",{className:"menu-sep"}),
@@ -467,6 +473,16 @@ function parseDeckFile(str){
     return {id:uid(),name:d.name||"Import",emoji:d.emoji||"\uD83D\uDCDA",created:todayStr(),
       cards:d.cards.filter(function(c){return c.front&&c.back;}).map(function(c){return {id:uid(),front:c.front,back:c.back,lvl:0,nextReview:todayStr()};})}; }
   catch(e){return null;}
+}
+
+function ThreeDotMenu(p){
+  var os=useState(false); var open=os[0]; var setOpen=os[1];
+  return h("div",{style:{position:"relative",display:"inline-block"}},
+    open&&h("div",{style:{position:"fixed",inset:0,zIndex:49},onClick:function(e){e.stopPropagation();setOpen(false);}}),
+    h("button",{className:"dots-btn",onClick:function(e){e.stopPropagation();setOpen(!open);}},"\u22EF"),
+    open&&h("div",{className:"dots-menu",onClick:function(e){e.stopPropagation();}},
+      h("button",{className:"dots-item",onClick:function(e){e.stopPropagation();setOpen(false);p.onEdit();}},"\u270F\uFE0F Bearbeiten"),
+      h("button",{className:"dots-item dots-item-del",onClick:function(e){e.stopPropagation();setOpen(false);p.onDelete();}},"\uD83D\uDDD1\uFE0F L\u00f6schen")));
 }
 
 function FolderModal(p){
@@ -616,10 +632,12 @@ function DeckDetail(p){
   var sm=useState(false); var showShare=sm[0]; var setShowShare=sm[1];
   var sfn=useState(false); var showNewFolder=sfn[0]; var setShowNewFolder=sfn[1];
   var ef=useState(null); var editFolderItem=ef[0]; var setEditFolderItem=ef[1];
+  var cs=useState({}); var collapsed=cs[0]; var setCollapsed=cs[1];
   var tm=useToast(); var toast=tm[0]; var showToast=tm[1];
   var due=getDue(p.deck);
   var deckFolders=p.deck.folders||[];
 
+  function toggleCollapse(id){ setCollapsed(function(prev){ var n=Object.assign({},prev); n[id]=!n[id]; return n; }); }
   function addCard(d){ p.onUpdate(Object.assign({},p.deck,{cards:p.deck.cards.concat([Object.assign({id:uid()},d,{lvl:0,nextReview:todayStr()})])})); setShowAdd(false); }
   function saveCard(d){ p.onUpdate(Object.assign({},p.deck,{cards:p.deck.cards.map(function(c){return c.id===editC.id?Object.assign({},c,d):c;})})); setEditC(null); }
   function delCard(id){ if(!confirm("Karte l\u00f6schen?"))return; p.onUpdate(Object.assign({},p.deck,{cards:p.deck.cards.filter(function(c){return c.id!==id;})})); }
@@ -636,6 +654,11 @@ function DeckDetail(p){
 
   if(study) return h(StudyView,{deck:p.deck,onFinish:finish});
 
+  function collapseBtn(id){
+    var isCol=!!collapsed[id];
+    return h("button",{onClick:function(){toggleCollapse(id);},style:{width:"28px",height:"28px",borderRadius:"50%",border:"1.5px solid var(--c-bor)",background:"rgba(139,92,246,.15)",color:"var(--c-pur2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".8rem",flexShrink:0,transition:".2s"}},isCol?"\u25BC":"\u25B2");
+  }
+
   function renderCards(cards){
     if(!cards.length) return null;
     return h("div",{className:"clist"},cards.map(function(c){
@@ -646,40 +669,46 @@ function DeckDetail(p){
           h("div",{className:"cb"},c.back),
           folder&&h("div",{style:{fontSize:".64rem",color:"var(--c-pur2)",marginTop:"2px",fontWeight:700}},folder.emoji+" "+folder.name)),
         h("div",{className:"ctag"},c.nextReview<=todayStr()?"f\u00e4llig":"\uD83D\uDCC5 "+c.nextReview),
-        h("div",{style:{display:"flex",gap:"5px"}},
-          h("button",{className:"ibtn",onClick:function(){setEditC(c);}},"\u270F\uFE0F"),
-          h("button",{className:"ibtn ibtn-del",onClick:function(){delCard(c.id);}},"\uD83D\uDDD1\uFE0F")));
+        h("div",{style:{display:"flex",gap:"5px"}},h(ThreeDotMenu,{onEdit:function(){setEditC(c);},onDelete:function(){delCard(c.id);}})));
     }));
   }
+
+  var ungrouped=p.deck.cards.filter(function(c){return !c.folderId;});
 
   return h("div",null,
     h("button",{className:"back-btn",onClick:p.onBack},"\u2190 Alle Stapel"),
     h("div",{className:"dhdr"},
-      h("div",{className:"dhl"},h("div",{className:"dbig"},p.deck.emoji),h("div",null,h("div",{className:"dname2"},p.deck.name),h("div",{className:"dstats"},h("div",{className:"dstat"},h("span",null,p.deck.cards.length)," Karten"),h("div",{className:"dstat"},h("span",null,due.length)," f\u00e4llig")))),
+      h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",gap:"10px",marginBottom:"12px"}},
+        h("div",{className:"dhl"},h("div",{className:"dbig"},p.deck.emoji),h("div",null,h("div",{className:"dname2"},p.deck.name),h("div",{className:"dstats"},h("div",{className:"dstat"},h("span",null,p.deck.cards.length)," Karten"),h("div",{className:"dstat"},h("span",null,due.length)," f\u00e4llig")))),
+        h("button",{onClick:function(){shareDeck(p.deck,function(){setShowShare(true);});},title:"Teilen",style:{width:"44px",height:"44px",borderRadius:"50%",border:"1.5px solid var(--c-bor)",background:"rgba(255,255,255,.08)",color:"var(--c-dim)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.3rem",flexShrink:0,transition:".2s",marginRight:"92px"}},"\uD83D\uDCE4")),
       h("div",{style:{display:"flex",gap:"8px",flexWrap:"wrap"}},
         due.length>0&&h("button",{className:"btn btn-o",onClick:function(){setStudy(true);}},"\uD83D\uDCDA Lernen ("+due.length+")"),
-        h("button",{className:"btn btn-p",onClick:function(){setShowAdd(true);}},"+Karte"),
-        h("button",{className:"btn btn-gold",onClick:function(){setShowNewFolder(true);}},"\u002B Ordner"),
-        h("button",{className:"btn btn-g",onClick:function(){shareDeck(p.deck,function(){setShowShare(true);});}},"Teilen"))),
+        h("button",{className:"btn btn-p",onClick:function(){setShowAdd(true);}},"\u002B Karte"),
+        h("button",{className:"btn btn-gold",onClick:function(){setShowNewFolder(true);}},"\u002B Ordner"))),
 
     p.deck.cards.length===0?
       h("div",{className:"empty"},h("div",{className:"empty-i"},"\uD83D\uDCED"),h("p",null,"Noch keine Karten."),h("button",{className:"btn btn-p",onClick:function(){setShowAdd(true);}},"Erste Karte erstellen")):
       deckFolders.length>0?h("div",null,
         deckFolders.map(function(folder){
           var folderCards=p.deck.cards.filter(function(c){return c.folderId===folder.id;});
+          var isCol=!!collapsed[folder.id];
           return h("div",{key:folder.id,className:"folder-section"},
             h("div",{className:"folder-hdr"},
+              collapseBtn(folder.id),
               h("span",{style:{fontSize:"1.1rem"}},folder.emoji),
               h("span",{className:"folder-hdr-name"},folder.name),
               h("span",{className:"folder-hdr-count"},folderCards.length+" Karten"),
               h("div",{className:"folder-hdr-acts"},
-                h("button",{className:"ibtn",onClick:function(){setEditFolderItem(folder);}},"\u270F\uFE0F"),
-                h("button",{className:"ibtn ibtn-del",onClick:function(){delFolder(folder.id);}},"\uD83D\uDDD1\uFE0F"))),
-            folderCards.length>0?renderCards(folderCards):h("div",{style:{fontSize:".8rem",color:"var(--c-fnt)",padding:"8px 4px",fontWeight:600}},"Noch keine Karten in diesem Ordner."));
+                h(ThreeDotMenu,{onEdit:function(){setEditFolderItem(folder);},onDelete:function(){delFolder(folder.id);}}))),
+            !isCol&&(folderCards.length>0?renderCards(folderCards):h("div",{style:{fontSize:".8rem",color:"var(--c-fnt)",padding:"8px 4px",fontWeight:600}},"Noch keine Karten in diesem Ordner.")));
         }),
-        h("div",{className:"folder-section"},
-          h("div",{className:"folder-hdr"},h("span",{style:{fontSize:"1.1rem"}},"\uD83D\uDCCB"),h("span",{className:"folder-hdr-name"},"Ohne Ordner"),h("span",{className:"folder-hdr-count"},p.deck.cards.filter(function(c){return !c.folderId;}).length+" Karten")),
-          renderCards(p.deck.cards.filter(function(c){return !c.folderId;}))))
+        ungrouped.length>0&&h("div",{className:"folder-section"},
+          h("div",{className:"folder-hdr"},
+            collapseBtn("__ungrouped"),
+            h("span",{style:{fontSize:"1.1rem"}},"\uD83D\uDCCB"),
+            h("span",{className:"folder-hdr-name"},"Ohne Ordner"),
+            h("span",{className:"folder-hdr-count"},ungrouped.length+" Karten")),
+          !collapsed["__ungrouped"]&&renderCards(ungrouped)))
       :renderCards(p.deck.cards),
 
     showAdd&&h(CardModal,{folders:deckFolders,onSave:addCard,onClose:function(){setShowAdd(false);}}),
@@ -818,7 +847,7 @@ function ReminderView(p){
   return h("div",null,
     h("div",{className:"pg-title"},"Erinnerung"),
     h("div",{className:"pg-sub"},"T\u00e4glich zur gew\u00e4hlten Uhrzeit erinnert werden."),
-    /iPhone|iPad|iPod/.test(navigator.userAgent)&&h("div",{style:{background:"rgba(251,191,36,.12)",border:"1px solid rgba(251,191,36,.3)",borderRadius:"12px",padding:"10px 14px",fontSize:".82rem",color:"#fde68a",marginTop:"8px",lineHeight:"1.5"}},"Auf iOS: Benachrichtigungen funktionieren nur wenn die App zum Homescreen hinzugef\u00fcgt wurde."),
+    /iPhone|iPad|iPod/.test(navigator.userAgent)&&h("div",{style:{background:"rgba(251,191,36,.12)",border:"1px solid rgba(251,191,36,.3)",borderRadius:"12px",padding:"10px 14px",fontSize:".82rem",color:"#fde68a",marginTop:"8px",marginBottom:"16px",lineHeight:"1.7"}},"\u26a0\ufe0f iOS-Hinweis: Auf iPhone und iPad k\u00f6nnen Web-Apps technisch bedingt keine Benachrichtigungen im Hintergrund senden. Auf Android funktioniert die Erinnerung problemlos. Tipp f\u00fcr iOS: Stelle dir zus\u00e4tzlich eine t\u00e4gliche Erinnerung in der Uhr-App des iPhones."),
     h("div",{className:"rbox"},
       h("div",{className:"rbox-t"},"T\u00e4glich erinnern um ..."),
       h("div",{className:"rbox-s"},"Genau einmal t\u00e4glich - zur Uhrzeit deiner Wahl."),
@@ -834,11 +863,12 @@ function ReminderView(p){
 function HelpModal(p){
   var items=[
     {bg:"rgba(251,191,36,.1)",bc:"rgba(251,191,36,.3)",tc:"#fbbf24",icon:"\uD83D\uDCF2",title:"App installieren",body:"iPhone (Safari): Teilen-Symbol \u2192 Zum Home-Bildschirm. Android (Chrome): Men\u00fc \u2192 App installieren."},
-    {bg:"rgba(139,92,246,.1)",bc:"rgba(139,92,246,.25)",tc:"var(--c-pur2)",icon:"\uD83D\uDCC1",title:"Ordner & Stapel",body:"Erstelle zuerst Ordner zur Organisation, dann weise Stapel einem Ordner zu. Beim Lernen nach Ordner oder einzeln ausw\u00e4hlen."},
-    {bg:"rgba(251,191,36,.08)",bc:"rgba(251,191,36,.2)",tc:"#fbbf24",icon:"\uD83C\uDF93",title:"Jetzt lernen",body:"Klicke auf Lernen, w\u00e4hle Ordner oder einzelne Stapel und entscheide ob alle Karten durcheinander oder Stapel f\u00fcr Stapel."},
-    {bg:"rgba(16,185,129,.08)",bc:"rgba(16,185,129,.2)",tc:"#34d399",icon:"\uD83E\uDDE0",title:"Spaced Repetition (SRS)",body:"Bewerte dich selbst: Gewusst oder Noch \u00fcben. Bekannte Karten kommen nach 1-2-4-8-16-30 Tagen wieder."},
-    {bg:"rgba(249,115,22,.08)",bc:"rgba(249,115,22,.2)",tc:"#fb923c",icon:"\uD83D\uDCE4",title:"Teilen & Importieren",body:"\u00d6ffne Stapel \u2192 Teilen. Andere: Startseite \u2192 Stapel importieren \u2192 Datei w\u00e4hlen."},
-    {bg:"rgba(255,255,255,.04)",bc:"rgba(139,92,246,.3)",tc:"var(--c-txt)",icon:"\uD83D\uDD12",title:"Datenschutz",body:"Alle Daten bleiben ausschlie\u00dflich auf deinem Ger\u00e4t. Keine Daten werden \u00fcbertragen."}
+    {bg:"rgba(139,92,246,.1)",bc:"rgba(139,92,246,.25)",tc:"var(--c-pur2)",icon:"\uD83D\uDCDA",title:"Stapel & Ordner",body:"Neuen Stapel mit + anlegen. Innerhalb eines Stapels k\u00f6nnen Karten in Ordner sortiert werden (+ Ordner). Ordner lassen sich auf- und zuklappen."},
+    {bg:"rgba(251,191,36,.08)",bc:"rgba(251,191,36,.2)",tc:"#fbbf24",icon:"\uD83C\uDF93",title:"Jetzt lernen",body:"Auf der Startseite \u2192 Lernen oder im Men\u00fc \u2192 Stapel. Stapel und Ordner ausw\u00e4hlen, dann entweder alle Karten durcheinander oder Stapel f\u00fcr Stapel."},
+    {bg:"rgba(16,185,129,.08)",bc:"rgba(16,185,129,.2)",tc:"#34d399",icon:"\uD83E\uDDE0",title:"Spaced Repetition (SRS)",body:"Bewerte dich selbst: Gewusst oder Noch \u00fcben. Bekannte Karten kommen nach 1\u20132\u20134\u20138\u201316\u201330 Tagen wieder."},
+    {bg:"rgba(249,115,22,.08)",bc:"rgba(249,115,22,.2)",tc:"#fb923c",icon:"\uD83D\uDCE4",title:"Teilen & Importieren",body:"Im Stapel oben rechts auf das Teilen-Symbol (\uD83D\uDCE4) tippen. Empf\u00e4nger: App \u00f6ffnen \u2192 Stapel importieren \u2192 Datei w\u00e4hlen."},
+    {bg:"rgba(255,255,255,.04)",bc:"rgba(139,92,246,.3)",tc:"var(--c-txt)",icon:"\u22EF",title:"Bearbeiten & L\u00f6schen",body:"Bei Stapeln und Karten auf den \u22EF-Button tippen. Es erscheinen \u270F\uFE0F Bearbeiten und \uD83D\uDDD1\uFE0F L\u00f6schen."},
+    {bg:"rgba(255,255,255,.04)",bc:"rgba(16,185,129,.3)",tc:"#34d399",icon:"\uD83D\uDD12",title:"Datenschutz",body:"Alle Daten bleiben ausschlie\u00dflich auf deinem Ger\u00e4t. Keine Daten werden \u00fcbertragen."}
   ];
   return h("div",{className:"ov",onClick:p.onClose},
     h("div",{className:"modal",style:{maxWidth:"480px"},onClick:function(ev){ev.stopPropagation();}},
@@ -853,9 +883,10 @@ function ImpressumModal(p){
     h("div",{className:"modal",style:{maxWidth:"480px"},onClick:function(ev){ev.stopPropagation();}},
       h("div",{className:"modal-title"},"Impressum"),
       h("div",{className:"legal-body"},
-        h("span",{className:"legal-h"},"Angaben gem\u00e4\u00df 5 TMG"),
+        h("span",{className:"legal-h"},"Angaben gem\u00e4\u00df \u00a7 5 TMG"),
         h("p",null,"Sophie Gro\u00df"),h("p",null,"Bahnhofstra\u00dfe 43"),h("p",null,"46414 Rhede"),
         h("span",{className:"legal-h",style:{marginTop:"10px"}},"Kontakt"),
+        h("p",null,"E-Mail: info.gross-apps@gmx.de"),
         h("p",null,"Diese App wird privat und nicht kommerziell betrieben."),
         h("span",{className:"legal-h",style:{marginTop:"10px"}},"Hosting"),
         h("p",null,"Quellcode auf GitHub. App \u00fcber Vercel (Server Frankfurt am Main, Deutschland)."),
@@ -871,20 +902,33 @@ function DatenschutzModal(p){
       h("div",{className:"legal-body"},
         h("span",{className:"legal-h"},"1. Verantwortliche Person"),
         h("p",null,"Sophie Gro\u00df, Bahnhofstra\u00dfe 43, 46414 Rhede"),
+        h("p",null,"E-Mail: info.gross-apps@gmx.de"),
         h("span",{className:"legal-h"},"2. Lokale Datenspeicherung"),
-        h("p",null,"Diese App speichert alle Daten ausschlie\u00dflich lokal auf deinem Ger\u00e4t. Keine personenbezogenen Daten werden \u00fcbertragen."),
+        h("p",null,"Diese App speichert alle Daten ausschlie\u00dflich lokal auf deinem Ger\u00e4t (localStorage des Browsers). Es findet keine \u00dcbertragung personenbezogener Daten an externe Server statt."),
         h("span",{className:"legal-h"},"3. Gespeicherte Daten"),
-        h("ul",null,h("li",null,"Karteikarten und Stapel"),h("li",null,"Lernfortschritt (SRS-Intervalle)"),h("li",null,"Erinnerungszeit")),
-        h("span",{className:"legal-h"},"4. Hosting"),
-        h("ul",null,h("li",null,"GitHub: Quellcode-Hosting"),h("li",null,"Vercel: Server Frankfurt (EU). Server-Logs m\u00f6glich (IP, Zeitstempel, Browser).")),
-        h("span",{className:"legal-h"},"5. Push-Benachrichtigungen"),
-        h("p",null,"Erinnerungen laufen lokal \u00fcber den Service Worker. Keine externen Push-Dienste."),
-        h("span",{className:"legal-h"},"6. Cookies & Tracking"),
-        h("p",null,"Keine Cookies, kein Tracking, keine Werbung."),
-        h("span",{className:"legal-h"},"7. Kontaktformular (Problem melden)"),
-        h("p",null,"Beim Absenden des Formulars wird die Nachricht \u00fcber die GitHub Issues API an das private Repository der App \u00fcbermittelt. Verarbeitet wird ausschlie\u00dflich der eingegebene Text (Betreff, Betriebssystem, Beschreibung). Es werden keine personenbezogenen Daten wie Name oder E-Mail-Adresse erhoben oder gespeichert. Anbieter: GitHub, Inc., 88 Colin P Kelly Jr St, San Francisco, CA 94107, USA."),
-        h("span",{className:"legal-h"},"8. Minderj\u00e4hrige"),
-        h("p",null,"Keine Datenerhebung, daher keine gesonderte Einwilligung n\u00f6tig."),
+        h("ul",null,
+          h("li",null,"Karteikarten und Stapel (Inhalte)"),
+          h("li",null,"Lernfortschritt und SRS-Intervalle"),
+          h("li",null,"Erinnerungszeit"),
+          h("li",null,"Selbst gew\u00e4hlter Anzeigename")),
+        h("span",{className:"legal-h"},"4. Rechtsgrundlage"),
+        h("p",null,"Die Verarbeitung erfolgt auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO (Vertragserf\u00fcllung / Nutzung der App) sowie Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse am Betrieb der App)."),
+        h("span",{className:"legal-h"},"5. Hosting"),
+        h("ul",null,
+          h("li",null,"GitHub (Microsoft): Quellcode-Hosting. Datenschutzerkl\u00e4rung: github.com/privacy"),
+          h("li",null,"Vercel Inc.: App-Hosting, Server Frankfurt am Main (EU). Bei jedem Aufruf k\u00f6nnen Server-Logs entstehen (IP-Adresse, Zeitstempel, Browser). Datenschutzerkl\u00e4rung: vercel.com/legal/privacy-policy")),
+        h("span",{className:"legal-h"},"6. Push-Benachrichtigungen"),
+        h("p",null,"Erinnerungen laufen ausschlie\u00dflich lokal \u00fcber den Service Worker des Browsers. Es werden keine externen Push-Dienste genutzt und keine Daten \u00fcbertragen."),
+        h("span",{className:"legal-h"},"7. Cookies & Tracking"),
+        h("p",null,"Diese App verwendet keine Cookies, kein Tracking, keine Analyse-Tools und keine Werbung."),
+        h("span",{className:"legal-h"},"8. Kontaktformular (Problem melden)"),
+        h("p",null,"Beim Absenden des Formulars wird die Nachricht \u00fcber die GitHub Issues API an das private Repository der App \u00fcbermittelt. Verarbeitet wird ausschlie\u00dflich der eingegebene Text (Betreff, Betriebssystem, Beschreibung). Es werden keine personenbezogenen Daten wie Name oder E-Mail-Adresse erhoben. Anbieter: GitHub, Inc., 88 Colin P Kelly Jr St, San Francisco, CA 94107, USA."),
+        h("span",{className:"legal-h"},"9. Deine Rechte (DSGVO)"),
+        h("p",null,"Du hast das Recht auf Auskunft (\u00a7 15), Berichtigung (\u00a7 16), L\u00f6schung (\u00a7 17), Einschr\u00e4nkung der Verarbeitung (\u00a7 18) sowie Daten\u00fcbertragbarkeit (\u00a7 20). Da alle Daten lokal auf deinem Ger\u00e4t gespeichert sind, kannst du sie jederzeit selbst l\u00f6schen (App-Daten im Browser/Ger\u00e4t l\u00f6schen). Bei Fragen: info.gross-apps@gmx.de"),
+        h("span",{className:"legal-h"},"10. Beschwerderecht"),
+        h("p",null,"Du hast das Recht, dich bei einer Datenschutz-Aufsichtsbeh\u00f6rde zu beschweren. Zust\u00e4ndig ist die Landesbeauftragte f\u00fcr Datenschutz und Informationsfreiheit Nordrhein-Westfalen (LDI NRW), ldi.nrw.de"),
+        h("span",{className:"legal-h"},"11. Minderj\u00e4hrige"),
+        h("p",null,"Es werden keine personenbezogenen Daten erhoben, daher ist keine gesonderte Einwilligung Minderj\u00e4hriger n\u00f6tig."),
         h("p",{style:{marginTop:"14px",fontSize:".76rem",color:"rgba(255,255,255,.3)",fontWeight:600}},"Stand: Mai 2026")),
       h("div",{className:"modal-foot"},h("button",{className:"btn btn-g",onClick:p.onClose},"Schlie\u00dfen"))));
 }
@@ -962,7 +1006,11 @@ function App(){
       if(isNew&&!isDismissed){setPendingUpd(d.current);setShowUpdOverlay(true);}
     }).catch(function(){if(us.cachedUpdate)setUpdData(us.cachedUpdate);});
   },[]);
-  useEffect(function(){saveStore(data);var due=(data.decks||[]).reduce(function(s,d){return s+getDue(d).length;},0);swMsg({type:"UPDATE_DUE",dueCount:due});},[data]);
+  useEffect(function(){
+    saveStore(data);
+    var due=(data.decks||[]).reduce(function(s,d){return s+getDue(d).length;},0);
+    swMsg({type:"UPDATE_DUE",dueCount:due});
+  },[data]);
 
   function patch(pp){setData(function(prev){return Object.assign({},prev,pp);});}
   var decks=data.decks||[];
@@ -1013,7 +1061,7 @@ function App(){
           h("div",{className:"dgrid"},fDecks.map(function(deck){
             var due=getDue(deck);
             return h("div",{className:"dcard",key:deck.id,onClick:function(){setDeckId(deck.id);}},
-              h("div",{className:"dcard-top"},h("div",{className:"demoji"},deck.emoji),h("div",{className:"dcard-acts"},h("button",{className:"ibtn",onClick:function(ev){ev.stopPropagation();setEditDeck(deck);}},"\u270F\uFE0F"),h("button",{className:"ibtn ibtn-del",onClick:function(ev){ev.stopPropagation();delDeck(deck.id);}},"\uD83D\uDDD1\uFE0F"))),
+              h("div",{className:"dcard-top"},h("div",{className:"demoji"},deck.emoji),h("div",{className:"dcard-acts"},h(ThreeDotMenu,{onEdit:function(){setEditDeck(deck);},onDelete:function(){delDeck(deck.id);}}))),
               h("div",{className:"dname"},deck.name),h("div",{className:"dmeta"},deck.cards.length+" Karten"),
               h("div",{className:"dpill "+(due.length>0?"dpill-due":"dpill-ok")},due.length>0?due.length+" f\u00e4llig":"Alles erledigt"));})));
       }),
@@ -1023,7 +1071,7 @@ function App(){
           ungrouped.map(function(deck){
             var due=getDue(deck);
             return h("div",{className:"dcard",key:deck.id,onClick:function(){setDeckId(deck.id);}},
-              h("div",{className:"dcard-top"},h("div",{className:"demoji"},deck.emoji),h("div",{className:"dcard-acts"},h("button",{className:"ibtn",onClick:function(ev){ev.stopPropagation();setEditDeck(deck);}},"\u270F\uFE0F"),h("button",{className:"ibtn ibtn-del",onClick:function(ev){ev.stopPropagation();delDeck(deck.id);}},"\uD83D\uDDD1\uFE0F"))),
+              h("div",{className:"dcard-top"},h("div",{className:"demoji"},deck.emoji),h("div",{className:"dcard-acts"},h(ThreeDotMenu,{onEdit:function(){setEditDeck(deck);},onDelete:function(){delDeck(deck.id);}}))),
               h("div",{className:"dname"},deck.name),h("div",{className:"dmeta"},deck.cards.length+" Karten"),
               h("div",{className:"dpill "+(due.length>0?"dpill-due":"dpill-ok")},due.length>0?due.length+" f\u00e4llig":"Alles erledigt"));}),
           h("div",{className:"add-deck",onClick:function(){setShowNew(true);}},h("div",{style:{fontSize:"2rem"}},"\u2728"),"Neuer Stapel"))));
@@ -1047,7 +1095,7 @@ function App(){
               var due=getDue(deck); var folder=folders.find(function(f){return f.id===deck.folderId;});
               return h("div",{className:"home-deck-row",key:deck.id,onClick:function(){setDeckId(deck.id);}},
                 h("span",{className:"home-deck-row-name"},deck.emoji," ",deck.name,folder?h("span",{style:{fontSize:".64rem",fontWeight:700,color:"var(--c-pur2)",background:"rgba(139,92,246,.15)",border:"1px solid var(--c-bor)",borderRadius:"10px",padding:"1px 6px",marginLeft:"5px"}},folder.emoji+" "+folder.name):null),
-                due.length>0?h("span",{className:"bdg"},due.length+" f\u00e4llig"):null);})),
+                null);})),
           decks.length>0&&h("div",{className:"home-to-decks",onClick:function(){setDeckListMode("manage");}},"Zu den Stapeln >")),
         renderFooter()),
       view==="decks"&&!activeDeck&&!qsStep&&deckListMode==="manage"&&h("div",null,
