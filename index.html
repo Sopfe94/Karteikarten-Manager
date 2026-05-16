@@ -818,20 +818,14 @@ function UpdateOverlay(p){
   var ls=useState(false); var loading=ls[0]; var setLoading=ls[1];
   var es=useState(false); var err=es[0]; var setErr=es[1];
   function doReload(){ setLoading(true);setErr(false); fetch("./index.html",{cache:"no-store"}).then(function(){var s=loadUpdStore();s.installed=u.version;s.pendingReload=false;saveUpdStore(s);window.location.reload();}).catch(function(){setLoading(false);setErr(true);}); }
-  function doNextStart(){ var s=loadUpdStore();s.pendingReload=true;saveUpdStore(s);p.onClose(); }
-  function doLater(){ var s=loadUpdStore();s.dismissed=u.version;saveUpdStore(s);p.onClose(); }
   return h("div",{className:"ov",onClick:null},
     h("div",{className:"modal",style:{maxWidth:"400px"}},
       h("div",{className:"upd-badge"},"Neues Update verf\u00fcgbar"),
       h("div",{style:{fontSize:"1.2rem",fontWeight:900,marginBottom:"4px",background:"linear-gradient(135deg,#fff,#a78bfa)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}},u.name),
       h("div",{style:{fontSize:".73rem",color:"var(--c-dim)",fontWeight:600,marginBottom:"14px"}},u.date),
       h("div",{style:{background:"rgba(139,92,246,.08)",border:"1px solid var(--c-bor)",borderRadius:"11px",padding:"13px",marginBottom:"18px",fontSize:".82rem",color:"rgba(255,255,255,.8)",lineHeight:1.85,fontWeight:600,whiteSpace:"pre-line"}},u.description),
-      h("div",{style:{fontSize:".86rem",color:"var(--c-dim)",fontWeight:700,textAlign:"center",marginBottom:"15px"}},"M\u00f6chtest du das Update laden?"),
       err&&h("div",{className:"upd-err"},"Kein Internet verf\u00fcgbar."),
-      h("div",{style:{display:"flex",flexDirection:"column",gap:"8px"}},
-        h("button",{className:"btn btn-p",style:{justifyContent:"center",padding:"13px",opacity:loading?.6:1},disabled:loading,onClick:doReload},loading?"Wird geladen\u2026":"\u26a1 Sofort laden"),
-        h("button",{className:"btn",style:{justifyContent:"center",padding:"12px",background:"rgba(139,92,246,.15)",border:"1.5px solid var(--c-bor2)",color:"var(--c-pur2)",fontFamily:"\"Nunito\",sans-serif",fontSize:".88rem",fontWeight:800,borderRadius:"10px",cursor:"pointer"},onClick:doNextStart},"\u2713 Beim n\u00e4chsten Start laden"),
-        h("button",{style:{padding:"10px",border:"none",background:"transparent",color:"var(--c-dim)",fontFamily:"\"Nunito\",sans-serif",fontSize:".84rem",fontWeight:700,cursor:"pointer"},onClick:doLater},"Sp\u00e4ter \u2013 manuell \u00fcber Updates"))));
+      h("button",{className:"btn btn-p",style:{justifyContent:"center",width:"100%",padding:"13px",opacity:loading?.6:1},disabled:loading,onClick:doReload},loading?"Wird geladen\u2026":"\u26a1 Jetzt aktualisieren")));
 }
 
 function UpdatesView(p){
