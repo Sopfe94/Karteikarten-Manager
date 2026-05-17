@@ -191,6 +191,21 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 .scene{perspective:1000px;width:100%;max-width:500px;height:280px;
   margin:0 auto 24px;cursor:pointer}
 @media(max-width:480px){.scene{height:240px}}
+@media(min-width:768px){
+  .main{max-width:1100px;padding:32px 40px 80px}
+  .personal-header{flex-direction:row;align-items:stretch}
+  .greeting-card{flex:1}
+  .stats-card{flex:1.4}
+  .dgrid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+  .home-decks-card{padding:1.8rem}
+  .footer-btns{padding-top:20px}
+  .modal{max-width:580px !important}
+  .rbox{max-width:640px}
+  .clist{gap:10px}
+  .citem{padding:14px 16px}
+  .dhdr{padding:1.4rem 1.6rem}
+  .folder-section{padding:16px 20px}
+}
 .flip-inner{width:100%;height:100%;position:relative;
   transform-style:preserve-3d;transition:transform .55s cubic-bezier(.25,.46,.45,.94)}
 .flip-inner.flipped{transform:rotateY(180deg)}
@@ -240,7 +255,7 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 .empty-i{font-size:2.8rem;margin-bottom:9px;opacity:.4}
 .empty p{margin-bottom:13px;font-weight:600}
 .footer-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;
-  margin-top:22px;padding-top:14px;border-top:1px solid rgba(139,92,246,.2)}
+  margin-top:22px;padding-top:14px;border-top:1px solid rgba(139,92,246,.2);width:100%}
 .foot-btn{background:rgba(139,92,246,.12);border:1px solid rgba(139,92,246,.3);
   color:var(--c-pur2);font-size:.8rem;font-weight:700;cursor:pointer;
   font-family:"Nunito",sans-serif;padding:8px 15px;border-radius:8px;transition:all .15s}
@@ -529,56 +544,67 @@ function parseDeckFile(str){
   catch(e){return null;}
 }
 
+var _gdToken = null;
+var _gdExpiry = 0;
+
 function SyncModal(p){
-  var ts=useState(null);var token=ts[0];var setToken=ts[1];
-  var exs=useState(0);var expiry=exs[0];var setExpiry=exs[1];
+  var ts=useState(_gdToken&&Date.now()<_gdExpiry?_gdToken:null);var token=ts[0];var setToken=ts[1];
   var ss=useState(loadSyncStore());var syncStore=ss[0];var setSyncStore=ss[1];
   var sng=useState(false);var syncing=sng[0];var setSyncing=sng[1];
   var stm=useState("");var statusMsg=stm[0];var setStatusMsg=stm[1];
   var inf=useState(false);var showInfo=inf[0];var setShowInfo=inf[1];
   var tm=useToast();var toast=tm[0];var showToast=tm[1];
-  var isConnected=!!token&&Date.now()<expiry;
+  var isConnected=!!token&&Date.now()<_gdExpiry;
   var INTERVALS=[{v:0,l:"Manuell"},{v:5,l:"5 Minuten"},{v:15,l:"15 Minuten"},{v:30,l:"30 Minuten"},{v:60,l:"1 Stunde"}];
-  function requestToken(forceSelect,callback){
+
+  function requestToken(callback){
     if(typeof google==="undefined"||!google.accounts||!google.accounts.oauth2){showToast("Google-Dienste noch nicht geladen.");return;}
     var client=google.accounts.oauth2.initTokenClient({client_id:GD_CLIENT,scope:GD_SCOPE,callback:function(resp){
       if(resp.error){showToast("Anmeldung fehlgeschlagen.");callback(null);return;}
-      var t=resp.access_token;var exp=Date.now()+(parseInt(resp.expires_in)-60)*1000;
-      setToken(t);setExpiry(exp);callback(t);
+      _gdToken=resp.access_token;
+      _gdExpiry=Date.now()+(parseInt(resp.expires_in)-60)*1000;
+      setToken(_gdToken);callback(_gdToken);
     }});
-    client.requestAccessToken({prompt:forceSelect?"select_account":""});
+    client.requestAccessToken({prompt:""});
   }
-  function doUpload(t){
+
+  function doSync(t){
     setSyncing(true);setStatusMsg("");
-    gdUpload(t,loadStore()).then(function(){
-      var time=new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
-      var s=Object.assign({},syncStore,{lastSync:time});setSyncStore(s);saveSyncStore(s);
-      setSyncing(false);setStatusMsg("\u2705 Hochgeladen um "+time);
-    }).catch(function(){setSyncing(false);setStatusMsg("\u274C Fehler beim Hochladen.");});
+    gdDownload(t).then(function(remote){
+      var local=loadStore();
+      var merged=remote?mergeSyncData(local,remote):local;
+      return gdUpload(t,merged).then(function(){
+        saveStore(merged);
+        if(p.onDataLoaded)p.onDataLoaded(merged);
+        var time=new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+        var s=Object.assign({},syncStore,{lastSync:time});setSyncStore(s);saveSyncStore(s);
+        setSyncing(false);setStatusMsg("\u2705 Synchronisiert um "+time);
+      });
+    }).catch(function(){setSyncing(false);setStatusMsg("\u274C Fehler bei der Synchronisation.");});
   }
-  function doDownload(t){
-    setSyncing(true);setStatusMsg("");
-    gdDownload(t).then(function(data){
-      if(!data){setSyncing(false);setStatusMsg("Keine Daten in Drive gefunden.");return;}
-      var merged=mergeSyncData(loadStore(),data);saveStore(merged);
-      if(p.onDataLoaded)p.onDataLoaded(merged);
-      var time=new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
-      var s=Object.assign({},syncStore,{lastSync:time});setSyncStore(s);saveSyncStore(s);
-      setSyncing(false);setStatusMsg("\u2705 Heruntergeladen um "+time);
-    }).catch(function(){setSyncing(false);setStatusMsg("\u274C Fehler beim Herunterladen.");});
+
+  function handleSync(){
+    if(isConnected)doSync(token);
+    else requestToken(function(t){if(t)doSync(t);});
   }
-  function handleUpload(){if(isConnected)doUpload(token);else requestToken(true,function(t){if(t)doUpload(t);});}
-  function handleDownload(){if(isConnected)doDownload(token);else requestToken(true,function(t){if(t)doDownload(t);});}
+
+  function handleSignIn(){
+    requestToken(function(t){if(t)showToast("Verbunden! \u2705");});
+  }
+
   function handleInterval(val){var s=Object.assign({},syncStore,{interval:parseInt(val)});setSyncStore(s);saveSyncStore(s);}
+
   function signOut(){
-    if(typeof google!=="undefined"&&google.accounts&&token)google.accounts.oauth2.revoke(token,function(){});
-    setToken(null);setExpiry(0);showToast("Abgemeldet.");
+    if(typeof google!=="undefined"&&google.accounts&&_gdToken)google.accounts.oauth2.revoke(_gdToken,function(){});
+    _gdToken=null;_gdExpiry=0;setToken(null);showToast("Abgemeldet.");
   }
+
   useEffect(function(){
     if(!syncStore.interval||!isConnected)return;
-    var iv=setInterval(function(){if(token&&Date.now()<expiry)doUpload(token);},syncStore.interval*60*1000);
+    var iv=setInterval(function(){if(_gdToken&&Date.now()<_gdExpiry)doSync(_gdToken);},syncStore.interval*60*1000);
     return function(){clearInterval(iv);};
   },[syncStore.interval,isConnected]);
+
   return h("div",{className:"ov",onClick:p.onClose},
     h("div",{className:"modal",style:{maxWidth:"420px"},onClick:function(e){e.stopPropagation();}},
       h("div",{style:{display:"flex",alignItems:"center",gap:"10px",marginBottom:"16px"}},
@@ -590,7 +616,7 @@ function SyncModal(p){
         h("div",{style:{fontSize:"3rem",marginBottom:"10px"}},"\u2601\uFE0F"),
         h("div",{style:{fontWeight:800,marginBottom:"6px",fontSize:"1rem"}},"Nicht verbunden"),
         h("div",{style:{fontSize:".82rem",color:"var(--c-dim)",marginBottom:"20px",fontWeight:600,lineHeight:1.6}},"Mit Google Drive verbinden um deine Karteikarten ger\u00e4te\u00fcbergreifend zu sichern."),
-        h("button",{className:"btn btn-p",style:{justifyContent:"center",width:"100%",padding:"13px"},onClick:function(){requestToken(true,function(t){if(t)showToast("Verbunden! \u2705");});}},"\uD83D\uDD11 Mit Google anmelden"),
+        h("button",{className:"btn btn-p",style:{justifyContent:"center",width:"100%",padding:"13px"},onClick:handleSignIn},"\uD83D\uDD11 Mit Google anmelden"),
         h("div",{style:{marginTop:"12px",fontSize:".76rem",color:"var(--c-dim)",textAlign:"center",fontWeight:600,lineHeight:1.6}},
           "Noch nicht freigeschaltet? Schreib uns an ",h("span",{style:{color:"var(--c-pur2)"}},"info.gross-apps@gmx.de")," mit deiner Google-E-Mail.")),
       isConnected&&h("div",null,
@@ -599,9 +625,8 @@ function SyncModal(p){
           h("div",null,h("div",{style:{fontWeight:800,fontSize:".9rem"}},"Verbunden"),
             syncStore.lastSync&&h("div",{style:{fontSize:".75rem",color:"var(--c-dim)",fontWeight:600}},"Letzte Synchronisation: "+syncStore.lastSync))),
         statusMsg&&h("div",{style:{textAlign:"center",fontSize:".82rem",fontWeight:700,marginBottom:"12px",color:statusMsg.startsWith("\u2705")?"#34d399":"#fca5a5"}},statusMsg),
-        h("div",{style:{display:"flex",gap:"9px",marginBottom:"16px"}},
-          h("button",{className:"btn btn-p",style:{flex:1,justifyContent:"center",padding:"11px",opacity:syncing?.5:1},disabled:syncing,onClick:handleUpload},syncing?"\u23F3":"\u2191 Hochladen"),
-          h("button",{className:"btn btn-g",style:{flex:1,justifyContent:"center",padding:"11px",opacity:syncing?.5:1},disabled:syncing,onClick:handleDownload},syncing?"\u23F3":"\u2193 Herunterladen")),
+        h("button",{className:"btn btn-p",style:{width:"100%",justifyContent:"center",padding:"12px",marginBottom:"16px",opacity:syncing?.5:1},disabled:syncing,onClick:handleSync},
+          syncing?"\u23F3 Wird synchronisiert...":"\u2194 Synchronisieren"),
         h("div",{className:"fg"},
           h("label",{className:"fl"},"Auto-Sync Intervall"),
           h("select",{className:"fi",value:syncStore.interval,onChange:function(e){handleInterval(e.target.value);}},
