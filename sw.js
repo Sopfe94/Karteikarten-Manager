@@ -1,6 +1,6 @@
 // Service Worker v10 - 24h Cache für index.html (Beta: kein Cache)
 const CACHE = ‘kkm-v10’;
-const BASE = self.location.hostname === 'www.gross-apps.de' ? '/karteikarten' : '';
+const BASE = self.location.hostname === 'www.gross-apps.de' ? '/KM' : '';
 const CACHE_TS_KEY = ‘kkm-html-ts’;
 const IS_BETA = /beta|localhost/.test(self.location.hostname);
 const ONE_DAY = IS_BETA ? 0 : 24 * 60 * 60 * 1000;
