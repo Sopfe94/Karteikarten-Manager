@@ -567,6 +567,13 @@ function SyncModal(p){
     var ok=fbInit();
     setFbReady(ok);
     if(!ok) return;
+    // Handle redirect result after Google Sign-In
+    _fbAuth.getRedirectResult().then(function(result){
+      if(result&&result.user){
+        _fbUser=result.user;setFbUser(result.user);
+        doSync(result.user.uid, false);
+      }
+    }).catch(function(e){setStatusMsg("\u274C Anmeldung fehlgeschlagen: "+e.message);});
     var unsub=_fbAuth.onAuthStateChanged(function(u){_fbUser=u;setFbUser(u);});
     return unsub;
   },[]);
@@ -584,10 +591,7 @@ function SyncModal(p){
 
   function handleGoogleSync(){
     var provider=new firebase.auth.GoogleAuthProvider();
-    _fbAuth.signInWithPopup(provider).then(function(r){
-      _fbUser=r.user;setFbUser(r.user);
-      doSync(r.user.uid, false);
-    }).catch(function(){setStatusMsg("\u274C Anmeldung abgebrochen.");});
+    _fbAuth.signInWithRedirect(provider).catch(function(){setStatusMsg("\u274C Anmeldung fehlgeschlagen.");});
   }
 
   function handleCodeSync(){
