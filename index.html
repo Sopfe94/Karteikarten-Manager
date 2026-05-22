@@ -341,7 +341,9 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .folder-pill.act{background:rgba(139,92,246,.2);border-color:var(--c-pur);color:var(--c-pur2)}
 .folder-tag{font-size:.64rem;font-weight:700;color:var(--c-pur2);background:rgba(139,92,246,.15);border:1px solid var(--c-bor);border-radius:10px;padding:1px 6px;margin-left:5px;vertical-align:middle}
 </style>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body><!-- KKM-v1.1.17-AKTUELL -->
 <div id="root"></div>
@@ -359,38 +361,40 @@ var SRS_DAYS = [0,1,2,4,8,16,30];
 var STORE_KEY = "kkm-v2";
 
 var SYNC_STORE_KEY = "kkm-sync-v1";
-var GD_CLIENT = "458703339827-u0c8vbpml11k810qebagamruu1bhfm9r.apps.googleusercontent.com";
-var GD_SCOPE = "https://www.googleapis.com/auth/drive.appdata";
-var GD_FILENAME = "kkm-backup.json";
-function loadSyncStore(){ try{var r=localStorage.getItem(SYNC_STORE_KEY);return r?JSON.parse(r):{interval:0,lastSync:null};}catch(e){return{interval:0,lastSync:null};} }
+function loadSyncStore(){ try{var r=localStorage.getItem(SYNC_STORE_KEY);return r?JSON.parse(r):{interval:0,lastSync:null,method:null};}catch(e){return{interval:0,lastSync:null,method:null};} }
 function saveSyncStore(d){ try{localStorage.setItem(SYNC_STORE_KEY,JSON.stringify(d));}catch(e){} }
-function gdFindFile(token){
-  return fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'kkm-backup.json'&fields=files(id,modifiedTime)",{headers:{"Authorization":"Bearer "+token}})
-    .then(function(r){return r.json();}).then(function(d){return d.files&&d.files.length>0?d.files[0]:null;});
+
+// Firebase Init
+var FB_CONFIG = {
+  apiKey:"AIzaSyDrrM3eJ8d0q8GEnNm7_mKDJGG_CioZC5o",
+  authDomain:"karteikarten-manager-48782.firebaseapp.com",
+  projectId:"karteikarten-manager-48782",
+  storageBucket:"karteikarten-manager-48782.firebasestorage.app",
+  messagingSenderId:"798785721409",
+  appId:"1:798785721409:web:b301fa786a50a7049e22c0"
+};
+var _fbApp = null; var _fbDb = null; var _fbAuth = null;
+function fbInit(){
+  if(_fbApp) return true;
+  if(typeof firebase==="undefined") return false;
+  _fbApp = firebase.initializeApp(FB_CONFIG);
+  _fbAuth = firebase.auth();
+  _fbDb = firebase.firestore();
+  _fbDb.enablePersistence({synchronizeTabs:true}).catch(function(){});
+  return true;
 }
-function gdUpload(token,data){
-  var json=JSON.stringify(data);
-  return gdFindFile(token).then(function(file){
-    if(file){
-      return fetch("https://www.googleapis.com/upload/drive/v3/files/"+file.id+"?uploadType=media",{
-        method:"PATCH",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},body:json
-      }).then(function(r){if(!r.ok)throw r.status;return r.json();});
-    }
-    var meta=JSON.stringify({name:GD_FILENAME,parents:["appDataFolder"]});
-    var b="kkmbound";
-    var body="--"+b+"\r\nContent-Type: application/json\r\n\r\n"+meta+"\r\n--"+b+"\r\nContent-Type: application/json\r\n\r\n"+json+"\r\n--"+b+"--";
-    return fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",{
-      method:"POST",headers:{"Authorization":"Bearer "+token,"Content-Type":"multipart/related; boundary="+b},body:body
-    }).then(function(r){if(!r.ok)throw r.status;return r.json();});
+
+function fbSync(uid, isCode){
+  var docRef = isCode
+    ? _fbDb.collection("syncdata").doc(uid).collection("data").doc("kkm")
+    : _fbDb.collection("users").doc(uid).collection("data").doc("kkm");
+  var local = loadStore();
+  return docRef.get().then(function(snap){
+    var merged = snap.exists ? mergeSyncData(local, snap.data()) : local;
+    return docRef.set(merged).then(function(){ saveStore(merged); return merged; });
   });
 }
-function gdDownload(token){
-  return gdFindFile(token).then(function(file){
-    if(!file)return null;
-    return fetch("https://www.googleapis.com/drive/v3/files/"+file.id+"?alt=media",{headers:{"Authorization":"Bearer "+token}})
-      .then(function(r){return r.ok?r.json():null;});
-  });
-}
+
 function mergeSyncData(local,remote){
   var merged=Object.assign({},local);
   var dm={};
@@ -544,96 +548,126 @@ function parseDeckFile(str){
   catch(e){return null;}
 }
 
-var _gdToken = null;
-var _gdExpiry = 0;
+var _fbUser = null;
 
 function SyncModal(p){
-  var ts=useState(_gdToken&&Date.now()<_gdExpiry?_gdToken:null);var token=ts[0];var setToken=ts[1];
   var ss=useState(loadSyncStore());var syncStore=ss[0];var setSyncStore=ss[1];
+  var us=useState(_fbUser);var fbUser=us[0];var setFbUser=us[1];
+  var tabs=useState("google");var tab=tabs[0];var setTab=tabs[1];
   var sng=useState(false);var syncing=sng[0];var setSyncing=sng[1];
   var stm=useState("");var statusMsg=stm[0];var setStatusMsg=stm[1];
   var inf=useState(false);var showInfo=inf[0];var setShowInfo=inf[1];
+  var cis=useState("");var codeInput=cis[0];var setCodeInput=cis[1];
   var tm=useToast();var toast=tm[0];var showToast=tm[1];
-  var isConnected=!!token&&Date.now()<_gdExpiry;
   var INTERVALS=[{v:0,l:"Manuell"},{v:5,l:"5 Minuten"},{v:15,l:"15 Minuten"},{v:30,l:"30 Minuten"},{v:60,l:"1 Stunde"}];
 
-  function requestToken(callback){
-    if(typeof google==="undefined"||!google.accounts||!google.accounts.oauth2){showToast("Google-Dienste noch nicht geladen.");return;}
-    var client=google.accounts.oauth2.initTokenClient({client_id:GD_CLIENT,scope:GD_SCOPE,callback:function(resp){
-      if(resp.error){showToast("Anmeldung fehlgeschlagen.");callback(null);return;}
-      _gdToken=resp.access_token;
-      _gdExpiry=Date.now()+(parseInt(resp.expires_in)-60)*1000;
-      setToken(_gdToken);callback(_gdToken);
-    }});
-    client.requestAccessToken({prompt:""});
-  }
+  var fbReady=useState(false);var isFbReady=fbReady[0];var setFbReady=fbReady[1];
 
-  function doSync(t){
+  useEffect(function(){
+    var ok=fbInit();
+    setFbReady(ok);
+    if(!ok) return;
+    var unsub=_fbAuth.onAuthStateChanged(function(u){_fbUser=u;setFbUser(u);});
+    return unsub;
+  },[]);
+
+  function doSync(uid, isCode){
     setSyncing(true);setStatusMsg("");
-    gdDownload(t).then(function(remote){
-      var local=loadStore();
-      var merged=remote?mergeSyncData(local,remote):local;
-      return gdUpload(t,merged).then(function(){
-        saveStore(merged);
-        if(p.onDataLoaded)p.onDataLoaded(merged);
-        var time=new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
-        var s=Object.assign({},syncStore,{lastSync:time});setSyncStore(s);saveSyncStore(s);
-        setSyncing(false);setStatusMsg("\u2705 Synchronisiert um "+time);
-      });
-    }).catch(function(){setSyncing(false);setStatusMsg("\u274C Fehler bei der Synchronisation.");});
+    fbSync(uid, isCode).then(function(merged){
+      if(p.onDataLoaded)p.onDataLoaded(merged);
+      var time=new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+      var s=Object.assign({},syncStore,{lastSync:time,method:isCode?"code":"google"});
+      setSyncStore(s);saveSyncStore(s);
+      setSyncing(false);setStatusMsg("\u2705 Synchronisiert um "+time);
+    }).catch(function(e){setSyncing(false);setStatusMsg("\u274C Fehler: "+e.message);});
   }
 
-  function handleSync(){
-    if(isConnected)doSync(token);
-    else requestToken(function(t){if(t)doSync(t);});
+  function handleGoogleSync(){
+    var provider=new firebase.auth.GoogleAuthProvider();
+    _fbAuth.signInWithPopup(provider).then(function(r){
+      _fbUser=r.user;setFbUser(r.user);
+      doSync(r.user.uid, false);
+    }).catch(function(){setStatusMsg("\u274C Anmeldung abgebrochen.");});
   }
 
-  function handleSignIn(){
-    requestToken(function(t){if(t)showToast("Verbunden! \u2705");});
+  function handleCodeSync(){
+    var code=codeInput.trim();
+    if(code.length<4){showToast("Code muss mind. 4 Zeichen haben.");return;}
+    doSync(code, true);
   }
 
   function handleInterval(val){var s=Object.assign({},syncStore,{interval:parseInt(val)});setSyncStore(s);saveSyncStore(s);}
 
   function signOut(){
-    if(typeof google!=="undefined"&&google.accounts&&_gdToken)google.accounts.oauth2.revoke(_gdToken,function(){});
-    _gdToken=null;_gdExpiry=0;setToken(null);showToast("Abgemeldet.");
+    _fbAuth.signOut().then(function(){_fbUser=null;setFbUser(null);showToast("Abgemeldet.");});
   }
 
   useEffect(function(){
-    if(!syncStore.interval||!isConnected)return;
-    var iv=setInterval(function(){if(_gdToken&&Date.now()<_gdExpiry)doSync(_gdToken);},syncStore.interval*60*1000);
+    if(!syncStore.interval)return;
+    var iv=setInterval(function(){
+      if(syncStore.method==="google"&&_fbUser)doSync(_fbUser.uid,false);
+      else if(syncStore.method==="code"&&codeInput.trim().length>=4)doSync(codeInput.trim(),true);
+    },syncStore.interval*60*1000);
     return function(){clearInterval(iv);};
-  },[syncStore.interval,isConnected]);
+  },[syncStore.interval,fbUser]);
 
   return h("div",{className:"ov",onClick:p.onClose},
     h("div",{className:"modal",style:{maxWidth:"420px"},onClick:function(e){e.stopPropagation();}},
       h("div",{style:{display:"flex",alignItems:"center",gap:"10px",marginBottom:"16px"}},
-        h("button",{onClick:function(){setShowInfo(!showInfo);},style:{width:"26px",height:"26px",borderRadius:"50%",border:"1.5px solid var(--c-bor)",background:"rgba(255,255,255,.07)",color:"var(--c-dim)",cursor:"pointer",fontSize:".8rem",fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"Nunito,sans-serif"}},"?"),
+        h("button",{onClick:function(){setShowInfo(!showInfo);},style:{width:"26px",height:"26px",borderRadius:"50%",border:"1.5px solid var(--c-bor)",background:"rgba(255,255,255,.07)",color:"var(--c-dim)",cursor:"pointer",fontSize:".8rem",fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},"?"),
         h("div",{className:"modal-title",style:{margin:0}},"App synchronisieren")),
+
       showInfo&&h("div",{style:{background:"rgba(251,191,36,.1)",border:"1px solid rgba(251,191,36,.3)",borderRadius:"11px",padding:"12px",marginBottom:"14px",fontSize:".81rem",color:"#fde68a",lineHeight:1.7}},
-        "Deine Daten werden in einem versteckten App-Ordner (appDataFolder) in deinem Google Drive gespeichert. Dieser Ordner ist ausschlie\u00dflich f\u00fcr den Karteikarten Manager sichtbar \u2014 wir haben keinen Zugriff auf den Rest deines Google Drives."),
-      !isConnected&&h("div",{style:{textAlign:"center",padding:"24px 0"}},
-        h("div",{style:{fontSize:"3rem",marginBottom:"10px"}},"\u2601\uFE0F"),
-        h("div",{style:{fontWeight:800,marginBottom:"6px",fontSize:"1rem"}},"Nicht verbunden"),
-        h("div",{style:{fontSize:".82rem",color:"var(--c-dim)",marginBottom:"20px",fontWeight:600,lineHeight:1.6}},"Mit Google Drive verbinden um deine Karteikarten ger\u00e4te\u00fcbergreifend zu sichern."),
-        h("button",{className:"btn btn-p",style:{justifyContent:"center",width:"100%",padding:"13px"},onClick:handleSignIn},"\uD83D\uDD11 Mit Google anmelden"),
-        h("div",{style:{marginTop:"12px",fontSize:".76rem",color:"var(--c-dim)",textAlign:"center",fontWeight:600,lineHeight:1.6}},
-          "Noch nicht freigeschaltet? Schreib uns an ",h("span",{style:{color:"var(--c-pur2)"}},"info.gross-apps@gmx.de")," mit deiner Google-E-Mail.")),
-      isConnected&&h("div",null,
-        h("div",{style:{background:"rgba(16,185,129,.1)",border:"1px solid rgba(16,185,129,.25)",borderRadius:"11px",padding:"11px 14px",marginBottom:"16px",display:"flex",alignItems:"center",gap:"10px"}},
-          h("span",{style:{fontSize:"1.4rem"}},"\u2705"),
-          h("div",null,h("div",{style:{fontWeight:800,fontSize:".9rem"}},"Verbunden"),
-            syncStore.lastSync&&h("div",{style:{fontSize:".75rem",color:"var(--c-dim)",fontWeight:600}},"Letzte Synchronisation: "+syncStore.lastSync))),
+        "Deine Daten werden verschl\u00fcsselt in Firebase (Google, Server Frankfurt) gespeichert. Nur du hast Zugriff. Bei Google-Anmeldung ist der Zugriff an dein Konto gebunden, beim Sync-Code nur an den Code selbst."),
+
+      // Tab selector
+      !isFbReady&&h("div",{style:{background:"rgba(239,68,68,.12)",border:"1px solid rgba(239,68,68,.3)",borderRadius:"11px",padding:"12px",marginBottom:"14px",fontSize:".82rem",color:"#fca5a5",fontWeight:700}},
+        "\u26A0\uFE0F Sync ist nur in der installierten App verf\u00fcgbar, nicht in der lokalen Vorschau."),
+
+      // Tab selector
+      isFbReady&&h("div",{style:{display:"flex",gap:"6px",marginBottom:"18px"}},
+        h("button",{onClick:function(){setTab("google");},style:{flex:1,padding:"9px",borderRadius:"9px",border:"1.5px solid "+(tab==="google"?"var(--c-pur2)":"var(--c-bor)"),background:tab==="google"?"rgba(139,92,246,.15)":"transparent",color:tab==="google"?"var(--c-pur2)":"var(--c-dim)",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontSize:".84rem",fontWeight:800}},"\uD83D\uDD11 Google-Konto"),
+        h("button",{onClick:function(){setTab("code");},style:{flex:1,padding:"9px",borderRadius:"9px",border:"1.5px solid "+(tab==="code"?"var(--c-pur2)":"var(--c-bor)"),background:tab==="code"?"rgba(139,92,246,.15)":"transparent",color:tab==="code"?"var(--c-pur2)":"var(--c-dim)",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontSize:".84rem",fontWeight:800}},"\uD83D\uDD11 Sync-Code")),
+
+      // Google tab
+      isFbReady&&tab==="google"&&h("div",null,
+        fbUser?h("div",null,
+          h("div",{style:{background:"rgba(16,185,129,.1)",border:"1px solid rgba(16,185,129,.25)",borderRadius:"11px",padding:"11px 14px",marginBottom:"14px",display:"flex",alignItems:"center",gap:"10px"}},
+            h("span",{style:{fontSize:"1.4rem"}},"\u2705"),
+            h("div",null,
+              h("div",{style:{fontWeight:800,fontSize:".9rem"}},"Angemeldet als"),
+              h("div",{style:{fontSize:".76rem",color:"var(--c-dim)",fontWeight:600}},fbUser.email),
+              syncStore.lastSync&&syncStore.method==="google"&&h("div",{style:{fontSize:".72rem",color:"var(--c-dim)",marginTop:"2px"}},"Letzte Sync: "+syncStore.lastSync))),
+          statusMsg&&h("div",{style:{textAlign:"center",fontSize:".82rem",fontWeight:700,marginBottom:"12px",color:statusMsg.startsWith("\u2705")?"#34d399":"#fca5a5"}},statusMsg),
+          h("button",{className:"btn btn-p",style:{width:"100%",justifyContent:"center",padding:"12px",marginBottom:"10px",opacity:syncing?.5:1},disabled:syncing,onClick:function(){doSync(fbUser.uid,false);}},syncing?"\u23F3 Synchronisiert...":"\u2194 Synchronisieren"),
+          h("button",{className:"btn btn-g",style:{width:"100%",justifyContent:"center"},onClick:signOut},"Abmelden")):
+        h("div",{style:{textAlign:"center",padding:"16px 0"}},
+          h("div",{style:{fontSize:"2.5rem",marginBottom:"10px"}},"\uD83D\uDD11"),
+          h("div",{style:{fontSize:".84rem",color:"var(--c-dim)",marginBottom:"16px",fontWeight:600,lineHeight:1.6}},"Mit Google-Konto anmelden — geräteübergreifend synchronisieren ohne Code."),
+          h("button",{className:"btn btn-p",style:{justifyContent:"center",width:"100%",padding:"13px"},onClick:handleGoogleSync},"Mit Google anmelden"))),
+
+      // Code tab
+      isFbReady&&tab==="code"&&h("div",null,
+        h("div",{style:{fontSize:".82rem",color:"var(--c-dim)",marginBottom:"14px",fontWeight:600,lineHeight:1.7}},
+          "Wähle einen eigenen Sync-Code (mind. 4 Zeichen). Gib denselben Code auf allen Geräten ein."),
+        h("div",{className:"fg"},
+          h("label",{className:"fl"},"Sync-Code"),
+          h("input",{className:"fi",type:"text",value:codeInput,placeholder:"z.B. MeinCode2026",onInput:function(e){setCodeInput(e.target.value);}})),
         statusMsg&&h("div",{style:{textAlign:"center",fontSize:".82rem",fontWeight:700,marginBottom:"12px",color:statusMsg.startsWith("\u2705")?"#34d399":"#fca5a5"}},statusMsg),
-        h("button",{className:"btn btn-p",style:{width:"100%",justifyContent:"center",padding:"12px",marginBottom:"16px",opacity:syncing?.5:1},disabled:syncing,onClick:handleSync},
-          syncing?"\u23F3 Wird synchronisiert...":"\u2194 Synchronisieren"),
+        syncStore.lastSync&&syncStore.method==="code"&&h("div",{style:{fontSize:".76rem",color:"var(--c-dim)",textAlign:"center",marginBottom:"10px",fontWeight:600}},"Letzte Sync: "+syncStore.lastSync),
+        h("button",{className:"btn btn-p",style:{width:"100%",justifyContent:"center",padding:"12px",opacity:syncing?.5:1},disabled:syncing||codeInput.trim().length<4,onClick:handleCodeSync},syncing?"\u23F3 Synchronisiert...":"\u2194 Synchronisieren"),
+        h("div",{style:{fontSize:".73rem",color:"rgba(251,191,36,.7)",marginTop:"10px",fontWeight:600,textAlign:"center"}},
+          "\u26A0\uFE0F Teile deinen Code nur mit Personen denen du vertraust.")),
+
+      // Auto-sync (both tabs)
+      h("div",{style:{marginTop:"16px"}},
         h("div",{className:"fg"},
           h("label",{className:"fl"},"Auto-Sync Intervall"),
           h("select",{className:"fi",value:syncStore.interval,onChange:function(e){handleInterval(e.target.value);}},
             INTERVALS.map(function(iv){return h("option",{key:iv.v,value:iv.v},iv.l);}))),
-        syncStore.interval>0&&/iPhone|iPad|iPod/.test(navigator.userAgent)&&h("div",{style:{fontSize:".76rem",color:"rgba(251,191,36,.8)",fontWeight:600,marginBottom:"12px"}},
-          "\u26A0\uFE0F Auf iOS l\u00e4uft Auto-Sync nur solange die App ge\u00f6ffnet ist."),
-        h("button",{className:"btn btn-g",style:{width:"100%",justifyContent:"center"},onClick:signOut},"Abmelden")),
+        syncStore.interval>0&&/iPhone|iPad|iPod/.test(navigator.userAgent)&&h("div",{style:{fontSize:".75rem",color:"rgba(251,191,36,.8)",fontWeight:600}},
+          "\u26A0\uFE0F Auto-Sync l\u00e4uft auf iOS nur bei ge\u00f6ffneter App.")),
+
       h("div",{className:"modal-foot"},h("button",{className:"btn btn-g",onClick:p.onClose},"Schlie\u00dfen")),
       h(Toast,{msg:toast})));
 }
@@ -646,9 +680,7 @@ function DsgvoModal(p){
         h("div",{style:{fontSize:"2rem",marginBottom:"8px"}},"\uD83D\uDD12"),
         h("div",{className:"modal-title",style:{margin:0}},"Datenschutz & Nutzung")),
       h("div",{style:{fontSize:".84rem",color:"var(--c-dim)",lineHeight:1.75,marginBottom:"16px",fontWeight:600}},
-        "Bevor du den Karteikarten Manager nutzt, bitten wir dich unsere Datenschutzerkl\u00e4rung zu lesen und zuzustimmen.",
-        h("br",null),h("br",null),
-        "Deine Daten werden ausschlie\u00dflich lokal auf deinem Ger\u00e4t gespeichert. Die optionale Google Drive Synchronisation \u00fcbertr\u00e4gt Daten nur mit deiner ausdr\u00fccklichen Einwilligung."),
+        "Bevor du den Karteikarten Manager nutzt, bitten wir dich unsere Datenschutzerkl\u00e4rung zu lesen und zuzustimmen."),
       h("button",{onClick:function(){setShowFull(!showFull);},style:{background:"none",border:"none",color:"var(--c-pur2)",fontFamily:"Nunito,sans-serif",fontSize:".84rem",fontWeight:700,cursor:"pointer",marginBottom:"14px",padding:0}},
         showFull?"\u25B2 Datenschutzerkl\u00e4rung ausblenden":"\u25BC Vollst\u00e4ndige Datenschutzerkl\u00e4rung lesen"),
       showFull&&h("div",{style:{marginBottom:"14px",background:"rgba(255,255,255,.03)",borderRadius:"10px",padding:"12px",border:"1px solid var(--c-bor)"}},
@@ -1047,6 +1079,7 @@ function HelpModal(p){
     {bg:"rgba(251,191,36,.08)",bc:"rgba(251,191,36,.2)",tc:"#fbbf24",icon:"\uD83C\uDF93",title:"Jetzt lernen",body:"Auf der Startseite \u2192 Lernen oder im Men\u00fc \u2192 Stapel. Stapel und Ordner ausw\u00e4hlen, dann entweder alle Karten durcheinander oder Stapel f\u00fcr Stapel."},
     {bg:"rgba(16,185,129,.08)",bc:"rgba(16,185,129,.2)",tc:"#34d399",icon:"\uD83E\uDDE0",title:"Spaced Repetition (SRS)",body:"Bewerte dich selbst: Gewusst oder Noch \u00fcben. Bekannte Karten kommen nach 1\u20132\u20134\u20138\u201316\u201330 Tagen wieder."},
     {bg:"rgba(249,115,22,.08)",bc:"rgba(249,115,22,.2)",tc:"#fb923c",icon:"\uD83D\uDCE4",title:"Teilen & Importieren",body:"Im Stapel oben rechts auf das Teilen-Symbol (\uD83D\uDCE4) tippen. Empf\u00e4nger: App \u00f6ffnen \u2192 Stapel importieren \u2192 Datei w\u00e4hlen."},
+    {bg:"rgba(96,165,250,.08)",bc:"rgba(96,165,250,.2)",tc:"#60a5fa",icon:"\u2601\uFE0F",title:"App synchronisieren",body:"Im Men\u00fc \u2192 App synchronisieren. Zwei Methoden: (1) Mit Google-Konto anmelden f\u00fcr automatische Zuordnung. (2) Eigenen Sync-Code eingeben \u2014 denselben Code auf allen Ger\u00e4ten verwenden. Daten werden auf Servern in Frankfurt gespeichert."},
     {bg:"rgba(255,255,255,.04)",bc:"rgba(139,92,246,.3)",tc:"var(--c-txt)",icon:"\u22EF",title:"Bearbeiten & L\u00f6schen",body:"Bei Stapeln und Karten auf den \u22EF-Button tippen. Es erscheinen \u270F\uFE0F Bearbeiten und \uD83D\uDDD1\uFE0F L\u00f6schen."},
     {bg:"rgba(255,255,255,.04)",bc:"rgba(16,185,129,.3)",tc:"#34d399",icon:"\uD83D\uDD12",title:"Datenschutz",body:"Alle Daten bleiben ausschlie\u00dflich auf deinem Ger\u00e4t. Keine Daten werden \u00fcbertragen."}
   ];
@@ -1062,7 +1095,7 @@ function DatenschutzContent(){
   return h("div",{className:"legal-body"},
     h("span",{className:"legal-h"},"1. Verantwortliche Person"),
     h("p",null,"Sophie Gro\u00df, Bahnhofstra\u00dfe 43, 46414 Rhede"),
-    h("p",null,"E-Mail: info.gross-apps@gmx.de"),
+    h("p",null,"E-Mail: ",h("a",{href:"mailto:info.gross-apps@gmx.de",style:{color:"var(--c-pur2)"}},"info.gross-apps@gmx.de")),
     h("span",{className:"legal-h"},"2. Lokale Datenspeicherung"),
     h("p",null,"Diese App speichert alle Daten ausschlie\u00dflich lokal auf deinem Ger\u00e4t (localStorage). Keine personenbezogenen Daten werden \u00fcbertragen."),
     h("span",{className:"legal-h"},"3. Gespeicherte Daten"),
@@ -1070,7 +1103,9 @@ function DatenschutzContent(){
     h("span",{className:"legal-h"},"4. Rechtsgrundlage"),
     h("p",null,"Die Verarbeitung erfolgt auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO sowie Art. 6 Abs. 1 lit. f DSGVO."),
     h("span",{className:"legal-h"},"5. Hosting"),
-    h("ul",null,h("li",null,"GitHub (Microsoft): Quellcode-Hosting. Datenschutzerkl\u00e4rung: github.com/privacy"),h("li",null,"Vercel Inc.: App-Hosting, Server Frankfurt am Main (EU). Server-Logs m\u00f6glich (IP, Zeitstempel, Browser). Datenschutzerkl\u00e4rung: vercel.com/legal/privacy-policy")),
+    h("ul",null,
+      h("li",null,"GitHub (Microsoft): Quellcode-Hosting. Datenschutzerkl\u00e4rung: ",h("a",{href:"https://github.com/privacy",target:"_blank",style:{color:"var(--c-pur2)"}},"github.com/privacy")),
+      h("li",null,"Vercel Inc.: App-Hosting, Server Frankfurt am Main (EU). Server-Logs m\u00f6glich (IP, Zeitstempel, Browser). Datenschutzerkl\u00e4rung: ",h("a",{href:"https://vercel.com/legal/privacy-policy",target:"_blank",style:{color:"var(--c-pur2)"}},"vercel.com/legal/privacy-policy"))),
     h("span",{className:"legal-h"},"6. Push-Benachrichtigungen"),
     h("p",null,"Erinnerungen laufen ausschlie\u00dflich lokal \u00fcber den Service Worker. Keine externen Push-Dienste."),
     h("span",{className:"legal-h"},"7. Cookies & Tracking"),
@@ -1078,15 +1113,15 @@ function DatenschutzContent(){
     h("span",{className:"legal-h"},"8. Kontaktformular (Problem melden)"),
     h("p",null,"Beim Absenden wird die Nachricht \u00fcber die GitHub Issues API \u00fcbermittelt. Kein Name, keine E-Mail wird erhoben. Anbieter: GitHub, Inc., 88 Colin P Kelly Jr St, San Francisco, CA 94107, USA."),
     h("span",{className:"legal-h"},"9. Deine Rechte (DSGVO)"),
-    h("p",null,"Du hast das Recht auf Auskunft (\u00a715), Berichtigung (\u00a716), L\u00f6schung (\u00a717), Einschr\u00e4nkung (\u00a718) sowie Daten\u00fcbertragbarkeit (\u00a720). Da alle Daten lokal gespeichert sind, kannst du sie jederzeit selbst l\u00f6schen. Kontakt: info.gross-apps@gmx.de"),
+    h("p",null,"Du hast das Recht auf Auskunft (\u00a715), Berichtigung (\u00a716), L\u00f6schung (\u00a717), Einschr\u00e4nkung (\u00a718) sowie Daten\u00fcbertragbarkeit (\u00a720). Da alle Daten lokal gespeichert sind, kannst du sie jederzeit selbst l\u00f6schen. Kontakt: ",h("a",{href:"mailto:info.gross-apps@gmx.de",style:{color:"var(--c-pur2)"}},"info.gross-apps@gmx.de")),
     h("span",{className:"legal-h"},"10. Beschwerderecht"),
-    h("p",null,"Du hast das Recht, dich bei der Landesbeauftragten f\u00fcr Datenschutz und Informationsfreiheit NRW zu beschweren: ldi.nrw.de"),
+    h("p",null,"Du hast das Recht, dich bei der Landesbeauftragten f\u00fcr Datenschutz und Informationsfreiheit NRW zu beschweren: ",h("a",{href:"https://www.ldi.nrw.de",target:"_blank",style:{color:"var(--c-pur2)"}},"ldi.nrw.de")),
     h("span",{className:"legal-h"},"11. Minderj\u00e4hrige"),
     h("p",null,"Keine Datenerhebung, daher keine gesonderte Einwilligung n\u00f6tig."),
-    h("span",{className:"legal-h"},"12. Google Drive Synchronisation (optional)"),
-    h("p",null,"Wenn du die freiwillige Synchronisationsfunktion nutzt, meldest du dich mit deinem Google-Konto an. Dabei werden deine Karteikarten-Daten in deinem pers\u00f6nlichen Google Drive (appDataFolder) gespeichert. Dieser Bereich ist ausschlie\u00dflich f\u00fcr diese App sichtbar. Rechtsgrundlage: Einwilligung (Art.\u00a06 Abs.\u00a01 lit.\u00a0a DSGVO). Verbindung jederzeit in der App trennbar."),
-    h("p",null,"Anbieter: Google LLC, 1600 Amphitheatre Parkway, Mountain View, CA\u00a094043, USA. Datentransfer auf Basis von Standardvertragsklauseln (Art.\u00a046 DSGVO). Datenschutz: policies.google.com/privacy"),
-    h("p",null,"Zur Freischaltung kannst du uns freiwillig deine Google-E-Mail mitteilen (info.gross-apps@gmx.de). Sie wird ausschlie\u00dflich zur Freischaltung genutzt und nicht weitergegeben."),
+    h("span",{className:"legal-h"},"12. App-Synchronisation (optional)"),
+    h("p",null,"Die freiwillige Sync-Funktion erm\u00f6glicht es, Karteikarten ger\u00e4te\u00fcbergreifend zu synchronisieren. Daf\u00fcr wird Firebase (Google LLC) als Datenbank genutzt \u2014 Server: Frankfurt am Main (Deutschland). Die Daten werden verschl\u00fcsselt \u00fcbertragen und gespeichert."),
+    h("p",null,"Zwei Methoden stehen zur Wahl: (1) Google-Konto Anmeldung \u2014 Daten werden deiner Google-ID zugeordnet, Zugriff nur mit deinem Konto m\u00f6glich. (2) Sync-Code \u2014 ein selbstgew\u00e4hlter Code erm\u00f6glicht den Zugriff, ohne Konto-Registrierung."),
+    h("p",null,"Rechtsgrundlage: Einwilligung (Art. 6 Abs. 1 lit. a DSGVO). Die Verbindung kann jederzeit in der App getrennt werden. Anbieter: Google LLC, 1600 Amphitheatre Parkway, Mountain View, CA\u00a094043, USA. Datentransfer auf Basis von Standardvertragsklauseln (Art. 46 DSGVO). Datenschutz: ",h("a",{href:"https://firebase.google.com/support/privacy",target:"_blank",style:{color:"var(--c-pur2)"}},"firebase.google.com/support/privacy")),
     h("p",{style:{marginTop:"14px",fontSize:".76rem",color:"rgba(255,255,255,.3)",fontWeight:600}},"Stand: Mai 2026"));
 }
 
@@ -1098,7 +1133,7 @@ function ImpressumModal(p){
         h("span",{className:"legal-h"},"Angaben gem\u00e4\u00df \u00a7 5 TMG"),
         h("p",null,"Sophie Gro\u00df"),h("p",null,"Bahnhofstra\u00dfe 43"),h("p",null,"46414 Rhede"),
         h("span",{className:"legal-h",style:{marginTop:"10px"}},"Kontakt"),
-        h("p",null,"E-Mail: info.gross-apps@gmx.de"),
+        h("p",null,"E-Mail: ",h("a",{href:"mailto:info.gross-apps@gmx.de",style:{color:"var(--c-pur2)"}},"info.gross-apps@gmx.de")),
         h("p",null,"Diese App wird privat und nicht kommerziell betrieben."),
         h("span",{className:"legal-h",style:{marginTop:"10px"}},"Hosting"),
         h("p",null,"Quellcode auf GitHub. App \u00fcber Vercel (Server Frankfurt am Main, Deutschland)."),
