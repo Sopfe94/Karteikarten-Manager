@@ -590,8 +590,16 @@ function SyncModal(p){
   }
 
   function handleGoogleSync(){
-    var provider=new firebase.auth.GoogleAuthProvider();
-    _fbAuth.signInWithRedirect(provider).catch(function(){setStatusMsg("\u274C Anmeldung fehlgeschlagen.");});
+    if(!_fbAuth){setStatusMsg("\u274C Firebase nicht bereit.");return;}
+    setStatusMsg("\u23F3 Weiterleitung zu Google...");
+    try{
+      var provider=new firebase.auth.GoogleAuthProvider();
+      _fbAuth.signInWithRedirect(provider).catch(function(e){
+        setStatusMsg("\u274C "+e.message);
+      });
+    }catch(e){
+      setStatusMsg("\u274C "+e.message);
+    }
   }
 
   function handleCodeSync(){
