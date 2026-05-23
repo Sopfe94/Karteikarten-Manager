@@ -384,6 +384,15 @@ function fbInit(){
   return true;
 }
 
+function fbHandleRedirect(onSync){
+  if(!fbInit()) return;
+  _fbAuth.getRedirectResult().then(function(result){
+    if(result&&result.user){
+      _fbUser=result.user;
+      if(onSync) onSync(result.user.uid);
+    }
+  }).catch(function(){});
+}
 function fbSync(uid, isCode){
   var docRef = isCode
     ? _fbDb.collection("syncdata").doc(uid).collection("data").doc("kkm")
@@ -556,6 +565,7 @@ function SyncModal(p){
   var tabs=useState("google");var tab=tabs[0];var setTab=tabs[1];
   var sng=useState(false);var syncing=sng[0];var setSyncing=sng[1];
   var stm=useState("");var statusMsg=stm[0];var setStatusMsg=stm[1];
+  var stmc=useState("");var statusCode=stmc[0];var setStatusCode=stmc[1];
   var inf=useState(false);var showInfo=inf[0];var setShowInfo=inf[1];
   var cis=useState("");var codeInput=cis[0];var setCodeInput=cis[1];
   var tm=useToast();var toast=tm[0];var showToast=tm[1];
@@ -567,26 +577,26 @@ function SyncModal(p){
     var ok=fbInit();
     setFbReady(ok);
     if(!ok) return;
-    // Handle redirect result after Google Sign-In
-    _fbAuth.getRedirectResult().then(function(result){
-      if(result&&result.user){
-        _fbUser=result.user;setFbUser(result.user);
-        doSync(result.user.uid, false);
-      }
-    }).catch(function(e){setStatusMsg("\u274C Anmeldung fehlgeschlagen: "+e.message);});
     var unsub=_fbAuth.onAuthStateChanged(function(u){_fbUser=u;setFbUser(u);});
     return unsub;
   },[]);
 
   function doSync(uid, isCode){
-    setSyncing(true);setStatusMsg("");
+    setSyncing(true);
+    if(isCode) setStatusCode(""); else setStatusMsg("");
     fbSync(uid, isCode).then(function(merged){
       if(p.onDataLoaded)p.onDataLoaded(merged);
       var time=new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
       var s=Object.assign({},syncStore,{lastSync:time,method:isCode?"code":"google"});
       setSyncStore(s);saveSyncStore(s);
-      setSyncing(false);setStatusMsg("\u2705 Synchronisiert um "+time);
-    }).catch(function(e){setSyncing(false);setStatusMsg("\u274C Fehler: "+e.message);});
+      setSyncing(false);
+      if(isCode) setStatusCode("\u2705 Synchronisiert um "+time);
+      else setStatusMsg("\u2705 Synchronisiert um "+time);
+    }).catch(function(e){
+      setSyncing(false);
+      if(isCode) setStatusCode("\u274C Fehler: "+e.message);
+      else setStatusMsg("\u274C Fehler: "+e.message);
+    });
   }
 
   function handleGoogleSync(){
@@ -665,7 +675,7 @@ function SyncModal(p){
         h("div",{className:"fg"},
           h("label",{className:"fl"},"Sync-Code"),
           h("input",{className:"fi",type:"text",value:codeInput,placeholder:"z.B. MeinCode2026",onInput:function(e){setCodeInput(e.target.value);}})),
-        statusMsg&&h("div",{style:{textAlign:"center",fontSize:".82rem",fontWeight:700,marginBottom:"12px",color:statusMsg.startsWith("\u2705")?"#34d399":"#fca5a5"}},statusMsg),
+        statusCode&&h("div",{style:{textAlign:"center",fontSize:".82rem",fontWeight:700,marginBottom:"12px",color:statusCode.startsWith("\u2705")?"#34d399":"#fca5a5"}},statusCode),
         syncStore.lastSync&&syncStore.method==="code"&&h("div",{style:{fontSize:".76rem",color:"var(--c-dim)",textAlign:"center",marginBottom:"10px",fontWeight:600}},"Letzte Sync: "+syncStore.lastSync),
         h("button",{className:"btn btn-p",style:{width:"100%",justifyContent:"center",padding:"12px",opacity:syncing?.5:1},disabled:syncing||codeInput.trim().length<4,onClick:handleCodeSync},syncing?"\u23F3 Synchronisiert...":"\u2194 Synchronisieren"),
         h("div",{style:{fontSize:".73rem",color:"rgba(251,191,36,.7)",marginTop:"10px",fontWeight:600,textAlign:"center"}},
@@ -1236,6 +1246,11 @@ function App(){
       var isNew=d.current.version!==us2.installed; var isDismissed=d.current.version===us2.dismissed;
       if(isNew&&!isDismissed){setPendingUpd(d.current);setShowUpdOverlay(true);}
     }).catch(function(){if(us.cachedUpdate)setUpdData(us.cachedUpdate);});
+  },[]);
+  useEffect(function(){
+    fbHandleRedirect(function(uid){
+      fbSync(uid,false).then(function(d){setData(d);}).catch(function(){});
+    });
   },[]);
   useEffect(function(){
     saveStore(data);
