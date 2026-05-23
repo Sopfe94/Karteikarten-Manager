@@ -341,9 +341,9 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .folder-pill.act{background:rgba(139,92,246,.2);border-color:var(--c-pur);color:var(--c-pur2)}
 .folder-tag{font-size:.64rem;font-weight:700;color:var(--c-pur2);background:rgba(139,92,246,.15);border:1px solid var(--c-bor);border-radius:10px;padding:1px 6px;margin-left:5px;vertical-align:middle}
 </style>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" async></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js" async></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js" async></script>
 </head>
 <body><!-- KKM-v1.1.17-AKTUELL -->
 <div id="root"></div>
@@ -361,47 +361,31 @@ var SRS_DAYS = [0,1,2,4,8,16,30];
 var STORE_KEY = "kkm-v2";
 
 var SYNC_STORE_KEY = "kkm-sync-v1";
-function loadSyncStore(){ try{var r=localStorage.getItem(SYNC_STORE_KEY);return r?JSON.parse(r):{interval:0,lastSync:null,method:null};}catch(e){return{interval:0,lastSync:null,method:null};} }
+function loadSyncStore(){ try{var r=localStorage.getItem(SYNC_STORE_KEY);return r?JSON.parse(r):{interval:0,lastSync:null};}catch(e){return{interval:0,lastSync:null};} }
 function saveSyncStore(d){ try{localStorage.setItem(SYNC_STORE_KEY,JSON.stringify(d));}catch(e){} }
 
-// Firebase Init
-var FB_CONFIG = {
-  apiKey:"AIzaSyDrrM3eJ8d0q8GEnNm7_mKDJGG_CioZC5o",
-  authDomain:"karteikarten-manager-48782.firebaseapp.com",
-  projectId:"karteikarten-manager-48782",
-  storageBucket:"karteikarten-manager-48782.firebasestorage.app",
-  messagingSenderId:"798785721409",
-  appId:"1:798785721409:web:b301fa786a50a7049e22c0"
-};
-var _fbApp = null; var _fbDb = null; var _fbAuth = null;
-function fbInit(){
-  if(_fbApp) return true;
-  if(typeof firebase==="undefined") return false;
-  _fbApp = firebase.initializeApp(FB_CONFIG);
-  _fbAuth = firebase.auth();
-  _fbDb = firebase.firestore();
-  _fbDb.enablePersistence({synchronizeTabs:true}).catch(function(){});
-  return true;
-}
+var FB_PROJECT = "karteikarten-manager-48782";
+var FB_KEY = "AIzaSyDrrM3eJ8d0q8GEnNm7_mKDJGG_CioZC5o";
+var FB_BASE = "https://firestore.googleapis.com/v1/projects/"+FB_PROJECT+"/databases/(default)/documents";
 
-function fbHandleRedirect(onSync){
-  if(!fbInit()) return;
-  _fbAuth.getRedirectResult().then(function(result){
-    if(result&&result.user){
-      _fbUser=result.user;
-      if(onSync) onSync(result.user.uid);
-    }
-  }).catch(function(){});
-}
-function fbSync(uid, isCode){
-  var docRef = isCode
-    ? _fbDb.collection("syncdata").doc(uid).collection("data").doc("kkm")
-    : _fbDb.collection("users").doc(uid).collection("data").doc("kkm");
-  var local = loadStore();
-  return docRef.get().then(function(snap){
-    var merged = snap.exists ? mergeSyncData(local, snap.data()) : local;
-    return docRef.set(merged).then(function(){ saveStore(merged); return merged; });
-  });
+function fsSync(code, localData){
+  var url = FB_BASE+"/syncdata/"+encodeURIComponent(code)+"?key="+FB_KEY;
+  return fetch(url).then(function(r){ return r.ok?r.json():null; })
+    .then(function(doc){
+      var remote=null;
+      if(doc&&doc.fields&&doc.fields.kkm){
+        try{remote=JSON.parse(doc.fields.kkm.stringValue);}catch(e){}
+      }
+      var merged=remote?mergeSyncData(localData,remote):localData;
+      return fetch(url,{
+        method:"PATCH",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({fields:{kkm:{stringValue:JSON.stringify(merged)}}})
+      }).then(function(r){
+        if(!r.ok) throw new Error("Fehler "+r.status);
+        return merged;
+      });
+    });
 }
 
 function mergeSyncData(local,remote){
@@ -557,81 +541,89 @@ function parseDeckFile(str){
   catch(e){return null;}
 }
 
+var _fbApp=null;var _fbAuth=null;
+var FB_CONFIG={apiKey:"AIzaSyDrrM3eJ8d0q8GEnNm7_mKDJGG_CioZC5o",authDomain:"karteikarten-manager-48782.firebaseapp.com",projectId:"karteikarten-manager-48782",storageBucket:"karteikarten-manager-48782.firebasestorage.app",messagingSenderId:"798785721409",appId:"1:798785721409:web:b301fa786a50a7049e22c0"};
+function fbReady(){return typeof firebase!=="undefined";}
+function fbGetAuth(){
+  if(!fbReady())return null;
+  if(!_fbApp){_fbApp=firebase.initializeApp(FB_CONFIG);_fbAuth=firebase.auth();}
+  return _fbAuth;
+}
+
 var _fbUser = null;
 
 function SyncModal(p){
   var ss=useState(loadSyncStore());var syncStore=ss[0];var setSyncStore=ss[1];
-  var us=useState(_fbUser);var fbUser=us[0];var setFbUser=us[1];
-  var tabs=useState("google");var tab=tabs[0];var setTab=tabs[1];
   var sng=useState(false);var syncing=sng[0];var setSyncing=sng[1];
   var stm=useState("");var statusMsg=stm[0];var setStatusMsg=stm[1];
-  var stmc=useState("");var statusCode=stmc[0];var setStatusCode=stmc[1];
+  var stc=useState("");var statusCode=stc[0];var setStatusCode=stc[1];
   var inf=useState(false);var showInfo=inf[0];var setShowInfo=inf[1];
   var cis=useState("");var codeInput=cis[0];var setCodeInput=cis[1];
+  var tabs=useState("google");var tab=tabs[0];var setTab=tabs[1];
+  var gus=useState(_fbUser);var googleUser=gus[0];var setGoogleUser=gus[1];
   var tm=useToast();var toast=tm[0];var showToast=tm[1];
   var INTERVALS=[{v:0,l:"Manuell"},{v:5,l:"5 Minuten"},{v:15,l:"15 Minuten"},{v:30,l:"30 Minuten"},{v:60,l:"1 Stunde"}];
-
-  var fbReady=useState(false);var isFbReady=fbReady[0];var setFbReady=fbReady[1];
+  var isIosPwa=/iPhone|iPad|iPod/.test(navigator.userAgent)&&window.navigator.standalone;
 
   useEffect(function(){
-    var ok=fbInit();
-    setFbReady(ok);
-    if(!ok) return;
-    var unsub=_fbAuth.onAuthStateChanged(function(u){_fbUser=u;setFbUser(u);});
-    return unsub;
+    if(syncStore.code) setCodeInput(syncStore.code);
+    // Check if Firebase auth user is already signed in
+    var auth=fbGetAuth();
+    if(auth){
+      var unsub=auth.onAuthStateChanged(function(u){_fbUser=u;setGoogleUser(u);});
+      return unsub;
+    }
   },[]);
 
-  function doSync(uid, isCode){
-    setSyncing(true);
-    if(isCode) setStatusCode(""); else setStatusMsg("");
-    fbSync(uid, isCode).then(function(merged){
-      if(p.onDataLoaded)p.onDataLoaded(merged);
+  function doGoogleSync(user){
+    setSyncing(true);setStatusMsg("");
+    var url=FB_BASE+"/users/"+user.uid+"?key="+FB_KEY;
+    fetch(url,{headers:{"Authorization":"Bearer "+user.accessToken||""}})
+      .then(function(){})
+      .catch(function(){});
+    // Use REST with ID token
+    user.getIdToken().then(function(token){
+      var rurl=FB_BASE+"/users/"+user.uid+"?key="+FB_KEY;
+      return fetch(rurl,{headers:{"Authorization":"Bearer "+token}})
+        .then(function(r){return r.ok?r.json():null;})
+        .then(function(doc){
+          var remote=null;
+          if(doc&&doc.fields&&doc.fields.kkm){try{remote=JSON.parse(doc.fields.kkm.stringValue);}catch(e){}}
+          var merged=remote?mergeSyncData(loadStore(),remote):loadStore();
+          return fetch(rurl,{method:"PATCH",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
+            body:JSON.stringify({fields:{kkm:{stringValue:JSON.stringify(merged)}}})
+          }).then(function(r){if(!r.ok)throw new Error("Fehler "+r.status);return merged;});
+        });
+    }).then(function(merged){
+      saveStore(merged);if(p.onDataLoaded)p.onDataLoaded(merged);
       var time=new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
-      var s=Object.assign({},syncStore,{lastSync:time,method:isCode?"code":"google"});
-      setSyncStore(s);saveSyncStore(s);
-      setSyncing(false);
-      if(isCode) setStatusCode("\u2705 Synchronisiert um "+time);
-      else setStatusMsg("\u2705 Synchronisiert um "+time);
-    }).catch(function(e){
-      setSyncing(false);
-      if(isCode) setStatusCode("\u274C Fehler: "+e.message);
-      else setStatusMsg("\u274C Fehler: "+e.message);
-    });
+      var s=Object.assign({},syncStore,{lastSync:time});setSyncStore(s);saveSyncStore(s);
+      setSyncing(false);setStatusMsg("\u2705 Synchronisiert um "+time);
+    }).catch(function(e){setSyncing(false);setStatusMsg("\u274C "+e.message);});
   }
 
-  function handleGoogleSync(){
-    if(!_fbAuth){setStatusMsg("\u274C Firebase nicht bereit.");return;}
-    setStatusMsg("\u23F3 Weiterleitung zu Google...");
-    try{
-      var provider=new firebase.auth.GoogleAuthProvider();
-      _fbAuth.signInWithRedirect(provider).catch(function(e){
-        setStatusMsg("\u274C "+e.message);
-      });
-    }catch(e){
-      setStatusMsg("\u274C "+e.message);
-    }
+  function handleGoogleSignIn(){
+    var auth=fbGetAuth();
+    if(!auth){showToast("Google-Dienste laden noch...");return;}
+    setStatusMsg("\u23F3 Weiterleitung...");
+    var provider=new firebase.auth.GoogleAuthProvider();
+    auth.signInWithRedirect(provider).catch(function(e){setStatusMsg("\u274C "+e.message);});
   }
 
   function handleCodeSync(){
     var code=codeInput.trim();
     if(code.length<4){showToast("Code muss mind. 4 Zeichen haben.");return;}
-    doSync(code, true);
+    setSyncing(true);setStatusCode("");
+    fsSync(code,loadStore()).then(function(merged){
+      saveStore(merged);if(p.onDataLoaded)p.onDataLoaded(merged);
+      var time=new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+      var s=Object.assign({},syncStore,{lastSync:time,code:code});setSyncStore(s);saveSyncStore(s);
+      setSyncing(false);setStatusCode("\u2705 Synchronisiert um "+time);
+    }).catch(function(e){setSyncing(false);setStatusCode("\u274C "+e.message);});
   }
 
   function handleInterval(val){var s=Object.assign({},syncStore,{interval:parseInt(val)});setSyncStore(s);saveSyncStore(s);}
-
-  function signOut(){
-    _fbAuth.signOut().then(function(){_fbUser=null;setFbUser(null);showToast("Abgemeldet.");});
-  }
-
-  useEffect(function(){
-    if(!syncStore.interval)return;
-    var iv=setInterval(function(){
-      if(syncStore.method==="google"&&_fbUser)doSync(_fbUser.uid,false);
-      else if(syncStore.method==="code"&&codeInput.trim().length>=4)doSync(codeInput.trim(),true);
-    },syncStore.interval*60*1000);
-    return function(){clearInterval(iv);};
-  },[syncStore.interval,fbUser]);
+  function signOut(){var auth=fbGetAuth();if(auth)auth.signOut();_fbUser=null;setGoogleUser(null);showToast("Abgemeldet.");}
 
   return h("div",{className:"ov",onClick:p.onClose},
     h("div",{className:"modal",style:{maxWidth:"420px"},onClick:function(e){e.stopPropagation();}},
@@ -640,56 +632,43 @@ function SyncModal(p){
         h("div",{className:"modal-title",style:{margin:0}},"App synchronisieren")),
 
       showInfo&&h("div",{style:{background:"rgba(251,191,36,.1)",border:"1px solid rgba(251,191,36,.3)",borderRadius:"11px",padding:"12px",marginBottom:"14px",fontSize:".81rem",color:"#fde68a",lineHeight:1.7}},
-        "Deine Daten werden verschl\u00fcsselt in Firebase (Google, Server Frankfurt) gespeichert. Nur du hast Zugriff. Bei Google-Anmeldung ist der Zugriff an dein Konto gebunden, beim Sync-Code nur an den Code selbst."),
+        "Deine Daten werden in Firebase (Google, Server Frankfurt/EU) gespeichert. Google-Konto: nur du hast Zugriff. Sync-Code: jeder der den Code kennt."),
 
-      // Tab selector
-      !isFbReady&&h("div",{style:{background:"rgba(239,68,68,.12)",border:"1px solid rgba(239,68,68,.3)",borderRadius:"11px",padding:"12px",marginBottom:"14px",fontSize:".82rem",color:"#fca5a5",fontWeight:700}},
-        "\u26A0\uFE0F Sync ist nur in der installierten App verf\u00fcgbar, nicht in der lokalen Vorschau."),
-
-      // Tab selector
-      isFbReady&&h("div",{style:{display:"flex",gap:"6px",marginBottom:"18px"}},
+      h("div",{style:{display:"flex",gap:"6px",marginBottom:"18px"}},
         h("button",{onClick:function(){setTab("google");},style:{flex:1,padding:"9px",borderRadius:"9px",border:"1.5px solid "+(tab==="google"?"var(--c-pur2)":"var(--c-bor)"),background:tab==="google"?"rgba(139,92,246,.15)":"transparent",color:tab==="google"?"var(--c-pur2)":"var(--c-dim)",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontSize:".84rem",fontWeight:800}},"\uD83D\uDD11 Google-Konto"),
         h("button",{onClick:function(){setTab("code");},style:{flex:1,padding:"9px",borderRadius:"9px",border:"1.5px solid "+(tab==="code"?"var(--c-pur2)":"var(--c-bor)"),background:tab==="code"?"rgba(139,92,246,.15)":"transparent",color:tab==="code"?"var(--c-pur2)":"var(--c-dim)",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontSize:".84rem",fontWeight:800}},"\uD83D\uDD11 Sync-Code")),
 
-      // Google tab
-      isFbReady&&tab==="google"&&h("div",null,
-        /iPhone|iPad|iPod/.test(navigator.userAgent)&&window.navigator.standalone&&!fbUser&&h("div",{style:{background:"rgba(251,191,36,.1)",border:"1px solid rgba(251,191,36,.3)",borderRadius:"11px",padding:"12px",marginBottom:"14px",fontSize:".82rem",color:"#fde68a",lineHeight:1.7}},
-          "\u26A0\uFE0F Google-Anmeldung ist in der iOS-App leider nicht m\u00f6glich (Apple-Einschr\u00e4nkung). Bitte nutze den \uD83D\uDD11 Sync-Code f\u00fcr iOS."),
-        fbUser?h("div",null,
+      tab==="google"&&h("div",null,
+        isIosPwa&&!googleUser&&h("div",{style:{background:"rgba(251,191,36,.1)",border:"1px solid rgba(251,191,36,.3)",borderRadius:"11px",padding:"12px",marginBottom:"14px",fontSize:".82rem",color:"#fde68a",lineHeight:1.7}},
+          "\u26A0\uFE0F Google-Anmeldung ist auf iOS leider nicht m\u00f6glich (Apple-Einschr\u00e4nkung). Bitte nutze den Sync-Code."),
+        googleUser?h("div",null,
           h("div",{style:{background:"rgba(16,185,129,.1)",border:"1px solid rgba(16,185,129,.25)",borderRadius:"11px",padding:"11px 14px",marginBottom:"14px",display:"flex",alignItems:"center",gap:"10px"}},
             h("span",{style:{fontSize:"1.4rem"}},"\u2705"),
-            h("div",null,
-              h("div",{style:{fontWeight:800,fontSize:".9rem"}},"Angemeldet als"),
-              h("div",{style:{fontSize:".76rem",color:"var(--c-dim)",fontWeight:600}},fbUser.email),
-              syncStore.lastSync&&syncStore.method==="google"&&h("div",{style:{fontSize:".72rem",color:"var(--c-dim)",marginTop:"2px"}},"Letzte Sync: "+syncStore.lastSync))),
+            h("div",null,h("div",{style:{fontWeight:800,fontSize:".9rem"}},"Angemeldet als"),
+              h("div",{style:{fontSize:".76rem",color:"var(--c-dim)",fontWeight:600}},googleUser.email),
+              syncStore.lastSync&&h("div",{style:{fontSize:".72rem",color:"var(--c-dim)",marginTop:"2px"}},"Letzte Sync: "+syncStore.lastSync))),
           statusMsg&&h("div",{style:{textAlign:"center",fontSize:".82rem",fontWeight:700,marginBottom:"12px",color:statusMsg.startsWith("\u2705")?"#34d399":"#fca5a5"}},statusMsg),
-          h("button",{className:"btn btn-p",style:{width:"100%",justifyContent:"center",padding:"12px",marginBottom:"10px",opacity:syncing?.5:1},disabled:syncing,onClick:function(){doSync(fbUser.uid,false);}},syncing?"\u23F3 Synchronisiert...":"\u2194 Synchronisieren"),
+          h("button",{className:"btn btn-p",style:{width:"100%",justifyContent:"center",padding:"12px",marginBottom:"10px",opacity:syncing?.5:1},disabled:syncing,onClick:function(){doGoogleSync(googleUser);}},syncing?"\u23F3 Synchronisiert...":"\u2194 Synchronisieren"),
           h("button",{className:"btn btn-g",style:{width:"100%",justifyContent:"center"},onClick:signOut},"Abmelden")):
-        h("div",{style:{textAlign:"center",padding:"16px 0"}},
-          h("div",{style:{fontSize:"2.5rem",marginBottom:"10px"}},"\uD83D\uDD11"),
-          h("div",{style:{fontSize:".84rem",color:"var(--c-dim)",marginBottom:"16px",fontWeight:600,lineHeight:1.6}},"Mit Google-Konto anmelden — geräteübergreifend synchronisieren ohne Code."),
-          h("button",{className:"btn btn-p",style:{justifyContent:"center",width:"100%",padding:"13px"},onClick:handleGoogleSync},"Mit Google anmelden"))),
+        !isIosPwa&&h("div",{style:{textAlign:"center",padding:"16px 0"}},
+          statusMsg&&h("div",{style:{fontSize:".82rem",fontWeight:700,marginBottom:"12px",color:"#fca5a5"}},statusMsg),
+          h("button",{className:"btn btn-p",style:{justifyContent:"center",width:"100%",padding:"13px"},onClick:handleGoogleSignIn},"\uD83D\uDD11 Mit Google anmelden"))),
 
-      // Code tab
-      isFbReady&&tab==="code"&&h("div",null,
-        h("div",{style:{fontSize:".82rem",color:"var(--c-dim)",marginBottom:"14px",fontWeight:600,lineHeight:1.7}},
-          "Wähle einen eigenen Sync-Code (mind. 4 Zeichen). Gib denselben Code auf allen Geräten ein."),
-        h("div",{className:"fg"},
-          h("label",{className:"fl"},"Sync-Code"),
+      tab==="code"&&h("div",null,
+        h("div",{style:{fontSize:".83rem",color:"var(--c-dim)",marginBottom:"14px",fontWeight:600,lineHeight:1.7}},
+          "W\u00e4hle einen eigenen Sync-Code. Gleicher Code auf allen Ger\u00e4ten."),
+        h("div",{className:"fg"},h("label",{className:"fl"},"Sync-Code"),
           h("input",{className:"fi",type:"text",value:codeInput,placeholder:"z.B. MeinCode2026",onInput:function(e){setCodeInput(e.target.value);}})),
         statusCode&&h("div",{style:{textAlign:"center",fontSize:".82rem",fontWeight:700,marginBottom:"12px",color:statusCode.startsWith("\u2705")?"#34d399":"#fca5a5"}},statusCode),
-        syncStore.lastSync&&syncStore.method==="code"&&h("div",{style:{fontSize:".76rem",color:"var(--c-dim)",textAlign:"center",marginBottom:"10px",fontWeight:600}},"Letzte Sync: "+syncStore.lastSync),
-        h("button",{className:"btn btn-p",style:{width:"100%",justifyContent:"center",padding:"12px",opacity:syncing?.5:1},disabled:syncing||codeInput.trim().length<4,onClick:handleCodeSync},syncing?"\u23F3 Synchronisiert...":"\u2194 Synchronisieren"),
-        h("div",{style:{fontSize:".73rem",color:"rgba(251,191,36,.7)",marginTop:"10px",fontWeight:600,textAlign:"center"}},
-          "\u26A0\uFE0F Teile deinen Code nur mit Personen denen du vertraust.")),
+        syncStore.lastSync&&syncStore.code&&h("div",{style:{fontSize:".76rem",color:"var(--c-dim)",textAlign:"center",marginBottom:"10px",fontWeight:600}},"Letzte Sync: "+syncStore.lastSync),
+        h("button",{className:"btn btn-p",style:{width:"100%",justifyContent:"center",padding:"12px",marginBottom:"10px",opacity:syncing?.5:1},disabled:syncing||codeInput.trim().length<4,onClick:handleCodeSync},syncing?"\u23F3 Synchronisiert...":"\u2194 Synchronisieren"),
+        h("div",{style:{fontSize:".73rem",color:"rgba(251,191,36,.7)",fontWeight:600,textAlign:"center"}},"\u26A0\uFE0F Teile deinen Code nur mit Personen denen du vertraust.")),
 
-      // Auto-sync (both tabs)
       h("div",{style:{marginTop:"16px"}},
-        h("div",{className:"fg"},
-          h("label",{className:"fl"},"Auto-Sync Intervall"),
+        h("div",{className:"fg"},h("label",{className:"fl"},"Auto-Sync Intervall"),
           h("select",{className:"fi",value:syncStore.interval,onChange:function(e){handleInterval(e.target.value);}},
             INTERVALS.map(function(iv){return h("option",{key:iv.v,value:iv.v},iv.l);}))),
-        syncStore.interval>0&&/iPhone|iPad|iPod/.test(navigator.userAgent)&&h("div",{style:{fontSize:".75rem",color:"rgba(251,191,36,.8)",fontWeight:600}},
+        syncStore.interval>0&&isIosPwa&&h("div",{style:{fontSize:".75rem",color:"rgba(251,191,36,.8)",fontWeight:600}},
           "\u26A0\uFE0F Auto-Sync l\u00e4uft auf iOS nur bei ge\u00f6ffneter App.")),
 
       h("div",{className:"modal-foot"},h("button",{className:"btn btn-g",onClick:p.onClose},"Schlie\u00dfen")),
@@ -1250,9 +1229,29 @@ function App(){
     }).catch(function(){if(us.cachedUpdate)setUpdData(us.cachedUpdate);});
   },[]);
   useEffect(function(){
-    fbHandleRedirect(function(uid){
-      fbSync(uid,false).then(function(d){setData(d);}).catch(function(){});
-    });
+    // Handle Google redirect result on app load
+    setTimeout(function(){
+      var auth=fbGetAuth();
+      if(!auth) return;
+      auth.getRedirectResult().then(function(result){
+        if(result&&result.user){
+          _fbUser=result.user;
+          result.user.getIdToken().then(function(token){
+            var url=FB_BASE+"/users/"+result.user.uid+"?key="+FB_KEY;
+            return fetch(url,{headers:{"Authorization":"Bearer "+token}})
+              .then(function(r){return r.ok?r.json():null;})
+              .then(function(doc){
+                var remote=null;
+                if(doc&&doc.fields&&doc.fields.kkm){try{remote=JSON.parse(doc.fields.kkm.stringValue);}catch(e){}}
+                var merged=remote?mergeSyncData(loadStore(),remote):loadStore();
+                return fetch(url,{method:"PATCH",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
+                  body:JSON.stringify({fields:{kkm:{stringValue:JSON.stringify(merged)}}})
+                }).then(function(){saveStore(merged);setData(merged);});
+              });
+          }).catch(function(){});
+        }
+      }).catch(function(){});
+    },2000);
   },[]);
   useEffect(function(){
     saveStore(data);
