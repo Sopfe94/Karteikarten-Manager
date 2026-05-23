@@ -2,7 +2,7 @@
   "name": "Karteikarten Manager",
   "short_name": "Karteikarten",
   "description": "Lernkarten mit Spaced Repetition",
-  "start_url": ".",
+  "start_url": "/KM/",
 
   "display": "standalone",
   "background_color": "#0d0b25",
