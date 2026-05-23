@@ -341,9 +341,6 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .folder-pill.act{background:rgba(139,92,246,.2);border-color:var(--c-pur);color:var(--c-pur2)}
 .folder-tag{font-size:.64rem;font-weight:700;color:var(--c-pur2);background:rgba(139,92,246,.15);border:1px solid var(--c-bor);border-radius:10px;padding:1px 6px;margin-left:5px;vertical-align:middle}
 </style>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" async></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js" async></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js" async></script>
 </head>
 <body><!-- KKM-v1.1.17-AKTUELL -->
 <div id="root"></div>
@@ -541,14 +538,30 @@ function parseDeckFile(str){
   catch(e){return null;}
 }
 
-var _fbApp=null;var _fbAuth=null;
+var _fbApp=null;var _fbAuth=null;var _fbLoading=false;var _fbLoadedCbs=[];
 var FB_CONFIG={apiKey:"AIzaSyDrrM3eJ8d0q8GEnNm7_mKDJGG_CioZC5o",authDomain:"karteikarten-manager-48782.firebaseapp.com",projectId:"karteikarten-manager-48782",storageBucket:"karteikarten-manager-48782.firebasestorage.app",messagingSenderId:"798785721409",appId:"1:798785721409:web:b301fa786a50a7049e22c0"};
-function fbReady(){return typeof firebase!=="undefined";}
-function fbGetAuth(){
-  if(!fbReady())return null;
-  if(!_fbApp){_fbApp=firebase.initializeApp(FB_CONFIG);_fbAuth=firebase.auth();}
-  return _fbAuth;
+function fbReady(){return typeof firebase!=="undefined"&&!!_fbApp;}
+function fbLoad(cb){
+  if(fbReady()){cb();return;}
+  if(_fbLoading){_fbLoadedCbs.push(cb);return;}
+  _fbLoading=true;_fbLoadedCbs.push(cb);
+  var s1=document.createElement("script");
+  s1.src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js";
+  s1.onload=function(){
+    var s2=document.createElement("script");
+    s2.src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js";
+    s2.onload=function(){
+      _fbApp=firebase.initializeApp(FB_CONFIG);
+      _fbAuth=firebase.auth();
+      _fbLoading=false;
+      _fbLoadedCbs.forEach(function(f){f();});_fbLoadedCbs=[];
+    };
+    document.head.appendChild(s2);
+  };
+  s1.onerror=function(){_fbLoading=false;_fbLoadedCbs=[];};
+  document.head.appendChild(s1);
 }
+function fbGetAuth(){return _fbAuth||null;}
 
 var _fbUser = null;
 
@@ -567,12 +580,19 @@ function SyncModal(p){
 
   useEffect(function(){
     if(syncStore.code) setCodeInput(syncStore.code);
-    // Check if Firebase auth user is already signed in
-    var auth=fbGetAuth();
-    if(auth){
-      var unsub=auth.onAuthStateChanged(function(u){_fbUser=u;setGoogleUser(u);});
-      return unsub;
-    }
+    // Load Firebase lazily
+    fbLoad(function(){
+      var auth=fbGetAuth();
+      if(auth){
+        var unsub=auth.onAuthStateChanged(function(u){_fbUser=u;setGoogleUser(u);
+          // Handle redirect result
+          auth.getRedirectResult().then(function(r){
+            if(r&&r.user){_fbUser=r.user;setGoogleUser(r.user);}
+          }).catch(function(){});
+        });
+        return unsub;
+      }
+    });
   },[]);
 
   function doGoogleSync(user){
@@ -603,11 +623,14 @@ function SyncModal(p){
   }
 
   function handleGoogleSignIn(){
-    var auth=fbGetAuth();
-    if(!auth){showToast("Google-Dienste laden noch...");return;}
-    setStatusMsg("\u23F3 Weiterleitung...");
-    var provider=new firebase.auth.GoogleAuthProvider();
-    auth.signInWithRedirect(provider).catch(function(e){setStatusMsg("\u274C "+e.message);});
+    setStatusMsg("\u23F3 Lade Google-Dienste...");
+    fbLoad(function(){
+      var auth=fbGetAuth();
+      if(!auth){setStatusMsg("\u274C Google-Dienste konnten nicht geladen werden.");return;}
+      setStatusMsg("\u23F3 Weiterleitung...");
+      var provider=new firebase.auth.GoogleAuthProvider();
+      auth.signInWithRedirect(provider).catch(function(e){setStatusMsg("\u274C "+e.message);});
+    });
   }
 
   function handleCodeSync(){
@@ -1227,31 +1250,6 @@ function App(){
       var isNew=d.current.version!==us2.installed; var isDismissed=d.current.version===us2.dismissed;
       if(isNew&&!isDismissed){setPendingUpd(d.current);setShowUpdOverlay(true);}
     }).catch(function(){if(us.cachedUpdate)setUpdData(us.cachedUpdate);});
-  },[]);
-  useEffect(function(){
-    // Handle Google redirect result on app load
-    setTimeout(function(){
-      var auth=fbGetAuth();
-      if(!auth) return;
-      auth.getRedirectResult().then(function(result){
-        if(result&&result.user){
-          _fbUser=result.user;
-          result.user.getIdToken().then(function(token){
-            var url=FB_BASE+"/users/"+result.user.uid+"?key="+FB_KEY;
-            return fetch(url,{headers:{"Authorization":"Bearer "+token}})
-              .then(function(r){return r.ok?r.json():null;})
-              .then(function(doc){
-                var remote=null;
-                if(doc&&doc.fields&&doc.fields.kkm){try{remote=JSON.parse(doc.fields.kkm.stringValue);}catch(e){}}
-                var merged=remote?mergeSyncData(loadStore(),remote):loadStore();
-                return fetch(url,{method:"PATCH",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
-                  body:JSON.stringify({fields:{kkm:{stringValue:JSON.stringify(merged)}}})
-                }).then(function(){saveStore(merged);setData(merged);});
-              });
-          }).catch(function(){});
-        }
-      }).catch(function(){});
-    },2000);
   },[]);
   useEffect(function(){
     saveStore(data);
