@@ -653,6 +653,8 @@ function SyncModal(p){
 
       // Google tab
       isFbReady&&tab==="google"&&h("div",null,
+        /iPhone|iPad|iPod/.test(navigator.userAgent)&&window.navigator.standalone&&!fbUser&&h("div",{style:{background:"rgba(251,191,36,.1)",border:"1px solid rgba(251,191,36,.3)",borderRadius:"11px",padding:"12px",marginBottom:"14px",fontSize:".82rem",color:"#fde68a",lineHeight:1.7}},
+          "\u26A0\uFE0F Google-Anmeldung ist in der iOS-App leider nicht m\u00f6glich (Apple-Einschr\u00e4nkung). Bitte nutze den \uD83D\uDD11 Sync-Code f\u00fcr iOS."),
         fbUser?h("div",null,
           h("div",{style:{background:"rgba(16,185,129,.1)",border:"1px solid rgba(16,185,129,.25)",borderRadius:"11px",padding:"11px 14px",marginBottom:"14px",display:"flex",alignItems:"center",gap:"10px"}},
             h("span",{style:{fontSize:"1.4rem"}},"\u2705"),
