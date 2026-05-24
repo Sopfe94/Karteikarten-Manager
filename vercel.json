@@ -26,7 +26,8 @@
     }
   ],
   "rewrites": [
-    { "source": "/KM/:path*", "destination": "/:path*" },
-    { "source": "/KM",        "destination": "/index.html" }
+    { "source": "/KM",      "destination": "/index.html" },
+    { "source": "/KM/",     "destination": "/index.html" },
+    { "source": "/KM/:path*", "destination": "/:path*" }
   ]
 }
