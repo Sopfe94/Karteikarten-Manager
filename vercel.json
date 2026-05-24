@@ -25,7 +25,8 @@
       ]
     }
   ],
-  "routes": [
-    { "src": "/(.*)", "dest": "/$1" }
+  "rewrites": [
+    { "source": "/KM/:path*", "destination": "/:path*" },
+    { "source": "/KM",        "destination": "/index.html" }
   ]
 }
