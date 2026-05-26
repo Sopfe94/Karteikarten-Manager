@@ -575,7 +575,19 @@ var _wasRedirect=false;
 if(localStorage.getItem('kkm-gr')){
   _wasRedirect=true;
   localStorage.removeItem('kkm-gr');
-  fbLoad(function(){});
+}
+// Supabase-Prinzip: wenn User schon mal eingeloggt war → Firebase sofort laden
+// und onAuthStateChanged sofort registrieren (nicht erst wenn Modal öffnet)
+if(_wasRedirect||localStorage.getItem('kkm-fb-session')){
+  fbLoad(function(){
+    var auth=fbGetAuth();
+    if(auth){
+      auth.onAuthStateChanged(function(u){
+        _fbUser=u;
+        if(!u) localStorage.removeItem('kkm-fb-session');
+      });
+    }
+  });
 }
 
 var _fbUser = null;
@@ -599,7 +611,11 @@ function SyncModal(p){
     fbLoad(function(){
       var auth=fbGetAuth();
       if(auth){
-        var unsub=auth.onAuthStateChanged(function(u){_fbUser=u;setGoogleUser(u);});
+        var unsub=auth.onAuthStateChanged(function(u){
+          _fbUser=u;setGoogleUser(u);
+          if(u) localStorage.setItem('kkm-fb-session','1');
+          else localStorage.removeItem('kkm-fb-session');
+        });
         return unsub;
       }
     });
@@ -662,7 +678,7 @@ function SyncModal(p){
   }
 
   function handleInterval(val){var s=Object.assign({},syncStore,{interval:parseInt(val)});setSyncStore(s);saveSyncStore(s);}
-  function signOut(){var auth=fbGetAuth();if(auth)auth.signOut();_fbUser=null;setGoogleUser(null);showToast("Abgemeldet.");}
+  function signOut(){var auth=fbGetAuth();if(auth)auth.signOut();_fbUser=null;setGoogleUser(null);localStorage.removeItem('kkm-fb-session');showToast("Abgemeldet.");}
 
   return h("div",{className:"ov",onClick:p.onClose},
     h("div",{className:"modal",style:{maxWidth:"420px"},onClick:function(e){e.stopPropagation();}},
