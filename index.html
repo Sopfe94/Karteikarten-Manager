@@ -575,7 +575,22 @@ var _wasRedirect=false;
 if(localStorage.getItem('kkm-gr')){
   _wasRedirect=true;
   localStorage.removeItem('kkm-gr');
-  fbLoad(function(){});
+}
+// Supabase-Prinzip: wenn User schon mal eingeloggt war → Firebase sofort laden
+// und onAuthStateChanged sofort registrieren (nicht erst wenn Modal öffnet)
+if(_wasRedirect||localStorage.getItem('kkm-fb-session')){
+  fbLoad(function(){
+    var auth=fbGetAuth();
+    if(auth){
+      auth.getRedirectResult().then(function(r){
+        if(r&&r.user){_fbUser=r.user;localStorage.setItem('kkm-fb-session','1');}
+      }).catch(function(){});
+      auth.onAuthStateChanged(function(u){
+        _fbUser=u;
+        if(!u) localStorage.removeItem('kkm-fb-session');
+      });
+    }
+  });
 }
 
 var _fbUser = null;
@@ -599,7 +614,11 @@ function SyncModal(p){
     fbLoad(function(){
       var auth=fbGetAuth();
       if(auth){
-        var unsub=auth.onAuthStateChanged(function(u){_fbUser=u;setGoogleUser(u);});
+        var unsub=auth.onAuthStateChanged(function(u){
+          _fbUser=u;setGoogleUser(u);
+          if(u) localStorage.setItem('kkm-fb-session','1');
+          else localStorage.removeItem('kkm-fb-session');
+        });
         return unsub;
       }
     });
@@ -662,7 +681,7 @@ function SyncModal(p){
   }
 
   function handleInterval(val){var s=Object.assign({},syncStore,{interval:parseInt(val)});setSyncStore(s);saveSyncStore(s);}
-  function signOut(){var auth=fbGetAuth();if(auth)auth.signOut();_fbUser=null;setGoogleUser(null);showToast("Abgemeldet.");}
+  function signOut(){var auth=fbGetAuth();if(auth)auth.signOut();_fbUser=null;setGoogleUser(null);localStorage.removeItem('kkm-fb-session');showToast("Abgemeldet.");}
 
   return h("div",{className:"ov",onClick:p.onClose},
     h("div",{className:"modal",style:{maxWidth:"420px"},onClick:function(e){e.stopPropagation();}},
@@ -1232,7 +1251,130 @@ function DailyStats(){
 
 function PersonalizedHeader(){ return h("div",{className:"personal-header"},h(Greeting,null),h(DailyStats,null)); }
 
+function LoginScreen(p){
+  var ss=useState(_wasRedirect?'loading':'home'); var step=ss[0]; var setStep=ss[1];
+  var ci=useState(''); var codeIn=ci[0]; var setCodeIn=ci[1];
+  var sm=useState(_wasRedirect?'\u23F3 Anmeldung wird abgeschlossen\u2026':''); var msg=sm[0]; var setMsg=sm[1];
+  var ho=useState(false); var showHelp=ho[0]; var setShowHelp=ho[1];
+  var tm=useToast(); var toast=tm[0]; var showToast=tm[1];
+  var isIos=/iPhone|iPad|iPod/.test(navigator.userAgent);
+
+  useEffect(function(){
+    if(_wasRedirect){
+      fbLoad(function(){
+        var auth=fbGetAuth();
+        if(!auth){setStep('home');setMsg('\u274C Firebase konnte nicht geladen werden.');return;}
+        auth.getRedirectResult().then(function(r){
+          if(r&&r.user){
+            _fbUser=r.user;
+            localStorage.setItem('kkm-fb-session','1');
+            localStorage.setItem('kkm-onboarded','1');
+            p.onDone();
+          } else {
+            setStep('home');
+            setMsg('\u26A0\uFE0F Anmeldung fehlgeschlagen. Bitte erneut versuchen.');
+          }
+        }).catch(function(e){setStep('home');setMsg('\u274C '+e.message);});
+      });
+    }
+  },[]);
+
+  function handleGoogle(){
+    fbLoad(function(){
+      var auth=fbGetAuth();
+      if(!auth){showToast('Firebase konnte nicht geladen werden.');return;}
+      setStep('loading');setMsg('\u23F3 Weiterleitung zu Google\u2026');
+      var provider=new firebase.auth.GoogleAuthProvider();
+      localStorage.setItem('kkm-gr','1');
+      auth.signInWithRedirect(provider).catch(function(e){
+        localStorage.removeItem('kkm-gr');
+        setStep('home');setMsg('\u274C '+e.message);
+      });
+    });
+  }
+
+  function handleGuest(){
+    localStorage.setItem('kkm-onboarded','1');
+    p.onDone();
+  }
+
+  function handleCode(){
+    var code=codeIn.trim();
+    if(code.length<10){showToast('Code muss mind. 10 Zeichen haben.');return;}
+    setStep('loading');setMsg('\u23F3 Synchronisiere\u2026');
+    fsSync(code,loadStore()).then(function(merged){
+      if(merged&&merged.collision){setStep('code');setMsg('\u26A0\uFE0F Dieser Code geh\u00f6rt jemand anderem.');return;}
+      saveStore(merged);
+      if(p.onDataLoaded)p.onDataLoaded(merged);
+      localStorage.setItem('kkm-onboarded','1');
+      p.onDone();
+    }).catch(function(e){setStep('code');setMsg('\u274C '+e.message);});
+  }
+
+  var S={
+    wrap:{position:'fixed',inset:0,zIndex:9998,background:'#0f0d1e',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px 24px'},
+    logo:{width:90,height:90,borderRadius:20,marginBottom:16},
+    title:{fontSize:'1.5rem',fontWeight:900,color:'#fff',marginBottom:4,textAlign:'center'},
+    sub:{fontSize:'.85rem',color:'rgba(255,255,255,.45)',marginBottom:36,textAlign:'center'},
+    btn:{width:'100%',maxWidth:320,padding:'14px 20px',borderRadius:14,border:'none',cursor:'pointer',fontSize:'1rem',fontWeight:700,marginBottom:12,display:'flex',alignItems:'center',gap:12,justifyContent:'center'},
+    btnG:{background:'linear-gradient(135deg,#a855f7,#7c3aed)',color:'#fff'},
+    btnC:{background:'rgba(255,255,255,.07)',color:'#fff',border:'1.5px solid rgba(255,255,255,.15)'},
+    btnGst:{background:'transparent',color:'rgba(255,255,255,.45)',border:'1.5px solid rgba(255,255,255,.1)'},
+    msg:{fontSize:'.82rem',color:'#fbbf24',textAlign:'center',marginTop:8,maxWidth:300},
+    back:{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'.82rem',cursor:'pointer',marginTop:16},
+    spinner:{width:40,height:40,border:'4px solid rgba(168,85,247,.2)',borderTop:'4px solid #a855f7',borderRadius:'50%',animation:'spin 1s linear infinite',marginBottom:20}
+  };
+
+  if(step==='loading') return h('div',{style:S.wrap},
+    h('div',{style:S.spinner}),
+    h('div',{style:{color:'rgba(255,255,255,.6)',fontSize:'.9rem',textAlign:'center'}},msg)
+  );
+
+  if(step==='code') return h('div',{style:S.wrap},
+    h('img',{src:LOGO,style:S.logo}),
+    h('div',{style:S.title},'Sync-Code eingeben'),
+    h('div',{style:S.sub},'Synchronisiere deine Karten von einem anderen Ger\u00e4t'),
+    h('input',{value:codeIn,onChange:function(e){setCodeIn(e.target.value);},placeholder:'Dein Sync-Code (mind. 10 Zeichen)',style:{width:'100%',maxWidth:320,padding:'13px 16px',borderRadius:12,border:'1.5px solid rgba(255,255,255,.15)',background:'rgba(255,255,255,.07)',color:'#fff',fontSize:'1rem',marginBottom:12,boxSizing:'border-box',outline:'none'}}),
+    h('button',{style:Object.assign({},S.btn,S.btnG),onClick:handleCode},'\u2194 Synchronisieren'),
+    msg&&h('div',{style:S.msg},msg),
+    h('button',{style:S.back,onClick:function(){setStep('home');setMsg('');}},'\u2190 Zur\u00fcck')
+  );
+
+  return h('div',{style:S.wrap},
+    showHelp&&h('div',{onClick:function(){setShowHelp(false);},style:{position:'fixed',inset:0,zIndex:10000,background:'rgba(0,0,0,.7)',display:'flex',alignItems:'flex-end',justifyContent:'center',padding:'0 0 24px'}},
+      h('div',{onClick:function(e){e.stopPropagation();},style:{background:'#1a1535',borderRadius:'20px 20px 16px 16px',padding:'28px 24px',maxWidth:360,width:'100%',color:'#fff'}},
+        h('div',{style:{fontWeight:900,fontSize:'1.1rem',marginBottom:20,textAlign:'center'}},'\u2139\uFE0F Anmeldeoptionen'),
+        h('div',{style:{marginBottom:16}},
+          h('div',{style:{fontWeight:700,color:'#a855f7',marginBottom:4}},'\uD83D\uDD10 Mit Google anmelden'),
+          h('div',{style:{fontSize:'.84rem',color:'rgba(255,255,255,.6)',lineHeight:1.6}},'Melde dich mit deinem Google-Konto an. Deine Karten werden automatisch in der Cloud gespeichert und ger\u00e4te\u00fcbergreifend synchronisiert. Auf iOS leider nicht verf\u00fcgbar.')
+        ),
+        h('div',{style:{marginBottom:16}},
+          h('div',{style:{fontWeight:700,color:'#38bdf8',marginBottom:4}},'\uD83D\uDD22 Mit Sync-Code anmelden'),
+          h('div',{style:{fontSize:'.84rem',color:'rgba(255,255,255,.6)',lineHeight:1.6}},'Gib einen selbst gew\u00e4hlten Code ein (mind. 10 Zeichen). Derselbe Code auf mehreren Ger\u00e4ten h\u00e4lt deine Karten synchron. Funktioniert auf allen Ger\u00e4ten \u2013 auch iOS.')
+        ),
+        h('div',{style:{marginBottom:20}},
+          h('div',{style:{fontWeight:700,color:'rgba(255,255,255,.5)',marginBottom:4}},'\uD83D\uDC64 Als Gast fortfahren'),
+          h('div',{style:{fontSize:'.84rem',color:'rgba(255,255,255,.4)',lineHeight:1.6}},'Nutze die App ohne Anmeldung. Deine Karten werden lokal auf diesem Ger\u00e4t gespeichert. Eine Synchronisierung ist sp\u00e4ter \u00fcber das Sync-Men\u00fc m\u00f6glich.')
+        ),
+        h('button',{onClick:function(){setShowHelp(false);},style:Object.assign({},S.btn,S.btnG,{marginBottom:0})},'\u2713 Verstanden')
+      )
+    ),
+    h('button',{onClick:function(){setShowHelp(true);},style:{position:'absolute',top:20,right:20,width:32,height:32,borderRadius:'50%',border:'1.5px solid rgba(255,255,255,.2)',background:'rgba(255,255,255,.07)',color:'rgba(255,255,255,.5)',fontSize:'1rem',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700}},'?'),
+    h('img',{src:LOGO,style:S.logo}),
+    h('div',{style:S.title},'Karteikarten Manager'),
+    h('div',{style:S.sub},'Wie m\u00f6chtest du starten?'),
+    isIos&&h('div',{style:{fontSize:'.78rem',color:'#fbbf24',background:'rgba(251,191,36,.1)',border:'1px solid rgba(251,191,36,.25)',borderRadius:10,padding:'8px 14px',marginBottom:12,maxWidth:320,textAlign:'center',lineHeight:1.5}},'\u26A0\uFE0F Google-Anmeldung auf iOS nicht verf\u00fcgbar. Bitte Sync-Code verwenden.'),
+    !isIos&&h('button',{style:Object.assign({},S.btn,S.btnG),onClick:handleGoogle},'\uD83D\uDD10 Mit Google anmelden'),
+    h('button',{style:Object.assign({},S.btn,S.btnC),onClick:function(){setStep('code');setMsg('');}},'\uD83D\uDD22 Mit Sync-Code anmelden'),
+    h('button',{style:Object.assign({},S.btn,S.btnGst),onClick:handleGuest},'\uD83D\uDC64 Als Gast fortfahren'),
+    msg&&h('div',{style:S.msg},msg)
+  );
+}
+
 function App(){
+  var _kkOpenCount=parseInt(localStorage.getItem('kkm-open-count')||'0')+1;
+  localStorage.setItem('kkm-open-count',String(_kkOpenCount));
+  var slo=useState(!localStorage.getItem('kkm-onboarded')&&_kkOpenCount<=2); var showLogin=slo[0]; var setShowLogin=slo[1];
   var ds=useState(function(){return loadStore();}); var data=ds[0]; var setData=ds[1];
   var vs=useState("decks"); var view=vs[0]; var setView=vs[1];
   var dis=useState(null); var deckId=dis[0]; var setDeckId=dis[1];
@@ -1271,7 +1413,8 @@ function App(){
       var isNew=d.current.version!==us2.installed; var isDismissed=d.current.version===us2.dismissed;
       if(isNew&&!isDismissed){setPendingUpd(d.current);setShowUpdOverlay(true);}
     }).catch(function(){if(us.cachedUpdate)setUpdData(us.cachedUpdate);});
-    if(_wasRedirect){setShowSync(true);}
+    if(showLogin&&_wasRedirect){setShowLogin(false);}
+    if(!showLogin&&_wasRedirect){setShowSync(true);}
   },[]);
   useEffect(function(){
     saveStore(data);
@@ -1344,6 +1487,10 @@ function App(){
           h("div",{className:"add-deck",onClick:function(){setShowNew(true);}},h("div",{style:{fontSize:"2rem"}},"\u2728"),"Neuer Stapel"))));
   }
 
+  if(showLogin) return h(LoginScreen,{
+    onDone:function(){setShowLogin(false);},
+    onDataLoaded:function(d){setData(d);}
+  });
   return h("div",{style:{minHeight:"100vh",background:"var(--c-bg)"}},
     h("header",{className:"hdr"},
       h("div",{className:"logo-wrap",onClick:function(){setView("decks");setDeckId(null);setDeckListMode("home");}},h("img",{className:"logo-img",src:LOGO,alt:"Logo"})),
