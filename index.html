@@ -354,12 +354,12 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .fach-empty{text-align:center;padding:1.2rem 0;color:rgba(255,255,255,.35)}
 
 .kalender-wrap{padding:0 16px 100px}
-.kal-add-btn{width:100%;padding:13px;border-radius:16px;border:none;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:.95rem;font-weight:700;cursor:pointer;margin-bottom:18px;display:flex;align-items:center;justify-content:center;gap:8px}
+.kal-add-btn{width:100%;padding:13px;border-radius:16px;border:1.5px solid rgba(139,92,246,.4);background:linear-gradient(135deg,rgba(124,58,237,.4),rgba(37,99,235,.4));color:#fff;font-size:.95rem;font-weight:700;cursor:pointer;margin-bottom:18px;display:flex;align-items:center;justify-content:center;gap:8px;backdrop-filter:blur(8px)}
 .kal-empty{text-align:center;padding:3rem 1rem;color:rgba(255,255,255,.3);font-size:.88rem}
 .kal-group-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.4);margin:18px 0 8px}
-.kal-item{background:var(--c-card);border-radius:16px;padding:14px 16px;margin-bottom:10px;border:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:14px}
-.kal-item.overdue{border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.07)}
-.kal-item.today{border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.07)}
+.kal-item{background:var(--c-card);border-radius:16px;padding:14px 16px;margin-bottom:10px;border:1px solid rgba(139,92,246,.3);display:flex;align-items:center;gap:14px;box-shadow:0 4px 20px rgba(139,92,246,.25),0 0 10px rgba(139,92,246,.1);transition:box-shadow .2s}
+.kal-item.overdue{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.07);box-shadow:0 2px 16px rgba(239,68,68,.18)}
+.kal-item.today{border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.07);box-shadow:0 2px 20px rgba(251,191,36,.22)}
 .kal-date-box{min-width:46px;height:52px;border-radius:12px;background:rgba(139,92,246,.18);border:1px solid rgba(139,92,246,.3);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0}
 .kal-day{font-size:1.2rem;font-weight:900;color:#a78bfa;line-height:1}
 .kal-month{font-size:.6rem;font-weight:700;color:rgba(167,139,250,.7);text-transform:uppercase}
@@ -369,8 +369,47 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .kal-type-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:.62rem;font-weight:700}
 .kal-del{background:none;border:none;color:rgba(255,255,255,.25);cursor:pointer;font-size:1.1rem;padding:4px;flex-shrink:0}
 .kal-modal-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
-.kal-modal{background:#1a1535;border-radius:24px 24px 0 0;padding:24px 20px 32px;width:100%;max-width:500px}
+.kal-modal{background:linear-gradient(180deg,#1e1545,#140f2e);border-radius:24px 24px 0 0;padding:24px 20px 32px;width:100%;max-width:500px;border-top:1px solid rgba(139,92,246,.3)}
 .kal-modal-title{font-size:1.05rem;font-weight:900;color:#fff;margin-bottom:18px;text-align:center}
+
+.settings-wrap{padding:0 16px 100px}
+.settings-section{margin-bottom:28px}
+.settings-section-title{font-size:.72rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;background:linear-gradient(135deg,#fff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid rgba(139,92,246,.2)}
+.settings-row{background:var(--c-card);border-radius:16px;padding:16px;margin-bottom:10px;border:1px solid rgba(255,255,255,.07)}
+.settings-row-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.settings-row-label{font-size:.9rem;font-weight:700;color:#fff}
+.settings-q-btn{width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);color:rgba(255,255,255,.5);font-size:.72rem;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.settings-slider-wrap{position:relative;padding:8px 0}
+.settings-slider{width:100%;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;background:linear-gradient(to right,#7c3aed var(--pct),rgba(255,255,255,.12) var(--pct));outline:none;cursor:pointer}
+.settings-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#a78bfa,#7c3aed);cursor:pointer;box-shadow:0 2px 8px rgba(139,92,246,.5),0 0 0 3px rgba(139,92,246,.2)}
+.settings-slider::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#a78bfa,#7c3aed);cursor:pointer;border:none;box-shadow:0 2px 8px rgba(139,92,246,.5)}
+.settings-slider-val{text-align:center;font-size:1.4rem;font-weight:900;background:linear-gradient(135deg,#a78bfa,#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:4px}
+.settings-slider-sub{text-align:center;font-size:.72rem;color:rgba(255,255,255,.4);font-weight:600}
+.settings-arten-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.settings-art-btn{padding:10px 8px;border-radius:12px;border:1.5px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:rgba(255,255,255,.5);font-size:.8rem;font-weight:700;cursor:pointer;text-align:center;transition:.15s}
+.settings-art-btn.sel{background:rgba(139,92,246,.2);border-color:rgba(139,92,246,.6);color:#c4b5fd}
+.settings-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:24px}
+.settings-overlay-box{background:#1a1535;border-radius:20px;padding:24px;max-width:340px;width:100%;border:1px solid rgba(139,92,246,.3)}
+.settings-overlay-title{font-size:1rem;font-weight:900;color:#fff;margin-bottom:12px}
+.settings-overlay-text{font-size:.83rem;color:rgba(255,255,255,.65);line-height:1.65}
+
+.lernempf-overlay{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.lernempf-modal{background:#1a1535;border-radius:24px;padding:22px 20px;width:100%;max-width:400px;border:1px solid rgba(139,92,246,.4);box-shadow:0 20px 60px rgba(139,92,246,.35),0 0 0 1px rgba(139,92,246,.15);max-height:88vh;overflow-y:auto}
+.lernempf-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.35);border-radius:20px;padding:4px 12px;font-size:.68rem;font-weight:700;color:#fbbf24;margin-bottom:12px}
+.lernempf-title{font-size:1.05rem;font-weight:900;color:#fff;margin-bottom:14px}
+.lernempf-exam{border-radius:14px;padding:12px;margin-bottom:8px}
+.lernempf-exam-hdr{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.lernempf-exam-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.lernempf-exam-name{font-size:.88rem;font-weight:800;color:#fff}
+.lernempf-exam-meta{font-size:.63rem;color:rgba(255,255,255,.45);margin-top:2px;display:flex;align-items:center;gap:4px}
+.lernempf-type-badge{display:inline-block;padding:2px 7px;border-radius:5px;font-size:.58rem;font-weight:700}
+.lernempf-deck{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border-radius:10px;padding:7px 10px;margin-bottom:4px}
+.lernempf-deck-name{font-size:.78rem;font-weight:700;color:#fff;flex:1}
+.lernempf-deck-pct{font-size:.62rem;color:#a78bfa;font-weight:700}
+.lernempf-btns{display:flex;gap:8px;margin-top:12px}
+.lernempf-btn-p{flex:2;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-weight:700;font-size:.88rem;cursor:pointer}
+.lernempf-btn-s{flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:rgba(255,255,255,.45);font-size:.82rem;cursor:pointer}
 </style>
 </head>
 <body><!-- KKM-v1.1.17-AKTUELL -->
@@ -453,7 +492,10 @@ function advance(card,knew){
 function loadStore(){
   try{
     var r=localStorage.getItem(STORE_KEY);
-    var s=r?JSON.parse(r):{decks:[],folders:[],reminder:null,arbeiten:[]};if(!s.arbeiten)s.arbeiten=[];
+    var s=r?JSON.parse(r):{decks:[],folders:[],reminder:null,arbeiten:[],settings:{lernTage:7,lernArten:['Klausur','Test']}};
+    if(!s.arbeiten)s.arbeiten=[];
+    if(!s.settings)s.settings={lernTage:7,lernArten:['Klausur','Test']};
+    if(s.settings.lernArten===undefined)s.settings.lernArten=['Klausur','Test'];
     if(!s.folders) s.folders=[];
     return s;
   }catch(e){ return {decks:[],folders:[],reminder:null}; }
@@ -524,6 +566,8 @@ function HamburgerMenu(p){
         h("span",null,"\uD83D\uDD14"),h("span",null,"Erinnerung")),
       h("button",{className:"menu-item"+(p.view==="kalender"?" mact":""),onClick:function(){p.onNav("kalender");}},
         h("span",null,"\uD83D\uDCC5"),h("span",null,"Kalender")),
+      h("button",{className:"menu-item"+(p.view==="einstellungen"?" mact":""),onClick:function(){p.onNav("einstellungen");}},
+        h("span",null,"\u2699\uFE0F"),h("span",null,"Einstellungen")),
       h("div",{className:"menu-sep"}),
       h("button",{className:"menu-item",onClick:function(){p.onSync();p.onClose();}},h("span",null,"\u2601\uFE0F"),h("span",null,"App synchronisieren")),
       h("button",{className:"menu-item",onClick:function(){p.onHelp();p.onClose();}},h("span",null,"?"),h("span",null,"Hilfe")),
@@ -1060,9 +1104,15 @@ function KalenderView(p){
   }
 
   return h('div',null,
-    h('div',{className:'pg-title'},'Kalender'),
+    h('div',{className:'pg-title',style:{background:'linear-gradient(135deg,#fff,#a78bfa)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}},'Kalender'),
     h('div',{className:'kalender-wrap'},
-      h('button',{className:'kal-add-btn',onClick:function(){setShowAdd(true);}},'\u2795 Neue Arbeit eintragen'),
+      h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px'}},
+        h('div',null,
+          h('div',{style:{fontSize:'.72rem',fontWeight:700,color:'rgba(255,255,255,.4)',letterSpacing:'.08em',textTransform:'uppercase'}},new Date().toLocaleDateString('de-DE',{month:'long',year:'numeric'})),
+          h('div',{style:{fontSize:'1.1rem',fontWeight:900,background:'linear-gradient(135deg,#fff,#a78bfa)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}},arbeiten.length+' '+(arbeiten.length===1?'Termin':'Termine'))
+        ),
+        h('button',{className:'kal-add-btn',style:{width:'auto',padding:'10px 18px',margin:0},onClick:function(){setShowAdd(true);}},h('span',{style:{color:'#fff',fontWeight:900}},'+ '),'Neu')
+      ),
       arbeiten.length===0&&h('div',{className:'kal-empty'},
         h('div',{style:{fontSize:'2rem',marginBottom:8}},'\uD83D\uDCC5'),
         'Noch keine Arbeiten eingetragen.'
@@ -1079,7 +1129,7 @@ function KalenderView(p){
           h('div',{className:'fg'},h('label',{className:'fl'},'Art'),
             h('select',{className:'fi',value:form.type,onChange:function(e){setForm(Object.assign({},form,{type:e.target.value}));}},
               TYPES.map(function(t){return h('option',{key:t,value:t},t);}))),
-          folders.length>0&&h('div',{className:'fg'},h('label',{className:'fl'},'Fach'),
+          h('div',{className:'fg'},h('label',{className:'fl'},'Fach'),
             h('select',{className:'fi',value:form.fachId,onChange:function(e){setForm(Object.assign({},form,{fachId:e.target.value}));}},
               h('option',{value:''},'Kein Fach'),
               folders.map(function(f){return h('option',{key:f.id,value:f.id},f.emoji+' '+f.name);}))),
@@ -1091,6 +1141,78 @@ function KalenderView(p){
           ),
           h(Toast,{msg:toast})
         )
+      )
+    )
+  );
+}
+
+
+function EinstellungenView(p){
+  var sets=p.settings||{lernTage:7,lernArten:['Klausur','Test']};
+  var qs=useState(false);var showQ=qs[0];var setShowQ=qs[1];
+  var ALL_ARTEN=['Klausur','Test','Hausaufgabe','Referat','Pr\u00e4sentation','Sonstiges'];
+  var pct=Math.round((sets.lernTage-1)/29*100);
+
+  function toggleArt(art){
+    var cur=sets.lernArten||[];
+    var next=cur.includes(art)?cur.filter(function(a){return a!==art;}):[].concat(cur,[art]);
+    p.onChange(Object.assign({},sets,{lernArten:next}));
+  }
+
+  return h('div',null,
+    h('div',{className:'pg-title',style:{background:'linear-gradient(135deg,#fff,#a78bfa)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}},'Einstellungen'),
+    h('div',{className:'settings-wrap'},
+
+      h('div',{className:'settings-section'},
+        h('div',{className:'settings-section-title'},'\ud83d\udca1 Lernempfehlung'),
+
+        h('div',{className:'settings-row'},
+          h('div',{className:'settings-row-hdr'},
+            h('span',{className:'settings-row-label'},'Zeitintervall zum Lernen'),
+            h('button',{className:'settings-q-btn',onClick:function(){setShowQ(true);}},'?')
+          ),
+          h('div',{className:'settings-slider-val'},sets.lernTage+' '+(sets.lernTage===1?'Tag':'Tage')),
+          h('div',{className:'settings-slider-sub'},'vor dem Termin'),
+          h('div',{className:'settings-slider-wrap'},
+            h('input',{className:'settings-slider',type:'range',min:1,max:30,value:sets.lernTage,
+              style:{'--pct':pct+'%'},
+              onInput:function(e){p.onChange(Object.assign({},sets,{lernTage:parseInt(e.target.value)}));}})
+          ),
+          h('div',{style:{display:'flex',justifyContent:'space-between',fontSize:'.65rem',color:'rgba(255,255,255,.3)',fontWeight:600,marginTop:4}},
+            h('span','1 Tag'),h('span','15 Tage'),h('span','30 Tage')
+          )
+        ),
+
+        h('div',{className:'settings-row'},
+          h('div',{className:'settings-row-hdr'},
+            h('span',{className:'settings-row-label'},'Lernempfehlung bei'),
+            h('span',{style:{fontSize:'.72rem',color:'rgba(255,255,255,.35)',fontWeight:600}},(sets.lernArten||[]).length+' ausgew\u00e4hlt')
+          ),
+          h('div',{className:'settings-arten-grid'},
+            ALL_ARTEN.map(function(art){
+              var sel=(sets.lernArten||[]).includes(art);
+              return h('button',{key:art,className:'settings-art-btn'+(sel?' sel':''),onClick:function(){toggleArt(art);}},
+                sel?'\u2713 '+art:art
+              );
+            })
+          )
+        )
+      )
+    ),
+
+    showQ&&h('div',{className:'settings-overlay',onClick:function(){setShowQ(false);}},
+      h('div',{className:'settings-overlay-box',onClick:function(e){e.stopPropagation();}},
+        h('div',{className:'settings-overlay-title'},'\uD83D\uDCA1 Wie funktioniert die Lernempfehlung?'),
+        h('div',{className:'settings-overlay-text'},
+          'Wenn du im Kalender einen Termin (z.B. eine Klausur) eintr\u00e4gst und dem Termin ein Fach zuordnest, pr\u00fcft die App beim \u00d6ffnen automatisch:',
+          h('br',null),h('br',null),
+          '\u2022 Gibt es in den n\u00e4chsten ',h('strong',{style:{color:'#a78bfa'}},sets.lernTage+' Tagen'),' einen passenden Termin?',
+          h('br',null),
+          '\u2022 Hat dieses Fach Lernstapel?',
+          h('br',null),h('br',null),
+          'Wenn ja, erscheint auf der Startseite eine \u26a1\uFE0F Lernempfehlung mit direktem Link zum Stapel.'
+        ),
+        h('button',{style:{marginTop:16,width:'100%',padding:'10px',borderRadius:12,border:'none',background:'linear-gradient(135deg,#7c3aed,#2563eb)',color:'#fff',fontWeight:700,cursor:'pointer'},onClick:function(){setShowQ(false);}},'\u2713 Verstanden')
       )
     )
   );
@@ -1342,7 +1464,38 @@ function FaecherCarousel(p){
 }
 
 
+
+var LERNEMPF_COLORS=[
+  {bg:'linear-gradient(135deg,rgba(139,92,246,.2),rgba(59,130,246,.15))',border:'rgba(139,92,246,.4)',icon:'rgba(139,92,246,.35)'},
+  {bg:'linear-gradient(135deg,rgba(59,130,246,.18),rgba(16,185,129,.12))',border:'rgba(59,130,246,.35)',icon:'rgba(59,130,246,.3)'},
+  {bg:'linear-gradient(135deg,rgba(16,185,129,.15),rgba(5,150,105,.1))',border:'rgba(16,185,129,.35)',icon:'rgba(16,185,129,.3)'}
+];
+var LERNEMPF_TYPE_COLORS={'Klausur':'#f87171','Test':'#fb923c','Hausaufgabe':'#60a5fa','Referat':'#c4b5fd','Pr\u00e4sentation':'#34d399','Sonstiges':'rgba(255,255,255,.4)'};
+
+function buildLernEmpfehlungen(data){
+  var settings=data.settings||{lernTage:7,lernArten:['Klausur','Test']};
+  var lernTage=settings.lernTage||7;
+  var lernArten=settings.lernArten||['Klausur','Test'];
+  var today=new Date(); today.setHours(0,0,0,0);
+  var maxDate=new Date(today); maxDate.setDate(maxDate.getDate()+lernTage);
+  var result=[];
+  (data.arbeiten||[]).forEach(function(a){
+    if(!lernArten.includes(a.type)) return;
+    if(!a.fachId) return;
+    var d=new Date(a.date+'T00:00:00'); d.setHours(0,0,0,0);
+    if(d<today||d>maxDate) return;
+    var fachDecks=(data.decks||[]).filter(function(dk){return dk.folderId===a.fachId;});
+    if(!fachDecks.length) return;
+    var fach=(data.folders||[]).find(function(f){return f.id===a.fachId;});
+    var days=Math.ceil((d-today)/(1000*60*60*24));
+    result.push({arbeit:a,fach:fach,decks:fachDecks,daysUntil:days});
+  });
+  result.sort(function(a,b){return a.daysUntil-b.daysUntil;});
+  return result.slice(0,3);
+}
+
 function App(){
+
   var _kkOC=parseInt(localStorage.getItem('kkm-open-count')||'0')+1;localStorage.setItem('kkm-open-count',String(_kkOC));
   var slo=useState(!localStorage.getItem('kkm-onboarded'));var showLogin=slo[0];var setShowLogin=slo[1];
   var fms=useState(null);var fachMenu=fms[0];var setFachMenu=fms[1];
@@ -1363,6 +1516,8 @@ function App(){
   var dgs=useState(!dsgvoAccepted()); var showDsgvo=dgs[0]; var setShowDsgvo=dgs[1];
   var sys=useState(false); var showSync=sys[0]; var setShowSync=sys[1];
   var dlms=useState("home"); var deckListMode=dlms[0]; var setDeckListMode=dlms[1];
+  var les=useState([]); var lernEmpf=les[0]; var setLernEmpf=les[1];
+  var lss=useState(false); var showLernEmpf=lss[0]; var setShowLernEmpf=lss[1];
   var sfns=useState(false); var showNewFolder=sfns[0]; var setShowNewFolder=sfns[1];
   var efs=useState(null); var editFolder=efs[0]; var setEditFolder=efs[1];
   var qss=useState(null); var qsStep=qss[0]; var setQsStep=qss[1];
@@ -1456,8 +1611,48 @@ function App(){
           h("div",{className:"add-deck",onClick:function(){setShowNew(true);}},h("div",{style:{fontSize:"2rem"}},"\u2728"),"Neuer Stapel"))));
   }
 
+  var _le=lernEmpf;
+  var _leOverlay=showLernEmpf&&_le.length>0?h('div',{className:'lernempf-overlay',onClick:function(){setShowLernEmpf(false);}},
+      h('div',{className:'lernempf-modal',onClick:function(e){e.stopPropagation();}},
+        h('div',{className:'lernempf-badge'},'⚡️ '+(_le.length>1?_le.length+' Lernempfehlungen':'Lernempfehlung')),
+        h('div',{className:'lernempf-title'},'Bald anstehende Prüfungen'),
+        _le.map(function(item,i){
+          var col=LERNEMPF_COLORS[i%LERNEMPF_COLORS.length];
+          var tc=LERNEMPF_TYPE_COLORS[item.arbeit.type]||'rgba(255,255,255,.4)';
+          return h('div',{key:item.arbeit.id,className:'lernempf-exam',style:{background:col.bg,border:'1px solid '+col.border}},
+            h('div',{className:'lernempf-exam-hdr'},
+              h('div',{className:'lernempf-exam-icon',style:{background:col.icon}},item.fach?item.fach.emoji:'\ud83d\udcda'),
+              h('div',null,
+                h('div',{className:'lernempf-exam-name'},item.arbeit.title),
+                h('div',{className:'lernempf-exam-meta'},
+                  h('span',{className:'lernempf-type-badge',style:{background:tc+'22',color:tc,border:'1px solid '+tc}},item.arbeit.type),
+                  h('span',null,'in '+item.daysUntil+(item.daysUntil===1?' Tag':' Tagen'))
+                )
+              )
+            ),
+            item.decks.slice(0,2).map(function(dk){
+              var dkPct=(dk.cards||[]).length>0?Math.round((dk.cards||[]).filter(function(c){return c.box>0;}).length/(dk.cards||[]).length*100):0;
+              return h('div',{key:dk.id,className:'lernempf-deck'},
+                h('span',{style:{fontSize:'1rem'}},dk.emoji),
+                h('span',{className:'lernempf-deck-name'},dk.name),
+                h('span',{className:'lernempf-deck-pct'},dkPct+'%')
+              );
+            })
+          );
+        }),
+        h('div',{className:'lernempf-btns'},
+          h('button',{className:'lernempf-btn-p',onClick:function(){
+            setShowLernEmpf(false);
+            if(_le[0]&&_le[0].decks[0]){setView('decks');setDeckId(_le[0].decks[0].id);setDeckListMode('manage');}
+          }},'\ud83d\ude80 Jetzt lernen'),
+          h('button',{className:'lernempf-btn-s',onClick:function(){setShowLernEmpf(false);}},'⏰ Später')
+        )
+      )
+    ):null;
+
   if(showLogin)return h(LoginScreen,{onDone:function(){setShowLogin(false);},onDataLoaded:function(d){setData(d);}});
   return h("div",{style:{minHeight:"100vh",background:"var(--c-bg)"}},
+      showLernEmpf&&lernEmpf.length>0&&_leOverlay,
     h("header",{className:"hdr"},
       h("div",{className:"logo-wrap",onClick:function(){setView("decks");setDeckId(null);setDeckListMode("home");}},
         h("img",{className:"logo-img",src:LOGO,alt:"Logo"}),
@@ -1498,6 +1693,7 @@ function App(){
       view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck}),
       qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs}),
       view==="reminder"&&!qsStep&&h("div",null,h(ReminderView,{reminder:data.reminder,decks:decks,onBack:function(){setView("decks");setDeckListMode("home");},onSave:function(r){patch({reminder:r});}}),renderFooter()),
+      view==="einstellungen"&&!qsStep&&h("div",null,h(EinstellungenView,{settings:data.settings,onChange:function(s){patch({settings:s});}}),renderFooter()),
       view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}}),renderFooter()),
       view==="updates"&&!qsStep&&h(UpdatesView,{onBack:function(){setView("decks");setDeckListMode("home");},onShowImp:function(){setShowImp(true);},onShowDat:function(){setShowDat(true);}})),
     showNew&&h(DeckModal,{folders:folders,onSave:addDeck,onClose:function(){setShowNew(false);}}),
