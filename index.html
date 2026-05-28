@@ -1024,7 +1024,7 @@ function KalenderView(p){
   function save(){
     if(!form.title.trim()){showToast('Titel eingeben.');return;}
     if(!form.date){showToast('Datum eingeben.');return;}
-    var item=Object.assign({},form,{id:uuid(),title:form.title.trim()});
+    var item=Object.assign({},form,{id:uid(),title:form.title.trim()});
     p.onAdd(item);
     setForm({title:'',date:'',type:'Klausur',fachId:'',note:''});
     setShowAdd(false);
@@ -1459,7 +1459,9 @@ function App(){
   if(showLogin)return h(LoginScreen,{onDone:function(){setShowLogin(false);},onDataLoaded:function(d){setData(d);}});
   return h("div",{style:{minHeight:"100vh",background:"var(--c-bg)"}},
     h("header",{className:"hdr"},
-      h("div",{className:"logo-wrap",onClick:function(){setView("decks");setDeckId(null);setDeckListMode("home");}},h("img",{className:"logo-img",src:LOGO,alt:"Logo"})),
+      h("div",{className:"logo-wrap",onClick:function(){setView("decks");setDeckId(null);setDeckListMode("home");}},
+        h("img",{className:"logo-img",src:LOGO,alt:"Logo"}),
+        h("span",{style:{fontWeight:900,fontSize:"1rem",background:"linear-gradient(135deg,#fff 0%,#a78bfa 50%,#fbbf24 100%)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",lineHeight:1.1,letterSpacing:"-.01em"}},"Karteikarten Manager")),
       h("button",{className:"ham-btn","aria-label":"Men\u00fc",onClick:function(){setShowMenu(true);}},"\u2630")),
     h("main",{className:"main"},
       view==="decks"&&!activeDeck&&!qsStep&&deckListMode==="home"&&h("div",null,
