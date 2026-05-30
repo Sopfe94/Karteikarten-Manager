@@ -410,6 +410,56 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .lernempf-btns{display:flex;gap:8px;margin-top:12px}
 .lernempf-btn-p{flex:2;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-weight:700;font-size:.88rem;cursor:pointer}
 .lernempf-btn-s{flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:rgba(255,255,255,.45);font-size:.82rem;cursor:pointer}
+
+.ls-wrap{padding:0 16px 100px}
+.ls-id-card{background:linear-gradient(155deg,rgba(139,92,246,.22),rgba(37,99,235,.16));border:1px solid rgba(139,92,246,.38);border-radius:20px;padding:18px;margin-bottom:16px;display:flex;align-items:center;gap:14px;position:relative;overflow:hidden}
+.ls-id-card::before{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(139,92,246,.25),transparent 70%)}
+.ls-av{width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#2563eb);display:flex;align-items:center;justify-content:center;font-size:1.5rem;border:2px solid rgba(255,255,255,.15);flex-shrink:0;position:relative;z-index:1}
+.ls-id-info{position:relative;z-index:1}
+.ls-id-name{font-size:1rem;font-weight:900;color:#fff}
+.ls-id-val{font-size:.72rem;color:#a78bfa;font-weight:700;margin-top:3px}
+.ls-copy-btn{display:inline-flex;align-items:center;gap:4px;margin-top:7px;background:rgba(255,255,255,.1);border:none;border-radius:8px;padding:5px 10px;color:rgba(255,255,255,.65);font-size:.68rem;cursor:pointer}
+.ls-planets{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.ls-planet{border-radius:18px;padding:16px 14px;cursor:pointer;transition:transform .15s;position:relative}
+.ls-planet:active{transform:scale(.96)}
+.ls-planet-icon{font-size:1.8rem;margin-bottom:6px}
+.ls-planet-label{font-size:.85rem;font-weight:800;color:#fff}
+.ls-planet-sub{font-size:.63rem;color:rgba(255,255,255,.5);margin-top:2px}
+.ls-planet-badge{display:inline-block;background:#ef4444;border-radius:10px;padding:1px 7px;font-size:.6rem;font-weight:900;color:#fff;margin-top:5px}
+.ls-feed-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:14px}
+.ls-act-item{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+.ls-act-item:last-child{margin-bottom:0}
+.ls-act-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0}
+.ls-act-text{font-size:.78rem;color:rgba(255,255,255,.7);line-height:1.45;flex:1}
+.ls-act-text strong{color:#fff}
+.ls-act-time{font-size:.6rem;color:rgba(255,255,255,.3);flex-shrink:0;margin-top:1px}
+.ls-back{display:flex;align-items:center;gap:8px;background:none;border:none;color:rgba(255,255,255,.5);font-size:.85rem;font-weight:700;cursor:pointer;margin-bottom:16px;padding:0}
+.ls-friend-row{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:.15s}
+.ls-friend-row:active{background:rgba(255,255,255,.09)}
+.ls-fr-av{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.ls-online{display:flex;align-items:center;gap:4px;font-size:.63rem;font-weight:700}
+.ls-dot{width:7px;height:7px;border-radius:50%}
+.ls-share-btn{background:rgba(139,92,246,.2);border:1px solid rgba(139,92,246,.35);border-radius:8px;padding:4px 9px;color:#c4b5fd;font-size:.65rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.ls-req-card{background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.28);border-radius:14px;padding:13px;margin-bottom:10px}
+.ls-group-row{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:14px;margin-bottom:10px;cursor:pointer}
+.ls-group-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.ls-chip{background:rgba(139,92,246,.14);border:1px solid rgba(139,92,246,.25);border-radius:7px;padding:2px 9px;font-size:.65rem;font-weight:700;color:#c4b5fd}
+.ls-shared-item{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:13px;margin-bottom:10px}
+.ls-deck-prev{background:rgba(139,92,246,.12);border:1px solid rgba(139,92,246,.22);border-radius:11px;padding:10px 12px;display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.ls-chal-card{border-radius:16px;padding:15px;margin-bottom:10px}
+.ls-input{width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:11px 14px;color:#fff;font-size:.9rem;outline:none;margin-bottom:10px}
+.ls-input::placeholder{color:rgba(255,255,255,.3)}
+.ls-add-btn{width:100%;padding:11px;border-radius:12px;border:none;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-weight:700;font-size:.88rem;cursor:pointer}
+.ls-dashed{width:100%;padding:11px;border-radius:12px;border:1.5px dashed rgba(139,92,246,.35);background:none;color:rgba(139,92,246,.7);font-size:.85rem;font-weight:700;cursor:pointer;margin-top:8px}
+.ls-loading{text-align:center;padding:3rem 0;color:rgba(255,255,255,.35);font-size:.88rem}
+.ls-spinner{width:32px;height:32px;border:3px solid rgba(139,92,246,.2);border-top-color:#a78bfa;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px}
+
+.ls-hdr-logo{display:flex;align-items:center;gap:10px;cursor:default}
+.ls-hdr-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#1e1060,#2d1b69);display:flex;align-items:center;justify-content:center;font-size:1.2rem;box-shadow:0 0 14px rgba(139,92,246,.6),0 0 0 1.5px rgba(167,139,250,.4)}
+.ls-hdr-title{font-size:1rem;font-weight:900;background:linear-gradient(135deg,#fff 0%,#93c5fd 50%,#fff 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-.01em}
+.ls-hdr-star{-webkit-text-fill-color:initial;filter:drop-shadow(0 0 6px rgba(96,165,250,.9))}
+.menu-item-ls{background:rgba(255,255,255,.06)!important;border:1.5px solid rgba(255,255,255,.25)!important;box-shadow:0 0 14px rgba(255,255,255,.15),0 0 28px rgba(255,255,255,.06)!important;border-radius:14px!important}
+.menu-item-ls:hover,.menu-item-ls:active{background:rgba(255,255,255,.1)!important;box-shadow:0 0 20px rgba(255,255,255,.25)!important}
 </style>
 </head>
 <body><!-- KKM-v1.1.17-AKTUELL -->
@@ -568,6 +618,9 @@ function HamburgerMenu(p){
         h("span",null,"\uD83D\uDCC5"),h("span",null,"Kalender")),
       h("button",{className:"menu-item"+(p.view==="einstellungen"?" mact":""),onClick:function(){p.onNav("einstellungen");}},
         h("span",null,"\u2699\uFE0F"),h("span",null,"Einstellungen")),
+      h("button",{className:"menu-item menu-item-ls"+(p.view==="lernspace"?" mact":""),style:{marginTop:8},onClick:function(){p.onNav("lernspace");}},
+        h("span",{style:{filter:"drop-shadow(0 0 6px rgba(96,165,250,.9))"}},"\ud83c\udf1f"),
+        h("span",{style:{background:"linear-gradient(135deg,#fff,#93c5fd)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",fontWeight:900}},"\ud83c\udf1f Lern Space")),
       h("div",{className:"menu-sep"}),
       h("button",{className:"menu-item",onClick:function(){p.onSync();p.onClose();}},h("span",null,"\u2601\uFE0F"),h("span",null,"App synchronisieren")),
       h("button",{className:"menu-item",onClick:function(){p.onHelp();p.onClose();}},h("span",null,"?"),h("span",null,"Hilfe")),
@@ -1494,6 +1547,288 @@ function buildLernEmpfehlungen(data){
   return result.slice(0,3);
 }
 
+
+var LS_ADJS=['Mathe','Physik','Bio','Deutsch','Chemie','Info','Musik','Sport','Kunst','Geo'];
+var LS_NOUNS=['Ninja','Profi','Star','Guru','Held','Meister','Experte','Ass','Crack','Genie'];
+function getLsId(){
+  var id=localStorage.getItem('kkm-ls-id');
+  if(!id){
+    id=LS_ADJS[Math.floor(Math.random()*10)]+'-'+LS_NOUNS[Math.floor(Math.random()*10)]+'-'+(Math.floor(Math.random()*9000)+1000);
+    localStorage.setItem('kkm-ls-id',id);
+  }
+  return id;
+}
+function lsGet(col,docId){
+  return fetch(FB_BASE+'/'+col+'/'+encodeURIComponent(docId)+'?key='+FB_KEY)
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(doc){
+      if(doc&&doc.fields&&doc.fields.data){try{return JSON.parse(doc.fields.data.stringValue);}catch(e){}}
+      return null;
+    });
+}
+function lsSet(col,docId,data){
+  return fetch(FB_BASE+'/'+col+'/'+encodeURIComponent(docId)+'?key='+FB_KEY,{
+    method:'PATCH',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({fields:{data:{stringValue:JSON.stringify(data)}}})
+  });
+}
+function copyDeckNewIds(deck){
+  var newDeck=Object.assign({},deck,{id:uid()});
+  newDeck.cards=(deck.cards||[]).map(function(c){return Object.assign({},c,{id:uid(),box:0,nextReview:null});});
+  if(newDeck.folders)(newDeck.folders||[]).map(function(f){return Object.assign({},f,{id:uid()});});
+  return newDeck;
+}
+
+function LernSpaceView(p){
+  var MY_ID=getLsId();
+  var pgs=useState('home');var lsPage=pgs[0];var setLsPage=pgs[1];
+  var dts=useState(null);var lsData=dts[0];var setLsData=dts[1];
+  var lds=useState(true);var loading=lds[0];var setLoading=lds[1];
+  var ins=useState('');var inviteId=ins[0];var setInviteId=ins[1];
+  var gns=useState('');var groupName=gns[0];var setGroupName=gns[1];
+  var ges=useState('\uD83C\uDFEB');var groupEmoji=ges[0];var setGroupEmoji=ges[1];
+  var tms=useToast();var toast=tms[0];var showToast=tms[1];
+
+  var defaultData={friends:[],requests:[],groups:[],sharedIncoming:[],challenges:[],activities:[]};
+
+  useEffect(function(){loadData();},[]);
+
+  function loadData(){
+    setLoading(true);
+    lsGet('ls_users',MY_ID).then(function(d){
+      setLsData(d||defaultData);
+      setLoading(false);
+    }).catch(function(){setLsData(defaultData);setLoading(false);});
+  }
+
+  function saveData(d){
+    var next=Object.assign({},lsData,d);
+    setLsData(next);
+    lsSet('ls_users',MY_ID,next).catch(function(){showToast('\u274C Sync-Fehler');});
+  }
+
+  function sendFriendRequest(){
+    var tid=inviteId.trim();
+    if(!tid||tid===MY_ID){showToast('Ung\u00fcltige ID');return;}
+    if((lsData.friends||[]).find(function(f){return f.id===tid;})){showToast('Bereits befreundet');return;}
+    lsGet('ls_users',tid).then(function(td){
+      var tData=td||defaultData;
+      var reqs=[].concat(tData.requests||[]);
+      if(reqs.find(function(r){return r.fromId===MY_ID;})){showToast('Anfrage bereits gesendet');return;}
+      reqs.push({fromId:MY_ID,ts:Date.now()});
+      return lsSet('ls_users',tid,Object.assign({},tData,{requests:reqs}));
+    }).then(function(){
+      showToast('\uD83D\uDCE8 Anfrage gesendet!');
+      setInviteId('');
+    }).catch(function(){showToast('\u274C Fehler beim Senden');});
+  }
+
+  function acceptRequest(req){
+    var newFriends=[].concat(lsData.friends||[],[{id:req.fromId,since:Date.now()}]);
+    var newReqs=(lsData.requests||[]).filter(function(r){return r.fromId!==req.fromId;});
+    var newActs=[{type:'friend',text:req.fromId+' ist jetzt dein Freund',ts:Date.now()}].concat(lsData.activities||[]).slice(0,20);
+    saveData({friends:newFriends,requests:newReqs,activities:newActs});
+    // Add back to their friends list too
+    lsGet('ls_users',req.fromId).then(function(td){
+      if(td){
+        var tf=[].concat(td.friends||[],[{id:MY_ID,since:Date.now()}]);
+        return lsSet('ls_users',req.fromId,Object.assign({},td,{friends:tf}));
+      }
+    }).catch(function(){});
+    showToast('\uD83C\uDF89 Freund hinzugef\u00fcgt!');
+  }
+
+  function declineRequest(req){
+    saveData({requests:(lsData.requests||[]).filter(function(r){return r.fromId!==req.fromId;})});
+  }
+
+  function createGroup(){
+    if(!groupName.trim()){showToast('Name eingeben');return;}
+    var gid=uid();
+    var g={id:gid,name:groupName.trim(),emoji:groupEmoji,members:[MY_ID],deckIds:[],created:Date.now()};
+    lsSet('ls_groups',gid,g).then(function(){
+      var newGroups=[].concat(lsData.groups||[],[gid]);
+      saveData({groups:newGroups});
+      setGroupName('');
+      showToast('\uD83C\uDFEB Gruppe erstellt!');
+    });
+  }
+
+  function shareStackWith(deck,friendId){
+    var copy=copyDeckNewIds(deck);
+    lsGet('ls_users',friendId).then(function(td){
+      var tData=td||defaultData;
+      var inc=[].concat(tData.sharedIncoming||[],[{fromId:MY_ID,deck:copy,ts:Date.now()}]);
+      return lsSet('ls_users',friendId,Object.assign({},tData,{sharedIncoming:inc}));
+    }).then(function(){showToast('\uD83D\uDCE4 Stapel geteilt!');})
+     .catch(function(){showToast('\u274C Fehler beim Teilen');});
+  }
+
+  function acceptShared(item){
+    p.onAddDeck(item.deck);
+    var newInc=(lsData.sharedIncoming||[]).filter(function(x){return x.ts!==item.ts;});
+    saveData({sharedIncoming:newInc});
+    showToast('\u2705 Stapel \u00fcbernommen!');
+  }
+
+  function declineShared(item){
+    saveData({sharedIncoming:(lsData.sharedIncoming||[]).filter(function(x){return x.ts!==item.ts;})});
+  }
+
+  var friends=lsData?lsData.friends||[]:[];
+  var requests=lsData?lsData.requests||[]:[];
+  var groups=lsData?lsData.groups||[]:[];
+  var sharedIncoming=lsData?lsData.sharedIncoming||[]:[];
+  var activities=lsData?lsData.activities||[]:[];
+  var pendingReqs=requests.length;
+  var pendingShared=sharedIncoming.length;
+
+  function renderHome(){
+    return h('div',null,
+      h('div',{className:'ls-id-card'},
+        h('div',{className:'ls-av'},'\uD83E\uDDD1\u200D\uD83C\uDF93'),
+        h('div',{className:'ls-id-info'},
+          h('div',{className:'ls-id-name'},p.userName||'Mein Lern Space'),
+          h('div',{className:'ls-id-val'},'\uD83E\uDE90 '+MY_ID),
+          h('button',{className:'ls-copy-btn',onClick:function(){
+            if(navigator.clipboard)navigator.clipboard.writeText(MY_ID);
+            showToast('\uD83D\uDCCB ID kopiert!');
+          }},'\uD83D\uDCCB ID teilen')
+        )
+      ),
+      h('div',{className:'ls-planets'},
+        h('div',{className:'ls-planet',style:{background:'linear-gradient(135deg,rgba(139,92,246,.3),rgba(109,40,217,.2))',border:'1px solid rgba(139,92,246,.45)'},onClick:function(){setLsPage('friends');}},
+          h('div',{className:'ls-planet-icon'},'\uD83D\uDC65'),
+          h('div',{className:'ls-planet-label'},'Freunde'),
+          h('div',{className:'ls-planet-sub'},friends.length+' verbunden'),
+          pendingReqs>0&&h('div',{className:'ls-planet-badge'},pendingReqs+' neu')
+        ),
+        h('div',{className:'ls-planet',style:{background:'linear-gradient(135deg,rgba(96,165,250,.25),rgba(37,99,235,.15))',border:'1px solid rgba(96,165,250,.4)'},onClick:function(){setLsPage('groups');}},
+          h('div',{className:'ls-planet-icon'},'\uD83C\uDFEB'),
+          h('div',{className:'ls-planet-label'},'Gruppen'),
+          h('div',{className:'ls-planet-sub'},groups.length+' aktiv')
+        ),
+        h('div',{className:'ls-planet',style:{background:'linear-gradient(135deg,rgba(251,191,36,.22),rgba(245,158,11,.12))',border:'1px solid rgba(251,191,36,.38)'},onClick:function(){setLsPage('shared');}},
+          h('div',{className:'ls-planet-icon'},'\uD83D\uDCE5'),
+          h('div',{className:'ls-planet-label'},'Geteilt'),
+          h('div',{className:'ls-planet-sub'},pendingShared>0?pendingShared+' neu':'Keine neuen'),
+          pendingShared>0&&h('div',{className:'ls-planet-badge'},pendingShared+' neu')
+        ),
+        h('div',{className:'ls-planet',style:{background:'linear-gradient(135deg,rgba(248,113,113,.2),rgba(220,38,38,.12))',border:'1px solid rgba(248,113,113,.38)'},onClick:function(){setLsPage('challenges');}},
+          h('div',{className:'ls-planet-icon'},'\u2694\uFE0F'),
+          h('div',{className:'ls-planet-label'},'Duelle'),
+          h('div',{className:'ls-planet-sub'},'Bald verf\u00fcgbar')
+        )
+      ),
+      activities.length>0&&h('div',{className:'ls-feed-card'},
+        h('div',{style:{fontSize:'.7rem',fontWeight:700,color:'rgba(255,255,255,.4)',letterSpacing:'.08em',textTransform:'uppercase',marginBottom:10}},'\uD83C\uDF20 Aktivit\u00e4ten'),
+        activities.slice(0,4).map(function(a,i){
+          return h('div',{key:i,className:'ls-act-item'},
+            h('div',{className:'ls-act-av',style:{background:'rgba(139,92,246,.2)'}},'\uD83D\uDCDA'),
+            h('div',{className:'ls-act-text'},a.text),
+            h('div',{className:'ls-act-time'},new Date(a.ts).toLocaleDateString('de-DE'))
+          );
+        })
+      )
+    );
+  }
+
+  function renderFriends(){
+    return h('div',null,
+      requests.length>0&&h('div',null,
+        h('div',{style:{fontSize:'.7rem',fontWeight:700,color:'rgba(255,255,255,.4)',letterSpacing:'.08em',textTransform:'uppercase',marginBottom:8}},'\uD83D\uDCE8 ANFRAGEN ('+requests.length+')'),
+        requests.map(function(req,i){
+          return h('div',{key:i,className:'ls-req-card'},
+            h('div',{style:{fontSize:'.85rem',fontWeight:700,marginBottom:3}},req.fromId),
+            h('div',{style:{fontSize:'.65rem',color:'rgba(255,255,255,.4)',marginBottom:10}},'m\u00f6chte Freunde werden'),
+            h('div',{style:{display:'flex',gap:8}},
+              h('button',{className:'ls-add-btn',style:{flex:1,padding:'9px',fontSize:'.82rem'},onClick:function(){acceptRequest(req);}},'\u2705 Annehmen'),
+              h('button',{style:{flex:1,padding:'9px',borderRadius:10,border:'1px solid rgba(255,255,255,.12)',background:'none',color:'rgba(255,255,255,.4)',fontSize:'.82rem',cursor:'pointer'},onClick:function(){declineRequest(req);}},'\u274C Ablehnen')
+            )
+          );
+        })
+      ),
+      h('div',{style:{fontSize:'.7rem',fontWeight:700,color:'rgba(255,255,255,.4)',letterSpacing:'.08em',textTransform:'uppercase',marginBottom:10}},'\uD83D\uDC65 FREUNDE ('+friends.length+')'),
+      friends.length===0&&h('div',{style:{textAlign:'center',padding:'1.5rem 0',color:'rgba(255,255,255,.35)',fontSize:'.85rem'}},'Noch keine Freunde \u2013 lade jemanden ein!'),
+      friends.map(function(f,i){
+        return h('div',{key:i,className:'ls-friend-row'},
+          h('div',{className:'ls-fr-av',style:{background:'rgba(139,92,246,.2)'}},'\uD83E\uDDD1\u200D\uD83D\uDCBB'),
+          h('div',{style:{flex:1}},
+            h('div',{style:{fontSize:'.88rem',fontWeight:700,color:'#fff'}},f.id),
+            h('div',{style:{fontSize:'.63rem',color:'rgba(255,255,255,.4)',marginTop:2}},'Freund seit '+new Date(f.since).toLocaleDateString('de-DE'))
+          ),
+          p.decks&&p.decks.length>0&&h('button',{className:'ls-share-btn',onClick:function(){
+            if(p.decks[0])shareStackWith(p.decks[0],f.id);
+          }},'\uD83D\uDCE4 Stapel')
+        );
+      }),
+      h('div',{style:{marginTop:16}},
+        h('div',{style:{fontSize:'.7rem',fontWeight:700,color:'rgba(255,255,255,.4)',letterSpacing:'.08em',textTransform:'uppercase',marginBottom:8}},'\u2709\uFE0F FREUND EINLADEN'),
+        h('input',{className:'ls-input',placeholder:'Lern Space ID eingeben (z.B. Mathe-Ninja-1234)',value:inviteId,onInput:function(e){setInviteId(e.target.value);}}),
+        h('button',{className:'ls-add-btn',onClick:sendFriendRequest},'\uD83D\uDE80 Anfrage senden')
+      )
+    );
+  }
+
+  function renderGroups(){
+    return h('div',null,
+      h('div',{style:{fontSize:'.7rem',fontWeight:700,color:'rgba(255,255,255,.4)',letterSpacing:'.08em',textTransform:'uppercase',marginBottom:10}},'\uD83C\uDFEB MEINE GRUPPEN'),
+      groups.length===0&&h('div',{style:{textAlign:'center',padding:'1.5rem 0',color:'rgba(255,255,255,.35)',fontSize:'.85rem'}},'Noch keine Gruppen'),
+      h('div',{style:{marginTop:16}},
+        h('div',{style:{fontSize:'.7rem',fontWeight:700,color:'rgba(255,255,255,.4)',letterSpacing:'.08em',textTransform:'uppercase',marginBottom:8}},'\u2795 NEUE GRUPPE'),
+        h('input',{className:'ls-input',placeholder:'Gruppenname',value:groupName,onInput:function(e){setGroupName(e.target.value);}}),
+        h('button',{className:'ls-add-btn',onClick:createGroup},'\uD83C\uDFEB Gruppe erstellen')
+      )
+    );
+  }
+
+  function renderShared(){
+    return h('div',null,
+      h('div',{style:{fontSize:'.7rem',fontWeight:700,color:'rgba(255,255,255,.4)',letterSpacing:'.08em',textTransform:'uppercase',marginBottom:10}},'\uD83D\uDCE5 GETEILT MIT DIR ('+sharedIncoming.length+')'),
+      sharedIncoming.length===0&&h('div',{style:{textAlign:'center',padding:'2rem 0',color:'rgba(255,255,255,.35)',fontSize:'.85rem'}},'\uD83D\uDCED Noch nichts geteilt'),
+      sharedIncoming.map(function(item,i){
+        return h('div',{key:i,className:'ls-shared-item'},
+          h('div',{style:{fontSize:'.68rem',color:'rgba(255,255,255,.45)',marginBottom:8}},'Von '+item.fromId),
+          h('div',{className:'ls-deck-prev'},
+            h('span',{style:{fontSize:'1.2rem'}},item.deck.emoji),
+            h('div',null,
+              h('div',{style:{fontSize:'.85rem',fontWeight:700,color:'#fff'}},item.deck.name),
+              h('div',{style:{fontSize:'.62rem',color:'rgba(255,255,255,.4)'}},( item.deck.cards||[]).length+' Karten')
+            )
+          ),
+          h('div',{style:{display:'flex',gap:8}},
+            h('button',{className:'ls-add-btn',style:{flex:1,padding:'9px',fontSize:'.82rem'},onClick:function(){acceptShared(item);}},'\uD83D\uDCE5 \u00DCbernehmen'),
+            h('button',{style:{flex:1,padding:'9px',borderRadius:10,border:'1px solid rgba(255,255,255,.1)',background:'none',color:'rgba(255,255,255,.4)',fontSize:'.82rem',cursor:'pointer'},onClick:function(){declineShared(item);}},'\u274C Ablehnen')
+          )
+        );
+      })
+    );
+  }
+
+  function renderChallenges(){
+    return h('div',null,
+      h('div',{style:{textAlign:'center',padding:'3rem 0'}},
+        h('div',{style:{fontSize:'2.5rem',marginBottom:12}},'\u2694\uFE0F'),
+        h('div',{style:{fontWeight:800,fontSize:'1rem',color:'#fff',marginBottom:6}},'Duelle'),
+        h('div',{style:{fontSize:'.82rem',color:'rgba(255,255,255,.4)'}},'\u2022 Bald verf\u00fcgbar \u2022')
+      )
+    );
+  }
+
+  return h('div',null,
+    h('div',{style:{background:'linear-gradient(135deg,#fff,#a78bfa 60%,#fbbf24)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text',fontWeight:900,fontSize:'1.4rem',padding:'16px 18px 12px'}},'\uD83C\uDF1F Lern Space'),
+    h('div',{className:'ls-wrap'},
+      lsPage!=='home'&&h('button',{className:'ls-back',onClick:function(){setLsPage('home');}},'\u2190 Zur\u00fcck zur \u00DCbersicht'),
+      loading&&lsPage==='home'?h('div',{className:'ls-loading'},h('div',{className:'ls-spinner'}),h('div',null,'Lade Lern Space\u2026'))
+      :lsPage==='home'?renderHome()
+      :lsPage==='friends'?renderFriends()
+      :lsPage==='groups'?renderGroups()
+      :lsPage==='shared'?renderShared()
+      :renderChallenges()
+    )
+  );
+}
+
 function App(){
 
   var _kkOC=parseInt(localStorage.getItem('kkm-open-count')||'0')+1;localStorage.setItem('kkm-open-count',String(_kkOC));
@@ -1518,6 +1853,14 @@ function App(){
   var dlms=useState("home"); var deckListMode=dlms[0]; var setDeckListMode=dlms[1];
   var les=useState([]); var lernEmpf=les[0]; var setLernEmpf=les[1];
   var lss=useState(false); var showLernEmpf=lss[0]; var setShowLernEmpf=lss[1];
+  useEffect(function(){
+    if(view!=="decks"||deckListMode!=="home")return;
+    var t=setTimeout(function(){
+      var items=buildLernEmpfehlungen(loadStore());
+      if(items.length>0){setLernEmpf(items);setShowLernEmpf(true);}
+    },1000);
+    return function(){clearTimeout(t);};
+  },[view,deckListMode]);
   var sfns=useState(false); var showNewFolder=sfns[0]; var setShowNewFolder=sfns[1];
   var efs=useState(null); var editFolder=efs[0]; var setEditFolder=efs[1];
   var qss=useState(null); var qsStep=qss[0]; var setQsStep=qss[1];
@@ -1654,10 +1997,16 @@ function App(){
   return h("div",{style:{minHeight:"100vh",background:"var(--c-bg)"}},
       showLernEmpf&&lernEmpf.length>0&&_leOverlay,
     h("header",{className:"hdr"},
-      h("div",{className:"logo-wrap",onClick:function(){setView("decks");setDeckId(null);setDeckListMode("home");}},
-        h("img",{className:"logo-img",src:LOGO,alt:"Logo"}),
-        h("span",{style:{fontWeight:900,fontSize:"1rem",background:"linear-gradient(135deg,#fff 0%,#a78bfa 50%,#fbbf24 100%)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",lineHeight:1.1,letterSpacing:"-.01em"}},"Karteikarten Manager")),
-      h("button",{className:"ham-btn","aria-label":"Men\u00fc",onClick:function(){setShowMenu(true);}},"\u2630")),
+      view==="lernspace"
+        ?h("div",{className:"ls-hdr-logo"},
+            h("div",{className:"ls-hdr-icon"},h("span",{style:{filter:"drop-shadow(0 0 6px rgba(96,165,250,.9))"}},"\ud83c\udf1f")),
+            h("span",{className:"ls-hdr-title"},h("span",{className:"ls-hdr-star"},"\ud83c\udf1f "),"Lern Space")
+          )
+        :h("div",{className:"logo-wrap",onClick:function(){setView("decks");setDeckId(null);setDeckListMode("home");}},
+            h("img",{className:"logo-img",src:LOGO,alt:"Logo"}),
+            h("span",{style:{fontWeight:900,fontSize:"1rem",background:"linear-gradient(135deg,#fff 0%,#a78bfa 50%,#fbbf24 100%)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",lineHeight:1.1,letterSpacing:"-.01em"}},"Karteikarten Manager")
+          ),
+      h("button",{className:"ham-btn","aria-label":"Men\u00fc",onClick:function(){setShowMenu(true);}},"☰")),
     h("main",{className:"main"},
       view==="decks"&&!activeDeck&&!qsStep&&deckListMode==="home"&&h("div",null,
         h(PersonalizedHeader,null),
@@ -1694,6 +2043,7 @@ function App(){
       qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs}),
       view==="reminder"&&!qsStep&&h("div",null,h(ReminderView,{reminder:data.reminder,decks:decks,onBack:function(){setView("decks");setDeckListMode("home");},onSave:function(r){patch({reminder:r});}}),renderFooter()),
       view==="einstellungen"&&!qsStep&&h("div",null,h(EinstellungenView,{settings:data.settings,onChange:function(s){patch({settings:s});}}),renderFooter()),
+      view==="lernspace"&&!qsStep&&h("div",null,h(LernSpaceView,{userName:loadStore().userName||"Sophie",decks:decks,folders:folders,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});}}),renderFooter()),
       view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}}),renderFooter()),
       view==="updates"&&!qsStep&&h(UpdatesView,{onBack:function(){setView("decks");setDeckListMode("home");},onShowImp:function(){setShowImp(true);},onShowDat:function(){setShowDat(true);}})),
     showNew&&h(DeckModal,{folders:folders,onSave:addDeck,onClose:function(){setShowNew(false);}}),
