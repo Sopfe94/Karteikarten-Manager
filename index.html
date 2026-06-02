@@ -372,9 +372,9 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .kal-modal{background:linear-gradient(180deg,#1e1545,#140f2e);border-radius:24px 24px 0 0;padding:24px 20px 32px;width:100%;max-width:500px;border-top:1px solid rgba(139,92,246,.3)}
 .kal-modal-title{font-size:1.05rem;font-weight:900;color:#fff;margin-bottom:18px;text-align:center}
 
-.settings-wrap{padding:0 16px 100px}
+.settings-wrap{padding:12px 16px 32px}
 .settings-section{margin-bottom:28px}
-.settings-section-title{font-size:.72rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;background:linear-gradient(135deg,#fff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid rgba(139,92,246,.2)}
+.settings-section-hdr{display:block;width:100%;margin-bottom:14px}.settings-section-label{font-size:.72rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;background:linear-gradient(135deg,#fff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;display:block;margin-bottom:8px}.settings-section-line{display:block;width:100%;height:1px;background:rgba(139,92,246,.2)}
 .settings-row{background:var(--c-card);border-radius:16px;padding:16px;margin-bottom:10px;border:1px solid rgba(255,255,255,.07)}
 .settings-row-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .settings-row-label{font-size:.9rem;font-weight:700;color:#fff}
@@ -618,11 +618,10 @@ function HamburgerMenu(p){
         h("span",null,"\uD83D\uDCC5"),h("span",null,"Kalender")),
       h("button",{className:"menu-item"+(p.view==="einstellungen"?" mact":""),onClick:function(){p.onNav("einstellungen");}},
         h("span",null,"\u2699\uFE0F"),h("span",null,"Einstellungen")),
-      h("button",{className:"menu-item menu-item-ls"+(p.view==="lernspace"?" mact":""),style:{marginTop:8},onClick:function(){p.onNav("lernspace");}},
-        h("span",{style:{filter:"drop-shadow(0 0 6px rgba(96,165,250,.9))"}},"\ud83c\udf1f"),
-        h("span",{style:{background:"linear-gradient(135deg,#fff,#93c5fd)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",fontWeight:900}},"\ud83c\udf1f Lern Space")),
       h("div",{className:"menu-sep"}),
-      h("button",{className:"menu-item",onClick:function(){p.onSync();p.onClose();}},h("span",null,"\u2601\uFE0F"),h("span",null,"App synchronisieren")),
+      h("button",{className:"menu-item menu-item-ls"+(p.view==="lernspace"?" mact":""),style:{marginTop:4},onClick:function(){p.onNav("lernspace");}},
+        h("span",{style:{color:"#fff",filter:"drop-shadow(0 0 8px rgba(255,255,255,.9))"}},"✦"),
+        h("span",{style:{background:"linear-gradient(90deg,#e0d7ff,#a78bfa 35%,#fbbf24)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",fontWeight:900}}," Lern Space")),
       h("button",{className:"menu-item",onClick:function(){p.onHelp();p.onClose();}},h("span",null,"?"),h("span",null,"Hilfe")),
       h("button",{className:"menu-item",onClick:function(){p.onReport();p.onClose();}},h("span",null,"!"),h("span",null,"Problem melden"))));
 }
@@ -1213,11 +1212,11 @@ function EinstellungenView(p){
   }
 
   return h('div',null,
+    h("button",{className:"back-btn",style:{marginBottom:8,marginTop:4},onClick:p.onBack},"← Startseite"),
     h('div',{className:'pg-title',style:{background:'linear-gradient(135deg,#fff,#a78bfa)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}},'Einstellungen'),
     h('div',{className:'settings-wrap'},
-
       h('div',{className:'settings-section'},
-        h('div',{className:'settings-section-title'},'\ud83d\udca1 Lernempfehlung'),
+        h('div',{className:'settings-section-hdr'},h('span',{className:'settings-section-label'},'\ud83d\udca1 Lernempfehlung'),h('span',{className:'settings-section-line'})),
 
         h('div',{className:'settings-row'},
           h('div',{className:'settings-row-hdr'},
@@ -1253,6 +1252,13 @@ function EinstellungenView(p){
       )
     ),
 
+      h('div',{className:'settings-section',style:{marginTop:20}},
+        h('div',{className:'settings-section-hdr'},h('span',{className:'settings-section-label'},'☁️ App synchronisieren'),h('span',{className:'settings-section-line'})),
+        h('div',{className:'settings-row'},
+          h('div',{style:{fontSize:'.83rem',color:'var(--c-dim)',marginBottom:12,lineHeight:1.6}},'Daten mit einem Sync-Code auf mehreren Geräten synchronisieren.'),
+          h('button',{className:'btn btn-p',style:{width:'100%',justifyContent:'center'},onClick:function(){p.onOpenSync&&p.onOpenSync();}},'↔ Sync-Einstellungen öffnen')
+        )
+      ),
     showQ&&h('div',{className:'settings-overlay',onClick:function(){setShowQ(false);}},
       h('div',{className:'settings-overlay-box',onClick:function(e){e.stopPropagation();}},
         h('div',{className:'settings-overlay-title'},'\uD83D\uDCA1 Wie funktioniert die Lernempfehlung?'),
@@ -1647,7 +1653,7 @@ function LernSpaceView(p){
     var gid=uid();
     var g={id:gid,name:groupName.trim(),emoji:groupEmoji,members:[MY_ID],deckIds:[],created:Date.now()};
     lsSet('ls_groups',gid,g).then(function(){
-      var newGroups=[].concat(lsData.groups||[],[gid]);
+      var newGroups=[].concat(lsData.groups||[],[g]);
       saveData({groups:newGroups});
       setGroupName('');
       showToast('\uD83C\uDFEB Gruppe erstellt!');
@@ -1772,16 +1778,26 @@ function LernSpaceView(p){
 
   function renderGroups(){
     return h('div',null,
-      h('div',{style:{fontSize:'.7rem',fontWeight:700,color:'rgba(255,255,255,.4)',letterSpacing:'.08em',textTransform:'uppercase',marginBottom:10}},'\uD83C\uDFEB MEINE GRUPPEN'),
-      groups.length===0&&h('div',{style:{textAlign:'center',padding:'1.5rem 0',color:'rgba(255,255,255,.35)',fontSize:'.85rem'}},'Noch keine Gruppen'),
-      h('div',{style:{marginTop:16}},
-        h('div',{style:{fontSize:'.7rem',fontWeight:700,color:'rgba(255,255,255,.4)',letterSpacing:'.08em',textTransform:'uppercase',marginBottom:8}},'\u2795 NEUE GRUPPE'),
+      h('div',{style:{fontSize:'.7rem',fontWeight:700,color:'rgba(255,255,255,.4)',letterSpacing:'.08em',textTransform:'uppercase',marginBottom:10}},'\ud83c\udfeb MEINE GRUPPEN ('+groups.length+')'),
+      groups.length===0&&h('div',{style:{color:'rgba(255,255,255,.35)',fontSize:'.82rem',marginBottom:8}},'Noch keine Gruppen'),
+      groups.map(function(g,i){
+        return h('div',{key:i,className:'ls-group-row'},
+          h('div',{style:{display:'flex',alignItems:'center',gap:12,marginBottom:8}},
+            h('div',{style:{width:44,height:44,borderRadius:12,background:'rgba(96,165,250,.18)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.3rem',flexShrink:0}},g.emoji||'\ud83c\udfeb'),
+            h('div',null,
+              h('div',{style:{fontSize:'.92rem',fontWeight:800,color:'#fff'}},g.name),
+              h('div',{style:{fontSize:'.63rem',color:'rgba(255,255,255,.45)',marginTop:2}},(g.members||[]).length+' Mitglied(er) · '+(g.deckIds||[]).length+' Stapel')
+            )
+          )
+        );
+      }),
+      h('div',{style:{marginTop:8}},
+        h('div',{style:{fontSize:'.7rem',fontWeight:700,color:'rgba(255,255,255,.4)',letterSpacing:'.08em',textTransform:'uppercase',marginBottom:8}},'➕ NEUE GRUPPE'),
         h('input',{className:'ls-input',placeholder:'Gruppenname',value:groupName,onInput:function(e){setGroupName(e.target.value);}}),
-        h('button',{className:'ls-add-btn',onClick:createGroup},'\uD83C\uDFEB Gruppe erstellen')
+        h('button',{className:'ls-add-btn',onClick:createGroup},'\ud83c\udfeb Gruppe erstellen')
       )
     );
   }
-
   function renderShared(){
     return h('div',null,
       h('div',{style:{fontSize:'.7rem',fontWeight:700,color:'rgba(255,255,255,.4)',letterSpacing:'.08em',textTransform:'uppercase',marginBottom:10}},'\uD83D\uDCE5 GETEILT MIT DIR ('+sharedIncoming.length+')'),
@@ -1816,7 +1832,6 @@ function LernSpaceView(p){
   }
 
   return h('div',null,
-    h('div',{style:{background:'linear-gradient(135deg,#fff,#a78bfa 60%,#fbbf24)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text',fontWeight:900,fontSize:'1.4rem',padding:'16px 18px 12px'}},'\uD83C\uDF1F Lern Space'),
     h('div',{className:'ls-wrap'},
       lsPage!=='home'&&h('button',{className:'ls-back',onClick:function(){setLsPage('home');}},'\u2190 Zur\u00fcck zur \u00DCbersicht'),
       loading&&lsPage==='home'?h('div',{className:'ls-loading'},h('div',{className:'ls-spinner'}),h('div',null,'Lade Lern Space\u2026'))
@@ -1998,9 +2013,9 @@ function App(){
       showLernEmpf&&lernEmpf.length>0&&_leOverlay,
     h("header",{className:"hdr"},
       view==="lernspace"
-        ?h("div",{className:"ls-hdr-logo"},
-            h("div",{className:"ls-hdr-icon"},h("span",{style:{filter:"drop-shadow(0 0 6px rgba(96,165,250,.9))"}},"\ud83c\udf1f")),
-            h("span",{className:"ls-hdr-title"},h("span",{className:"ls-hdr-star"},"\ud83c\udf1f "),"Lern Space")
+        ?h("div",{style:{display:"flex",alignItems:"center",gap:"10px"}},
+            h("span",{style:{fontSize:"1.4rem",color:"#fff",filter:"drop-shadow(0 0 10px rgba(255,255,255,.9))",lineHeight:1,fontWeight:900}},"✦"),
+            h("span",{style:{fontWeight:900,fontSize:"1.1rem",background:"linear-gradient(90deg,#e0d7ff 0%,#a78bfa 35%,#fbbf24 100%)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",letterSpacing:"-.01em"}},"Lern Space")
           )
         :h("div",{className:"logo-wrap",onClick:function(){setView("decks");setDeckId(null);setDeckListMode("home");}},
             h("img",{className:"logo-img",src:LOGO,alt:"Logo"}),
@@ -2042,7 +2057,7 @@ function App(){
       view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck}),
       qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs}),
       view==="reminder"&&!qsStep&&h("div",null,h(ReminderView,{reminder:data.reminder,decks:decks,onBack:function(){setView("decks");setDeckListMode("home");},onSave:function(r){patch({reminder:r});}}),renderFooter()),
-      view==="einstellungen"&&!qsStep&&h("div",null,h(EinstellungenView,{settings:data.settings,onChange:function(s){patch({settings:s});}}),renderFooter()),
+      view==="einstellungen"&&!qsStep&&h("div",null,h(EinstellungenView,{settings:data.settings,onChange:function(s){patch({settings:s});},onDataLoaded:function(d){setData(d);},onOpenSync:function(){setShowSync(true);},onBack:function(){setView("decks");setDeckListMode("home");}}),renderFooter()),
       view==="lernspace"&&!qsStep&&h("div",null,h(LernSpaceView,{userName:loadStore().userName||"Sophie",decks:decks,folders:folders,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});}}),renderFooter()),
       view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}}),renderFooter()),
       view==="updates"&&!qsStep&&h(UpdatesView,{onBack:function(){setView("decks");setDeckListMode("home");},onShowImp:function(){setShowImp(true);},onShowDat:function(){setShowDat(true);}})),
