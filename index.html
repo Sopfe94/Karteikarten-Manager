@@ -529,6 +529,11 @@ function mergeSyncData(local,remote){
   (local.folders||[]).forEach(function(f){fm[f.id]=f;});
   (remote.folders||[]).forEach(function(f){if(!fm[f.id])fm[f.id]=f;});
   merged.folders=Object.keys(fm).map(function(k){return fm[k];});
+  var today=todayStr();
+  var am={};
+  (local.arbeiten||[]).forEach(function(a){if(a.date>=today)am[a.id]=a;});
+  (remote.arbeiten||[]).forEach(function(a){if(a.date>=today&&!am[a.id])am[a.id]=a;});
+  merged.arbeiten=Object.keys(am).map(function(k){return am[k];});
   return merged;
 }
 
@@ -1911,6 +1916,16 @@ function App(){
     var due=(data.decks||[]).reduce(function(s,d){return s+getDue(d).length;},0);
     swMsg({type:"UPDATE_DUE",dueCount:due});
   },[data]);
+
+  useEffect(function(){
+    var now=new Date();
+    if(now.getHours()<1)return;
+    var today=todayStr();
+    if(localStorage.getItem('kkm-cleanup-date')===today)return;
+    var remaining=(data.arbeiten||[]).filter(function(a){return a.date>=today;});
+    if(remaining.length<(data.arbeiten||[]).length){patch({arbeiten:remaining});}
+    localStorage.setItem('kkm-cleanup-date',today);
+  },[]);
 
   function patch(pp){setData(function(prev){return Object.assign({},prev,pp);});}
   var decks=data.decks||[];
