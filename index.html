@@ -515,7 +515,15 @@ function mergeSyncData(local,remote){
   var merged=Object.assign({},local);
   var dm={};
   (local.decks||[]).forEach(function(d){dm[d.id]=d;});
-  (remote.decks||[]).forEach(function(d){if(!dm[d.id])dm[d.id]=d;else if(d.cards.length>dm[d.id].cards.length)dm[d.id]=d;});
+  (remote.decks||[]).forEach(function(d){
+    if(!dm[d.id]){dm[d.id]=d;}
+    else{
+      var localTs=dm[d.id].updatedAt||'';
+      var remoteTs=d.updatedAt||'';
+      if(remoteTs>localTs){dm[d.id]=d;}
+      else if(!remoteTs&&!localTs&&d.cards.length>dm[d.id].cards.length){dm[d.id]=d;}
+    }
+  });
   merged.decks=Object.keys(dm).map(function(k){return dm[k];});
   var fm={};
   (local.folders||[]).forEach(function(f){fm[f.id]=f;});
@@ -1910,11 +1918,11 @@ function App(){
   var dueTotal=decks.reduce(function(s,d){return s+getDue(d).length;},0);
   var activeDeck=decks.find(function(d){return d.id===deckId;});
 
-  function addDeck(d){patch({decks:decks.concat([Object.assign({id:uid()},d,{cards:[],created:todayStr()})])});setShowNew(false);showToast("Stapel erstellt!");}
-  function saveEditDeck(d){patch({decks:decks.map(function(dk){return dk.id===editDeck.id?Object.assign({},dk,d):dk;})});setEditDeck(null);}
+  function addDeck(d){patch({decks:decks.concat([Object.assign({id:uid()},d,{cards:[],created:todayStr(),updatedAt:new Date().toISOString()})])});setShowNew(false);showToast("Stapel erstellt!");}
+  function saveEditDeck(d){patch({decks:decks.map(function(dk){return dk.id===editDeck.id?Object.assign({},dk,d,{updatedAt:new Date().toISOString()}):dk;})});setEditDeck(null);}
   function delDeck(id){if(!confirm("Stapel l\u00f6schen?"))return;patch({decks:decks.filter(function(d){return d.id!==id;})});if(deckId===id)setDeckId(null);}
   function doImport(deck){patch({decks:decks.concat([deck])});setShowImport(false);showToast(deck.name+" importiert!");}
-  function updateDeck(u){patch({decks:decks.map(function(d){return d.id===u.id?u:d;})});}
+  function updateDeck(u){patch({decks:decks.map(function(d){return d.id===u.id?Object.assign({},u,{updatedAt:new Date().toISOString()}):d;})});}
   function addFolder(d){patch({folders:folders.concat([Object.assign({id:uid()},d)])});setShowNewFolder(false);showToast("Fach erstellt!");}
   function saveEditFolder(d){patch({folders:folders.map(function(f){return f.id===editFolder.id?Object.assign({},f,d):f;})});setEditFolder(null);}
   function delFolder(id){if(!confirm("Fach l\u00f6schen? Stapel bleiben erhalten."))return;patch({folders:folders.filter(function(f){return f.id!==id;}),decks:decks.map(function(d){return d.folderId===id?Object.assign({},d,{folderId:null}):d;})});}
