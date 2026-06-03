@@ -1,5 +1,5 @@
 // Service Worker v11 - 24h Cache für index.html (Beta: kein Cache)
-const CACHE = 'kkm-v11';
+const CACHE = 'kkm-v12';
 const BASE = self.location.hostname === 'www.gross-apps.de' ? '/KM' : '';
 const CACHE_TS_KEY = 'kkm-html-ts';
 const IS_BETA = /beta|localhost/.test(self.location.hostname);

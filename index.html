@@ -682,7 +682,7 @@ function HamburgerMenu(p){
       h("div",{className:"menu-sep"}),
       h("button",{className:"menu-item menu-item-ls"+(p.view==="lernspace"?" mact":""),style:{marginTop:4},onClick:function(){p.onNav("lernspace");}},
         h("span",{style:{color:"#fff",filter:"drop-shadow(0 0 8px rgba(255,255,255,.9))"}},"✦"),
-        h("span",{style:{background:"linear-gradient(90deg,#e0d7ff,#a78bfa 35%,#fbbf24)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",fontWeight:900}}," Lern Space")),
+        h("span",{style:{background:"linear-gradient(90deg,#e0d7ff,#a78bfa 35%,#fbbf24)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",fontWeight:900,display:"inline-block"}}," Lern Space")),
       h("button",{className:"menu-item",onClick:function(){p.onHelp();p.onClose();}},h("span",null,"?"),h("span",null,"Hilfe")),
       h("button",{className:"menu-item",onClick:function(){p.onReport();p.onClose();}},h("span",null,"!"),h("span",null,"Problem melden"))));
 }
@@ -2320,7 +2320,7 @@ function App(){
       view==="lernspace"
         ?h("div",{style:{display:"flex",alignItems:"center",gap:"10px"}},
             h("span",{style:{fontSize:"1.4rem",color:"#fff",filter:"drop-shadow(0 0 10px rgba(255,255,255,.9))",lineHeight:1,fontWeight:900}},"✦"),
-            h("span",{style:{fontWeight:900,fontSize:"1.1rem",background:"linear-gradient(90deg,#e0d7ff 0%,#a78bfa 35%,#fbbf24 100%)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",letterSpacing:"-.01em"}},"Lern Space")
+            h("span",{style:{fontWeight:900,fontSize:"1.1rem",background:"linear-gradient(90deg,#e0d7ff 0%,#a78bfa 35%,#fbbf24 100%)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",letterSpacing:"-.01em",display:"inline-block"}},"Lern Space")
           )
         :h("div",{className:"logo-wrap",onClick:function(){setView("decks");setDeckId(null);setDeckListMode("home");}},
             h("img",{className:"logo-img",src:LOGO,alt:"Logo"}),
