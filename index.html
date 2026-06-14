@@ -470,7 +470,7 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .ls-hc-name{font-size:.82rem;font-weight:700;color:#fff;margin-bottom:3px;position:relative;z-index:1}
 .ls-hc-sub{font-size:.6rem;color:rgba(255,255,255,.35);position:relative;z-index:1}
 .ls-hc-badge{display:inline-block;margin-top:7px;border-radius:5px;padding:2px 7px;font-size:.56rem;font-weight:700;position:relative;z-index:1;background:rgba(212,175,55,.1);border:1px solid rgba(212,175,55,.25);color:rgba(212,175,55,.8)}
-.ls-back{display:flex;align-items:center;gap:8px;background:none;border:none;color:rgba(255,255,255,.5);font-size:.85rem;font-weight:700;cursor:pointer;margin-bottom:16px;padding:0}
+.ls-back{display:flex;align-items:center;gap:8px;background:none;border:none;color:#fff;font-size:.85rem;font-weight:700;cursor:pointer;margin-bottom:16px;padding:0}
 .ls-friend-row{display:flex;align-items:center;gap:12px;background:linear-gradient(155deg,rgba(10,21,64,.18) 0%,rgba(6,12,42,.1) 100%);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(212,175,55,.22);border-radius:16px;padding:13px 14px;margin-bottom:10px;cursor:pointer;transition:.15s;box-shadow:0 0 10px rgba(212,175,55,.06)}
 .ls-friend-row:active{background:rgba(212,175,55,.07);transform:scale(.98)}
 .ls-fr-av{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
@@ -478,7 +478,9 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .ls-dot{width:7px;height:7px;border-radius:50%}
 .ls-share-btn{background:rgba(139,92,246,.2);border:1px solid rgba(139,92,246,.35);border-radius:8px;padding:4px 9px;color:#c4b5fd;font-size:.65rem;font-weight:700;cursor:pointer;white-space:nowrap}
 .ls-req-card{background:linear-gradient(155deg,rgba(22,18,0,.2) 0%,rgba(12,8,0,.12) 100%);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(251,191,36,.32);border-radius:16px;padding:14px;margin-bottom:10px;box-shadow:0 0 14px rgba(251,191,36,.07)}
-.ls-group-row{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:14px;margin-bottom:10px;cursor:pointer}
+.ls-group-row{background:linear-gradient(155deg,rgba(10,21,64,.18) 0%,rgba(6,12,42,.1) 100%);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(212,175,55,.3);border-radius:18px;padding:14px;margin-bottom:10px;cursor:pointer;transition:.15s;box-shadow:0 0 10px rgba(212,175,55,.1),0 0 22px rgba(212,175,55,.05);position:relative;overflow:hidden}
+.ls-group-row::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,175,55,.6),transparent)}
+.ls-group-row:active{background:rgba(212,175,55,.07);transform:scale(.98)}
 .ls-group-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
 .ls-chip{background:rgba(139,92,246,.14);border:1px solid rgba(139,92,246,.25);border-radius:7px;padding:2px 9px;font-size:.65rem;font-weight:700;color:#c4b5fd}
 .ls-shared-item{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:13px;margin-bottom:10px}
@@ -504,12 +506,12 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .ls-pg-hero{text-align:center;padding:6px 0 18px;position:relative;z-index:2}
 .ls-pg-hero-icon{font-size:2.4rem;margin-bottom:8px;display:block;filter:drop-shadow(0 0 16px rgba(96,165,250,.55))}
 .ls-pg-hero-title{font-size:1.2rem;font-weight:900;background:linear-gradient(135deg,#fff 0%,#93c5fd 55%,#fbbf24 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:4px;display:inline-block}
-.ls-pg-hero-sub{font-size:.76rem;color:rgba(255,255,255,.38);font-weight:600}
-.ls-sec-lbl{font-size:.67rem;font-weight:700;color:rgba(255,255,255,.33);letter-spacing:.1em;text-transform:uppercase;margin:16px 0 10px;display:flex;align-items:center;gap:8px}
+.ls-pg-hero-sub{font-size:.76rem;color:#fff;font-weight:600}
+.ls-sec-lbl{font-size:.67rem;font-weight:700;color:#fff;letter-spacing:.1em;text-transform:uppercase;margin:16px 0 10px;display:flex;align-items:center;gap:8px}
 .ls-sec-lbl::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.07)}
-.ls-friend-empty{text-align:center;padding:28px 0;color:rgba(255,255,255,.3);font-size:.83rem}
+.ls-friend-empty{text-align:center;padding:28px 0;color:#fff;font-size:.83rem}
 .ls-friend-empty-icon{font-size:2.4rem;margin-bottom:10px;display:block;filter:drop-shadow(0 0 12px rgba(96,165,250,.25))}
-.ls-invite-box{background:rgba(96,165,250,.05);border:1px solid rgba(96,165,250,.18);border-radius:18px;padding:16px;margin-top:6px}
+.ls-invite-box{background:rgba(212,175,55,.05);border:1px solid rgba(212,175,55,.28);border-radius:18px;padding:16px;margin-top:6px;box-shadow:0 0 10px rgba(212,175,55,.12),0 0 22px rgba(212,175,55,.06)}
 .ls-invite-title{font-size:.67rem;font-weight:700;color:rgba(96,165,250,.65);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
 .ls-req-accept{flex:1;padding:9px;border-radius:10px;border:none;background:linear-gradient(135deg,rgba(16,185,129,.55),rgba(16,185,129,.3));color:#d1fae5;font-size:.82rem;font-weight:700;cursor:pointer;font-family:"Nunito",sans-serif}
 .ls-req-decline{flex:1;padding:9px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.38);font-size:.82rem;cursor:pointer;font-family:"Nunito",sans-serif}
@@ -2163,22 +2165,33 @@ function LernSpaceView(p){
   }
 
   function renderGroups(){
-    return h('div',null,
-      h('div',{style:{fontSize:'.7rem',fontWeight:700,color:'rgba(255,255,255,.4)',letterSpacing:'.08em',textTransform:'uppercase',marginBottom:10}},'\ud83c\udfeb MEINE GRUPPEN ('+groups.length+')'),
-      groups.length===0&&h('div',{style:{color:'rgba(255,255,255,.35)',fontSize:'.82rem',marginBottom:8}},'Noch keine Gruppen'),
-      groups.map(function(g,i){
-        return h('div',{key:i,className:'ls-group-row'},
-          h('div',{style:{display:'flex',alignItems:'center',gap:12,marginBottom:8}},
-            h('div',{style:{width:44,height:44,borderRadius:12,background:'rgba(96,165,250,.18)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.3rem',flexShrink:0}},g.emoji||'\ud83c\udfeb'),
-            h('div',null,
-              h('div',{style:{fontSize:'.92rem',fontWeight:800,color:'#fff'}},g.name),
-              h('div',{style:{fontSize:'.63rem',color:'rgba(255,255,255,.45)',marginTop:2}},(g.members||[]).length+' Mitglied(er) · '+(g.deckIds||[]).length+' Stapel')
-            )
+    return h('div',{style:{position:'relative',zIndex:2}},
+      h('div',{className:'ls-pg-hero'},
+        h('span',{className:'ls-pg-hero-icon'},'\ud83c\udfeb'),
+        h('div',{className:'ls-pg-hero-title'},'Meine Gruppen'),
+        h('div',{className:'ls-pg-hero-sub'},groups.length===0?'Noch keine Gruppe gegründet':groups.length+' aktiv')
+      ),
+      h('div',{className:'ls-sec-lbl'},'\ud83c\udfeb Meine Gruppen ('+groups.length+')'),
+      groups.length===0
+        ?h('div',{className:'ls-friend-empty'},
+            h('span',{className:'ls-friend-empty-icon'},'\u2728'),
+            h('div',null,'Noch keine Gruppen \u2013 gründe jetzt deine erste!')
           )
-        );
-      }),
-      h('div',{style:{marginTop:8}},
-        h('div',{style:{fontSize:'.7rem',fontWeight:700,color:'rgba(255,255,255,.4)',letterSpacing:'.08em',textTransform:'uppercase',marginBottom:8}},'➕ NEUE GRUPPE'),
+        :groups.map(function(g,i){
+          return h('div',{key:i,className:'ls-group-row'},
+            h('div',{style:{display:'flex',alignItems:'center',gap:12}},
+              h('div',{style:{width:46,height:46,borderRadius:14,background:'linear-gradient(135deg,rgba(139,92,246,.25),rgba(212,175,55,.1))',border:'1px solid rgba(212,175,55,.25)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.4rem',flexShrink:0,boxShadow:'0 0 12px rgba(212,175,55,.12)'}},g.emoji||'\ud83c\udfeb'),
+              h('div',{style:{flex:1}},
+                h('div',{style:{fontSize:'.92rem',fontWeight:800,color:'#fff'}},g.name),
+                h('div',{style:{fontSize:'.63rem',color:'rgba(255,255,255,.7)',marginTop:2}},(g.members||[]).length+' Mitglied(er) \u00b7 '+(g.deckIds||[]).length+' Stapel')
+              ),
+              h('div',{style:{background:'rgba(212,175,55,.1)',border:'1px solid rgba(212,175,55,.3)',borderRadius:8,padding:'3px 8px',fontSize:'.58rem',fontWeight:800,color:'#fbbf24',whiteSpace:'nowrap'}},'AKTIV')
+            )
+          );
+        }),
+      h('div',{className:'ls-sec-lbl'},'➕ Neue Gruppe'),
+      h('div',{className:'ls-invite-box'},
+        h('div',{className:'ls-invite-title'},'\ud83c\udfeb Gruppe gründen'),
         h('input',{className:'ls-input',placeholder:'Gruppenname',value:groupName,onInput:function(e){setGroupName(e.target.value);}}),
         h('button',{className:'ls-add-btn',onClick:createGroup},'\ud83c\udfeb Gruppe erstellen')
       )
