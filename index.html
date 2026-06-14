@@ -481,6 +481,41 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .ls-group-row{background:linear-gradient(155deg,rgba(10,21,64,.18) 0%,rgba(6,12,42,.1) 100%);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(212,175,55,.3);border-radius:18px;padding:14px;margin-bottom:10px;cursor:pointer;transition:.15s;box-shadow:0 0 10px rgba(212,175,55,.1),0 0 22px rgba(212,175,55,.05);position:relative;overflow:hidden}
 .ls-group-row::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,175,55,.6),transparent)}
 .ls-group-row:active{background:rgba(212,175,55,.07);transform:scale(.98)}
+.ls-gd-hero{text-align:center;padding:10px 0 16px;background:radial-gradient(ellipse at 50% 0%,rgba(139,92,246,.18) 0%,transparent 70%)}
+.ls-gd-av{width:68px;height:68px;border-radius:20px;background:linear-gradient(135deg,rgba(139,92,246,.3),rgba(212,175,55,.12));border:2px solid rgba(212,175,55,.38);display:flex;align-items:center;justify-content:center;font-size:2.1rem;margin:0 auto 10px;box-shadow:0 0 0 6px rgba(212,175,55,.06),0 0 28px rgba(139,92,246,.25)}
+.ls-gd-name{font-size:1.1rem;font-weight:900;background:linear-gradient(135deg,#fff 0%,#c4b5fd 55%,#fbbf24 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:4px}
+.ls-gd-meta{font-size:.7rem;color:rgba(255,255,255,.6);margin-bottom:14px}
+.ls-gd-stats{display:flex;gap:8px;justify-content:center}
+.ls-gd-stat{flex:1;background:rgba(212,175,55,.08);border:1px solid rgba(212,175,55,.2);border-radius:12px;padding:8px;text-align:center}
+.ls-gd-stat-n{font-size:1.05rem;font-weight:900;color:#fbbf24;display:block}
+.ls-gd-stat-l{font-size:.58rem;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em}
+.ls-gd-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.06);margin-top:14px}
+.ls-gd-tab{flex:1;padding:11px 4px;text-align:center;font-size:.72rem;font-weight:700;color:rgba(255,255,255,.4);cursor:pointer;border-bottom:2px solid transparent;transition:.2s;background:none;border-top:none;border-left:none;border-right:none}
+.ls-gd-tab.active{color:#fbbf24;border-bottom-color:#fbbf24}
+.ls-gd-content{padding:14px 0 24px}
+.ls-gd-member{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.ls-gd-member:last-child{border-bottom:none}
+.ls-gd-mav{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,rgba(96,165,250,.25),rgba(139,92,246,.2));border:1.5px solid rgba(96,165,250,.3);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.ls-gd-mname{font-size:.88rem;font-weight:700;color:#fff}
+.ls-gd-mrole{font-size:.62rem;color:rgba(255,255,255,.5);margin-top:2px}
+.ls-gd-mbadge{margin-left:auto;font-size:.58rem;font-weight:800;background:rgba(212,175,55,.12);border:1px solid rgba(212,175,55,.3);border-radius:6px;padding:2px 7px;color:#fbbf24;white-space:nowrap}
+.ls-gd-deck{display:flex;align-items:center;gap:10px;background:linear-gradient(155deg,rgba(10,21,64,.25),rgba(6,12,42,.15));border:1px solid rgba(212,175,55,.25);border-radius:14px;padding:12px;margin-bottom:8px;position:relative;overflow:hidden}
+.ls-gd-deck::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,175,55,.5),transparent)}
+.ls-gd-deck-name{font-size:.88rem;font-weight:700;color:#fff}
+.ls-gd-deck-meta{font-size:.62rem;color:rgba(255,255,255,.55);margin-top:2px}
+.ls-gd-empty{text-align:center;padding:28px 0;color:rgba(255,255,255,.45);font-size:.82rem}
+.ls-gd-add-btn{width:100%;padding:11px;border-radius:12px;border:none;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-weight:800;font-size:.87rem;cursor:pointer;margin-top:4px}
+.ls-gd-chat-wrap{display:flex;flex-direction:column;gap:10px}
+.ls-gd-chat-msg{display:flex;flex-direction:column;align-items:flex-start}
+.ls-gd-chat-msg.mine{align-items:flex-end}
+.ls-gd-chat-who{font-size:.6rem;color:rgba(255,255,255,.4);margin-bottom:3px}
+.ls-gd-bubble{background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.22);border-radius:0 14px 14px 14px;padding:9px 12px;max-width:82%}
+.ls-gd-bubble.mine{background:rgba(37,99,235,.2);border-color:rgba(37,99,235,.3);border-radius:14px 0 14px 14px}
+.ls-gd-chat-text{font-size:.82rem;color:#fff}
+.ls-gd-chat-time{font-size:.58rem;color:rgba(255,255,255,.3);margin-top:3px}
+.ls-gd-chat-inp{display:flex;gap:8px;margin-top:14px;align-items:center}
+.ls-gd-chat-input{flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:9px 14px;color:#fff;font-size:.85rem;outline:none}
+.ls-gd-send{width:38px;height:38px;border-radius:50%;border:none;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:.95rem;cursor:pointer;flex-shrink:0}
 .ls-group-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
 .ls-chip{background:rgba(139,92,246,.14);border:1px solid rgba(139,92,246,.25);border-radius:7px;padding:2px 9px;font-size:.65rem;font-weight:700;color:#c4b5fd}
 .ls-shared-item{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:13px;margin-bottom:10px}
@@ -507,8 +542,9 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .ls-pg-hero-icon{font-size:2.4rem;margin-bottom:8px;display:block;filter:drop-shadow(0 0 16px rgba(96,165,250,.55))}
 .ls-pg-hero-title{font-size:1.2rem;font-weight:900;background:linear-gradient(135deg,#fff 0%,#93c5fd 55%,#fbbf24 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:4px;display:inline-block}
 .ls-pg-hero-sub{font-size:.76rem;color:#fff;font-weight:600}
-.ls-sec-lbl{font-size:.67rem;font-weight:700;color:#fff;letter-spacing:.1em;text-transform:uppercase;margin:16px 0 10px;display:flex;align-items:center;gap:8px}
-.ls-sec-lbl::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.07)}
+.ls-sec-lbl{font-size:.67rem;font-weight:700;color:#fff;letter-spacing:.1em;text-transform:uppercase;margin:22px 0 16px;display:flex;align-items:center;gap:8px}
+.ls-sec-lbl::before{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(212,175,55,.55));box-shadow:0 0 8px 1px rgba(212,175,55,.3)}
+.ls-sec-lbl::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(212,175,55,.55),transparent);box-shadow:0 0 8px 1px rgba(212,175,55,.3)}
 .ls-friend-empty{text-align:center;padding:28px 0;color:#fff;font-size:.83rem}
 .ls-friend-empty-icon{font-size:2.4rem;margin-bottom:10px;display:block;filter:drop-shadow(0 0 12px rgba(96,165,250,.25))}
 .ls-invite-box{background:rgba(212,175,55,.05);border:1px solid rgba(212,175,55,.28);border-radius:18px;padding:16px;margin-top:6px;box-shadow:0 0 10px rgba(212,175,55,.12),0 0 22px rgba(212,175,55,.06)}
@@ -1861,6 +1897,10 @@ function LernSpaceView(p){
   var ins=useState('');var inviteId=ins[0];var setInviteId=ins[1];
   var gns=useState('');var groupName=gns[0];var setGroupName=gns[1];
   var ges=useState('\uD83C\uDFEB');var groupEmoji=ges[0];var setGroupEmoji=ges[1];
+  var sgs=useState(null);var selectedGroup=sgs[0];var setSelectedGroup=sgs[1];
+  var gts=useState('members');var groupTab=gts[0];var setGroupTab=gts[1];
+  var cis=useState('');var chatInput=cis[0];var setChatInput=cis[1];
+  var gcms=useState({});var groupChats=gcms[0];var setGroupChats=gcms[1];
   var tms=useToast();var toast=tms[0];var showToast=tms[1];
   var saps=useState(false);var showAvPicker=saps[0];var setShowAvPicker=saps[1];
   var cns=useState(!localStorage.getItem(LS_CONSENT_KEY));var showConsent=cns[0];var setShowConsent=cns[1];
@@ -2178,7 +2218,7 @@ function LernSpaceView(p){
             h('div',null,'Noch keine Gruppen \u2013 gründe jetzt deine erste!')
           )
         :groups.map(function(g,i){
-          return h('div',{key:i,className:'ls-group-row'},
+          return h('div',{key:i,className:'ls-group-row',onClick:function(){setSelectedGroup(g);setGroupTab('members');setLsPage('group-detail');}},
             h('div',{style:{display:'flex',alignItems:'center',gap:12}},
               h('div',{style:{width:46,height:46,borderRadius:14,background:'linear-gradient(135deg,rgba(139,92,246,.25),rgba(212,175,55,.1))',border:'1px solid rgba(212,175,55,.25)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.4rem',flexShrink:0,boxShadow:'0 0 12px rgba(212,175,55,.12)'}},g.emoji||'\ud83c\udfeb'),
               h('div',{style:{flex:1}},
@@ -2230,13 +2270,102 @@ function LernSpaceView(p){
     );
   }
 
+  function renderGroupDetail(){
+    var g=selectedGroup;
+    if(!g)return null;
+    var members=g.members||[];
+    var deckIds=g.deckIds||[];
+    var gid=g.id;
+    var msgs=groupChats[gid]||[];
+    var isAdmin=members[0]===MY_ID;
+    function sendMsg(){
+      if(!chatInput.trim())return;
+      var ts=Date.now();
+      var m={who:MY_ID,text:chatInput.trim(),ts:ts,mine:true};
+      var updated=Object.assign({},groupChats);
+      updated[gid]=(groupChats[gid]||[]).concat([m]);
+      setGroupChats(updated);
+      setChatInput('');
+    }
+    return h('div',{style:{position:'relative',zIndex:2}},
+      h('div',{className:'ls-gd-hero'},
+        h('div',{className:'ls-gd-av'},g.emoji||'\ud83c\udfeb'),
+        h('div',{className:'ls-gd-name'},g.name),
+        h('div',{className:'ls-gd-meta'},'Erstellt '+(new Date(g.created||Date.now()).toLocaleDateString('de-DE'))),
+        h('div',{className:'ls-gd-stats'},
+          h('div',{className:'ls-gd-stat'},h('span',{className:'ls-gd-stat-n'},members.length),h('span',{className:'ls-gd-stat-l'},'Mitglieder')),
+          h('div',{className:'ls-gd-stat'},h('span',{className:'ls-gd-stat-n'},deckIds.length),h('span',{className:'ls-gd-stat-l'},'Stapel')),
+          h('div',{className:'ls-gd-stat'},h('span',{className:'ls-gd-stat-n'},msgs.length),h('span',{className:'ls-gd-stat-l'},'Nachrichten'))
+        ),
+        h('div',{className:'ls-gd-tabs'},
+          h('button',{className:'ls-gd-tab'+(groupTab==='members'?' active':''),onClick:function(){setGroupTab('members');}},'\ud83d\udc65 Mitglieder'),
+          h('button',{className:'ls-gd-tab'+(groupTab==='stacks'?' active':''),onClick:function(){setGroupTab('stacks');}},'\ud83d\udcda Stapel'),
+          h('button',{className:'ls-gd-tab'+(groupTab==='chat'?' active':''),onClick:function(){setGroupTab('chat');}},'\ud83d\udcac Chat')
+        )
+      ),
+      groupTab==='members'&&h('div',{className:'ls-gd-content'},
+        h('div',{className:'ls-sec-lbl'},'\ud83d\udc65 Mitglieder ('+members.length+')'),
+        members.map(function(mid,i){
+          return h('div',{key:i,className:'ls-gd-member'},
+            h('div',{className:'ls-gd-mav'},mid===MY_ID?'\ud83e\uddd1\u200d\ud83d\udcbb':['\ud83d\udc69\u200d\ud83c\udf93','\ud83e\udd8a','\ud83d\udc09','\u2b50','\ud83c\udf19','\ud83e\udd8b'][i%6]),
+            h('div',null,
+              h('div',{className:'ls-gd-mname'},mid===MY_ID?'Du ('+MY_ID+')':mid),
+              h('div',{className:'ls-gd-mrole'},'Mitglied')
+            ),
+            i===0&&h('div',{className:'ls-gd-mbadge'},'ADMIN')
+          );
+        })
+      ),
+      groupTab==='stacks'&&h('div',{className:'ls-gd-content'},
+        h('div',{className:'ls-sec-lbl'},'\ud83d\udcda Gruppen-Stapel ('+deckIds.length+')'),
+        deckIds.length===0
+          ?h('div',{className:'ls-gd-empty'},'\ud83d\udcda Noch keine Stapel \u2013 f\u00fcge jetzt einen hinzu!')
+          :deckIds.map(function(did,i){
+              return h('div',{key:i,className:'ls-gd-deck'},
+                h('span',{style:{fontSize:'1.4rem'}},['➗','📐','📊','📖','🔬','🌍'][i%6]),
+                h('div',null,
+                  h('div',{className:'ls-gd-deck-name'},'Stapel '+did.slice(0,8)),
+                  h('div',{className:'ls-gd-deck-meta'},'Geteilt mit der Gruppe')
+                )
+              );
+            }),
+        h('button',{className:'ls-gd-add-btn'},'\u2795 Stapel zur Gruppe hinzuf\u00fcgen')
+      ),
+      groupTab==='chat'&&h('div',{className:'ls-gd-content'},
+        h('div',{className:'ls-sec-lbl'},'\ud83d\udcac Gruppen-Chat'),
+        msgs.length===0
+          ?h('div',{className:'ls-gd-empty'},'\ud83d\udcac Noch keine Nachrichten \u2013 starte die Unterhaltung!')
+          :h('div',{className:'ls-gd-chat-wrap'},
+              msgs.map(function(m,i){
+                var t=new Date(m.ts);
+                var tStr=t.getHours()+':'+String(t.getMinutes()).padStart(2,'0');
+                return h('div',{key:i,className:'ls-gd-chat-msg'+(m.mine?' mine':'')},
+                  !m.mine&&h('div',{className:'ls-gd-chat-who'},m.who),
+                  h('div',{className:'ls-gd-bubble'+(m.mine?' mine':'')},
+                    h('div',{className:'ls-gd-chat-text'},m.text)
+                  ),
+                  h('div',{className:'ls-gd-chat-time'},tStr)
+                );
+              })
+            ),
+        h('div',{className:'ls-gd-chat-inp'},
+          h('input',{className:'ls-gd-chat-input',placeholder:'Nachricht schreiben\u2026',value:chatInput,
+            onInput:function(e){setChatInput(e.target.value);},
+            onKeyDown:function(e){if(e.key==='Enter')sendMsg();}}),
+          h('button',{className:'ls-gd-send',onClick:sendMsg},'\u27a4')
+        )
+      )
+    );
+  }
+
   return h('div',null,
     h('div',{className:'ls-wrap'},
-      lsPage!=='home'&&h('button',{className:'ls-back',onClick:function(){setLsPage('home');}},'\u2190 Zur\u00fcck zur \u00DCbersicht'),
+      lsPage!=='home'&&h('button',{className:'ls-back',onClick:function(){if(lsPage==='group-detail'){setLsPage('groups');}else{setLsPage('home');}}},'\u2190 '+(lsPage==='group-detail'?'Zur\u00fcck zu Gruppen':'Zur\u00fcck zur \u00DCbersicht')),
       loading&&lsPage==='home'?h('div',{className:'ls-loading'},h('div',{className:'ls-spinner'}),h('div',null,'Lade Lern Space\u2026'))
       :lsPage==='home'?renderHome()
       :lsPage==='friends'?renderFriends()
       :lsPage==='groups'?renderGroups()
+      :lsPage==='group-detail'?renderGroupDetail()
       :lsPage==='shared'?renderShared()
       :renderChallenges()
     ),
