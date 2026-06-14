@@ -521,7 +521,7 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .menu-item-ls:hover,.menu-item-ls:active{background:rgba(255,255,255,.1)!important;box-shadow:0 0 20px rgba(255,255,255,.25)!important}
 </style>
 </head>
-<body><!-- KKM-v1.1.19-AKTUELL -->
+<body><!-- KKM-v1.1.21-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -598,6 +598,7 @@ function mergeSyncData(local,remote){
 }
 
 var DSGVO_KEY = "kkm-dsgvo";
+var LS_CONSENT_KEY = "kkm-ls-consent";
 var DSGVO_VERSION = "1.1.0";
 function dsgvoAccepted(){ try{return localStorage.getItem(DSGVO_KEY)===DSGVO_VERSION;}catch(e){return false;} }
 function acceptDsgvo(){ try{localStorage.setItem(DSGVO_KEY,DSGVO_VERSION);}catch(e){} }
@@ -1425,7 +1426,12 @@ function DatenschutzContent(){
     h("p",null,"Die freiwillige Sync-Funktion erm\u00f6glicht es, Karteikarten ger\u00e4te\u00fcbergreifend zu synchronisieren. Daf\u00fcr wird Firebase (Google LLC) als Datenbank genutzt \u2014 Server: Frankfurt am Main (Deutschland). Die Daten werden verschl\u00fcsselt \u00fcbertragen und gespeichert."),
     h("p",null,"Die Synchronisation erfolgt ausschlie\u00dflich \u00fcber einen selbst gew\u00e4hlten Sync-Code. Wer diesen Code kennt, kann auf die gespeicherten Daten zugreifen \u2014 bitte nicht teilen. Eine Konto-Registrierung ist nicht erforderlich."),
     h("p",null,"Rechtsgrundlage: Einwilligung (Art. 6 Abs. 1 lit. a DSGVO). Die Verbindung kann jederzeit in der App getrennt werden. Anbieter: Google LLC, 1600 Amphitheatre Parkway, Mountain View, CA\u00a094043, USA. Datentransfer auf Basis von Standardvertragsklauseln (Art. 46 DSGVO). Datenschutz: ",h("a",{href:"https://firebase.google.com/support/privacy",target:"_blank",style:{color:"var(--c-pur2)"}},"firebase.google.com/support/privacy")),
-    h("p",{style:{marginTop:"14px",fontSize:".76rem",color:"rgba(255,255,255,.3)",fontWeight:600}},"Stand: Mai 2026"));
+    h("span",{className:"legal-h"},"13. Lern Space (soziale Funktionen)"),
+    h("p",null,"Der Lern Space erm\u00f6glicht soziale Funktionen wie Freundeslisten, Anfragen und Avatar. Diese Daten werden automatisch und ohne gesonderte Anmeldung auf ","Firebase (Google LLC)","\u00a0als Datenbank gespeichert \u2014 Server: Frankfurt am Main (Deutschland)."),
+    h("p",{style:{marginTop:8}},"Gespeichert werden: Lern Space ID (automatisch generiert, lokal), Avatar-Bild (base64), Freundesliste, eingehende Anfragen und geteilte Stapel. Es werden keine Namen, E-Mail-Adressen oder Klarnamen \u00fcbertragen."),
+    h("p",{style:{marginTop:8}},"Rechtsgrundlage: Einwilligung (Art.\u00a06 Abs.\u00a01 lit.\u00a0a DSGVO). Die Einwilligung kann jederzeit widerrufen werden, indem der Lern Space nicht genutzt wird. Gespeicherte Daten k\u00f6nnen auf Anfrage gel\u00f6scht werden (Kontakt: ",h("a",{href:"mailto:info.gross-apps@gmx.de",style:{color:"var(--c-pur2)"}},"info.gross-apps@gmx.de"),")."),
+    h("p",{style:{marginTop:8}},"Anbieter: Google LLC, 1600 Amphitheatre Parkway, Mountain View, CA\u00a094043, USA. Datentransfer auf Basis von Standardvertragsklauseln (Art.\u00a046 DSGVO). Datenschutz: ",h("a",{href:"https://firebase.google.com/support/privacy",target:"_blank",style:{color:"var(--c-pur2)"}},"firebase.google.com/support/privacy")),
+    h("p",{style:{marginTop:"14px",fontSize:".76rem",color:"rgba(255,255,255,.3)",fontWeight:600}},"Stand: Juni 2026"));
 }
 
 function ImpressumModal(p){
@@ -1823,6 +1829,26 @@ function AvatarPickerModal(p){
   );
 }
 
+function LsConsentModal(p){
+  return h("div",{className:"ov",style:{zIndex:300}},
+    h("div",{className:"modal",style:{maxWidth:"370px",background:"rgba(8,6,24,.97)",border:"1px solid rgba(212,175,55,.32)",boxShadow:"0 0 40px rgba(212,175,55,.12),0 0 0 1px rgba(212,175,55,.08)"},onClick:function(e){e.stopPropagation();}},
+      h("div",{style:{textAlign:"center",marginBottom:18}},
+        h("div",{style:{fontSize:"2rem",marginBottom:8,filter:"drop-shadow(0 0 12px rgba(251,191,36,.5))"}},"uD83DuDD12"),
+        h("div",{className:"modal-title",style:{margin:0,fontSize:"1rem"}},"Lern Space u2013 Datenschutzhinweis")
+      ),
+      h("div",{className:"legal-body",style:{fontSize:".84rem",color:"rgba(255,255,255,.72)",lineHeight:1.55,marginBottom:4}},
+        h("p",null,"Im Lern Space werden deine sozialen Daten u2014 darunter dein Profil, Avatar, Freundesliste und Anfragen u2014 auf ",h("strong",{style:{color:"#fff"}},"Firebase (Google LLC)")," gespeichert."),
+        h("p",{style:{marginTop:10}},"Die Speicherung erfolgt u00fcber deine automatisch generierte Lern Space ID, ohne Anmeldung."),
+        h("p",{style:{marginTop:10}},h("span",{style:{color:"var(--c-pur2)",cursor:"pointer",textDecoration:"underline"},onClick:p.onShowDat},"► Datenschutzerklärung lesen (Punkt 13)"))
+      ),
+      h("div",{className:"modal-foot",style:{gap:10}},
+        h("button",{className:"btn btn-g",style:{flex:1},onClick:p.onDecline},"Abbrechen"),
+        h("button",{className:"btn btn-p",style:{flex:1,background:"linear-gradient(135deg,rgba(212,175,55,.8),rgba(180,140,30,.8))",boxShadow:"0 0 16px rgba(212,175,55,.3)"},onClick:p.onAccept},"u2714 Okay")
+      )
+    )
+  );
+}
+
 function LernSpaceView(p){
   var MY_ID=getLsId();
   var pgs=useState('home');var lsPage=pgs[0];var setLsPage=pgs[1];
@@ -1833,6 +1859,7 @@ function LernSpaceView(p){
   var ges=useState('\uD83C\uDFEB');var groupEmoji=ges[0];var setGroupEmoji=ges[1];
   var tms=useToast();var toast=tms[0];var showToast=tms[1];
   var saps=useState(false);var showAvPicker=saps[0];var setShowAvPicker=saps[1];
+  var cns=useState(!localStorage.getItem(LS_CONSENT_KEY));var showConsent=cns[0];var setShowConsent=cns[1];
   useEffect(function(){
     document.body.classList.add('ls-view');
     return function(){document.body.classList.remove('ls-view');};
@@ -1882,6 +1909,7 @@ function LernSpaceView(p){
   }
 
   useEffect(function(){loadData();},[]);
+  useEffect(function(){if(lsPage==="friends"||lsPage==="shared")loadData();},[lsPage]);
 
   function loadData(){
     setLoading(true);
@@ -1892,9 +1920,22 @@ function LernSpaceView(p){
   }
 
   function saveData(d){
-    var next=Object.assign({},lsData,d);
-    setLsData(next);
-    lsSet('ls_users',MY_ID,next).catch(function(){showToast('\u274C Sync-Fehler');});
+    var local=Object.assign({},lsData,d);
+    setLsData(local);
+    // Server-Merge: erst aktuellen Stand holen, dann fields mergen
+    lsGet('ls_users',MY_ID).then(function(remote){
+      var merged=Object.assign({},remote||defaultData,local);
+      // Anfragen und Freundeslisten aus Remote behalten falls neuer
+      if(remote){
+        var rReqs=remote.requests||[];
+        var lReqs=local.requests||[];
+        // Anfragen zusammenführen (remote-only Anfragen nicht verlieren)
+        var allReqs=rReqs.slice();
+        lReqs.forEach(function(r){if(!allReqs.find(function(x){return x.fromId===r.fromId;}))allReqs.push(r);});
+        merged.requests=allReqs;
+      }
+      return lsSet('ls_users',MY_ID,merged);
+    }).catch(function(){showToast('\u274C Sync-Fehler');});
   }
 
   function sendFriendRequest(){
@@ -2161,6 +2202,11 @@ function LernSpaceView(p){
       currentPhoto:lsData&&lsData.avatarPhoto||null,
       onSave:saveAvatar,
       onClose:function(){setShowAvPicker(false);}
+    }),
+    showConsent&&h(LsConsentModal,{
+      onAccept:function(){localStorage.setItem(LS_CONSENT_KEY,'1');setShowConsent(false);},
+      onDecline:function(){setShowConsent(false);},
+      onShowDat:p.onShowDat||function(){}
     })
   );
 }
@@ -2389,7 +2435,7 @@ function App(){
       qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs}),
       view==="reminder"&&!qsStep&&h("div",null,h(ReminderView,{reminder:data.reminder,decks:decks,onBack:function(){setView("decks");setDeckListMode("home");},onSave:function(r){patch({reminder:r});}}),renderFooter()),
       view==="einstellungen"&&!qsStep&&h("div",null,h(EinstellungenView,{settings:data.settings,onChange:function(s){patch({settings:s});},onDataLoaded:function(d){setData(d);},onOpenSync:function(){setShowSync(true);},onBack:function(){setView("decks");setDeckListMode("home");}}),renderFooter()),
-      view==="lernspace"&&!qsStep&&h("div",null,h(LernSpaceView,{userName:loadStore().userName||"Sophie",decks:decks,folders:folders,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});}}),renderFooter()),
+      view==="lernspace"&&!qsStep&&h("div",null,h(LernSpaceView,{userName:loadStore().userName||"Sophie",decks:decks,folders:folders,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);}}),renderFooter()),
       view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}}),renderFooter()),
       view==="updates"&&!qsStep&&h(UpdatesView,{onBack:function(){setView("decks");setDeckListMode("home");},onShowImp:function(){setShowImp(true);},onShowDat:function(){setShowDat(true);}})),
     showNew&&h(DeckModal,{folders:folders,onSave:addDeck,onClose:function(){setShowNew(false);}}),
