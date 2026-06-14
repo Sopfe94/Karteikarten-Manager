@@ -513,15 +513,17 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .ls-invite-title{font-size:.67rem;font-weight:700;color:rgba(96,165,250,.65);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
 .ls-req-accept{flex:1;padding:9px;border-radius:10px;border:none;background:linear-gradient(135deg,rgba(16,185,129,.55),rgba(16,185,129,.3));color:#d1fae5;font-size:.82rem;font-weight:700;cursor:pointer;font-family:"Nunito",sans-serif}
 .ls-req-decline{flex:1;padding:9px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.38);font-size:.82rem;cursor:pointer;font-family:"Nunito",sans-serif}
+body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 .ls-hdr-logo{display:flex;align-items:center;gap:10px;cursor:default}
 .ls-hdr-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#1e1060,#2d1b69);display:flex;align-items:center;justify-content:center;font-size:1.2rem;box-shadow:0 0 14px rgba(139,92,246,.6),0 0 0 1.5px rgba(167,139,250,.4)}
 .ls-hdr-title{font-size:1rem;font-weight:900;background:linear-gradient(135deg,#fff 0%,#93c5fd 50%,#fff 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-.01em}
 .ls-hdr-star{-webkit-text-fill-color:initial;filter:drop-shadow(0 0 6px rgba(96,165,250,.9))}
 .menu-item-ls{background:rgba(255,255,255,.06)!important;border:1.5px solid rgba(255,255,255,.25)!important;box-shadow:0 0 14px rgba(255,255,255,.15),0 0 28px rgba(255,255,255,.06)!important;border-radius:14px!important}
 .menu-item-ls:hover,.menu-item-ls:active{background:rgba(255,255,255,.1)!important;box-shadow:0 0 20px rgba(255,255,255,.25)!important}
+body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.1.21-AKTUELL -->
+<body><!-- KKM-v1.1.26-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -1833,17 +1835,17 @@ function LsConsentModal(p){
   return h("div",{className:"ov",style:{zIndex:300}},
     h("div",{className:"modal",style:{maxWidth:"370px",background:"rgba(8,6,24,.97)",border:"1px solid rgba(212,175,55,.32)",boxShadow:"0 0 40px rgba(212,175,55,.12),0 0 0 1px rgba(212,175,55,.08)"},onClick:function(e){e.stopPropagation();}},
       h("div",{style:{textAlign:"center",marginBottom:18}},
-        h("div",{style:{fontSize:"2rem",marginBottom:8,filter:"drop-shadow(0 0 12px rgba(251,191,36,.5))"}},"uD83DuDD12"),
-        h("div",{className:"modal-title",style:{margin:0,fontSize:"1rem"}},"Lern Space u2013 Datenschutzhinweis")
+        h("div",{style:{fontSize:"2rem",marginBottom:8,filter:"drop-shadow(0 0 12px rgba(251,191,36,.5))"}},"🔒"),
+        h("div",{className:"modal-title",style:{margin:0,fontSize:"1rem"}},"Lern Space – Datenschutzhinweis")
       ),
       h("div",{className:"legal-body",style:{fontSize:".84rem",color:"rgba(255,255,255,.72)",lineHeight:1.55,marginBottom:4}},
-        h("p",null,"Im Lern Space werden deine sozialen Daten u2014 darunter dein Profil, Avatar, Freundesliste und Anfragen u2014 auf ",h("strong",{style:{color:"#fff"}},"Firebase (Google LLC)")," gespeichert."),
-        h("p",{style:{marginTop:10}},"Die Speicherung erfolgt u00fcber deine automatisch generierte Lern Space ID, ohne Anmeldung."),
+        h("p",null,"Im Lern Space werden deine sozialen Daten — darunter dein Profil, Avatar, Freundesliste und Anfragen — auf ",h("strong",{style:{color:"#fff"}},"Firebase (Google LLC)")," gespeichert."),
+        h("p",{style:{marginTop:10}},"Die Speicherung erfolgt über deine automatisch generierte Lern Space ID, ohne Anmeldung."),
         h("p",{style:{marginTop:10}},h("span",{style:{color:"var(--c-pur2)",cursor:"pointer",textDecoration:"underline"},onClick:p.onShowDat},"► Datenschutzerklärung lesen (Punkt 13)"))
       ),
       h("div",{className:"modal-foot",style:{gap:10}},
         h("button",{className:"btn btn-g",style:{flex:1},onClick:p.onDecline},"Abbrechen"),
-        h("button",{className:"btn btn-p",style:{flex:1,background:"linear-gradient(135deg,rgba(212,175,55,.8),rgba(180,140,30,.8))",boxShadow:"0 0 16px rgba(212,175,55,.3)"},onClick:p.onAccept},"u2714 Okay")
+        h("button",{className:"btn btn-p",style:{flex:1,background:"linear-gradient(135deg,rgba(212,175,55,.8),rgba(180,140,30,.8))",boxShadow:"0 0 16px rgba(212,175,55,.3)"},onClick:p.onAccept},"✔ Okay")
       )
     )
   );
@@ -1880,20 +1882,18 @@ function LernSpaceView(p){
     bg.style.cssText='position:fixed;inset:0;background:#03020f;overflow:hidden;pointer-events:none;';
     bg.innerHTML=sh;
     document.body.insertBefore(bg,document.body.firstChild);
-    // Make app div positioned+transparent so it paints after #ls-bg in z:auto order
-    var appDiv=document.querySelector('.hdr')&&document.querySelector('.hdr').parentElement;
-    if(appDiv){appDiv.style.position='relative';appDiv.style.background='transparent';}
+    // CSS-Klasse steuert Transparenz (kein direktes Style-Override auf React-DOM)
+    document.body.classList.add('ls-stars-on');
     var wrap=document.querySelector('.ls-wrap');
     if(wrap)wrap.style.background='transparent';
     return function(){
       var el=document.getElementById('ls-bg');if(el)el.remove();
-      var a=document.querySelector('.hdr')&&document.querySelector('.hdr').parentElement;
-      if(a){a.style.position='';a.style.background='';}
+      document.body.classList.remove('ls-stars-on');
       var w=document.querySelector('.ls-wrap');if(w)w.style.background='';
     };
   },[lsPage]);
 
-  var defaultData={friends:[],requests:[],groups:[],sharedIncoming:[],challenges:[],activities:[]};
+  var defaultData={friends:[],requests:[],sentRequests:[],groups:[],sharedIncoming:[],challenges:[],activities:[]};
 
   function saveAvatar(avId,photoData){
     var upd={avatar:avId,avatarPhoto:photoData||null};
@@ -1942,16 +1942,32 @@ function LernSpaceView(p){
     var tid=inviteId.trim();
     if(!tid||tid===MY_ID){showToast('Ung\u00fcltige ID');return;}
     if((lsData.friends||[]).find(function(f){return f.id===tid;})){showToast('Bereits befreundet');return;}
+    if((lsData.sentRequests||[]).find(function(r){return r.toId===tid;})){showToast('Anfrage bereits gesendet');return;}
     lsGet('ls_users',tid).then(function(td){
       var tData=td||defaultData;
       var reqs=[].concat(tData.requests||[]);
-      if(reqs.find(function(r){return r.fromId===MY_ID;})){showToast('Anfrage bereits gesendet');return;}
+      if(reqs.find(function(r){return r.fromId===MY_ID;})){showToast('Anfrage bereits gesendet');return null;}
       reqs.push({fromId:MY_ID,ts:Date.now()});
       return lsSet('ls_users',tid,Object.assign({},tData,{requests:reqs}));
-    }).then(function(){
+    }).then(function(res){
+      if(!res)return;
+      var newSent=[].concat(lsData.sentRequests||[],[{toId:tid,ts:Date.now()}]);
+      saveData({sentRequests:newSent});
       showToast('\uD83D\uDCE8 Anfrage gesendet!');
       setInviteId('');
     }).catch(function(){showToast('\u274C Fehler beim Senden');});
+  }
+
+  function cancelRequest(toId){
+    lsGet('ls_users',toId).then(function(td){
+      if(td){
+        var reqs=(td.requests||[]).filter(function(r){return r.fromId!==MY_ID;});
+        return lsSet('ls_users',toId,Object.assign({},td,{requests:reqs}));
+      }
+    }).catch(function(){});
+    var newSent=(lsData.sentRequests||[]).filter(function(r){return r.toId!==toId;});
+    saveData({sentRequests:newSent});
+    showToast('Anfrage zur\u00fcckgezogen');
   }
 
   function acceptRequest(req){
@@ -2008,6 +2024,7 @@ function LernSpaceView(p){
 
   var friends=lsData?lsData.friends||[]:[];
   var requests=lsData?lsData.requests||[]:[];
+  var sentRequests=lsData?( lsData.sentRequests||[]).filter(function(r){return !friends.find(function(f){return f.id===r.toId;});}):[];
   var groups=lsData?lsData.groups||[]:[];
   var sharedIncoming=lsData?lsData.sharedIncoming||[]:[];
   var activities=lsData?lsData.activities||[]:[];
@@ -2102,6 +2119,19 @@ function LernSpaceView(p){
               h('button',{className:'ls-req-accept',onClick:function(){acceptRequest(req);}},'\u2705 Annehmen'),
               h('button',{className:'ls-req-decline',onClick:function(){declineRequest(req);}},'\u274C Ablehnen')
             )
+          );
+        })
+      ),
+      sentRequests.length>0&&h('div',null,
+        h('div',{className:'ls-sec-lbl'},'⏳ Offene Anfragen ('+sentRequests.length+')'),
+        sentRequests.map(function(r,i){
+          return h('div',{key:i,className:'ls-friend-row',style:{cursor:'default'}},
+            h('div',{className:'ls-fr-av',style:{background:'linear-gradient(135deg,rgba(251,191,36,.18),rgba(251,191,36,.08))',border:'1px solid rgba(251,191,36,.25)',fontSize:'.95rem'}},'⏳'),
+            h('div',{style:{flex:1}},
+              h('div',{style:{fontSize:'.88rem',fontWeight:700,color:'#fff'}},r.toId),
+              h('div',{style:{fontSize:'.63rem',color:'rgba(255,255,255,.38)',marginTop:3}},'Gesendet am '+new Date(r.ts).toLocaleDateString('de-DE'))
+            ),
+            h('button',{style:{background:'rgba(239,68,68,.12)',border:'1px solid rgba(239,68,68,.3)',borderRadius:8,padding:'5px 10px',color:'#fca5a5',fontSize:'.65rem',fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'},onClick:function(e){e.stopPropagation();cancelRequest(r.toId);}},'❌ Zurück')
           );
         })
       ),
@@ -2205,7 +2235,7 @@ function LernSpaceView(p){
     }),
     showConsent&&h(LsConsentModal,{
       onAccept:function(){localStorage.setItem(LS_CONSENT_KEY,'1');setShowConsent(false);},
-      onDecline:function(){setShowConsent(false);},
+      onDecline:function(){setShowConsent(false);if(p.onBack)p.onBack();},
       onShowDat:p.onShowDat||function(){}
     })
   );
@@ -2435,9 +2465,9 @@ function App(){
       qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs}),
       view==="reminder"&&!qsStep&&h("div",null,h(ReminderView,{reminder:data.reminder,decks:decks,onBack:function(){setView("decks");setDeckListMode("home");},onSave:function(r){patch({reminder:r});}}),renderFooter()),
       view==="einstellungen"&&!qsStep&&h("div",null,h(EinstellungenView,{settings:data.settings,onChange:function(s){patch({settings:s});},onDataLoaded:function(d){setData(d);},onOpenSync:function(){setShowSync(true);},onBack:function(){setView("decks");setDeckListMode("home");}}),renderFooter()),
-      view==="lernspace"&&!qsStep&&h("div",null,h(LernSpaceView,{userName:loadStore().userName||"Sophie",decks:decks,folders:folders,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);}}),renderFooter()),
+      view==="lernspace"&&!qsStep&&h("div",null,h(LernSpaceView,{userName:loadStore().userName||"Sophie",decks:decks,folders:folders,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");}}),renderFooter()),
       view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}}),renderFooter()),
-      view==="updates"&&!qsStep&&h(UpdatesView,{onBack:function(){setView("decks");setDeckListMode("home");},onShowImp:function(){setShowImp(true);},onShowDat:function(){setShowDat(true);}})),
+      view==="updates"&&!qsStep&&h(UpdatesView,{onBack:function(){setView("decks");setDeckListMode("home");},onShowImp:function(){setShowImp(true);},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");}})),
     showNew&&h(DeckModal,{folders:folders,onSave:addDeck,onClose:function(){setShowNew(false);}}),
     editDeck&&h(DeckModal,{deck:editDeck,folders:folders,onSave:saveEditDeck,onClose:function(){setEditDeck(null);}}),
     showNewFolder&&h(FolderModal,{onSave:addFolder,onClose:function(){setShowNewFolder(false);}}),
