@@ -2014,6 +2014,8 @@ function LernSpaceView(p){
   var saps=useState(false);var showAvPicker=saps[0];var setShowAvPicker=saps[1];
   var cns=useState(!localStorage.getItem(LS_CONSENT_KEY));var showConsent=cns[0];var setShowConsent=cns[1];
   var savingRef=useRef(false);
+  var dbgs=useState([]);var dbgLog=dbgs[0];var setDbgLog=dbgs[1];
+  function dlog(m){setDbgLog(function(prev){return prev.concat([new Date().toLocaleTimeString().slice(3)+' '+m]).slice(-14);});}
   useEffect(function(){
     document.body.classList.add('ls-view');
     return function(){document.body.classList.remove('ls-view');};
@@ -2064,13 +2066,15 @@ function LernSpaceView(p){
   useEffect(function(){if(lsPage==="friends"||lsPage==="shared"||lsPage==="groups")loadData();},[lsPage]);
 
   function loadData(){
-    if(savingRef.current)return;
+    if(savingRef.current){dlog('loadData SKIP (saving)');return;}
     setLoading(true);
+    dlog('loadData start');
     lsGet('ls_users',MY_ID).then(function(d){
-      if(savingRef.current){setLoading(false);return;}
+      if(savingRef.current){dlog('loadData abort (saving)');setLoading(false);return;}
+      dlog('loadData ok: '+((d&&d.groups||[]).length)+' Gruppen, '+((d&&d.requests||[]).length)+' Anfragen');
       setLsData(d||defaultData);
       setLoading(false);
-    }).catch(function(){setLsData(defaultData);setLoading(false);});
+    }).catch(function(err){dlog('loadData FEHLER: '+(err&&err.message?err.message:err));setLsData(defaultData);setLoading(false);});
   }
 
   function saveData(d){
@@ -2080,46 +2084,47 @@ function LernSpaceView(p){
     // Server-Merge: erst aktuellen Stand holen, dann fields mergen
     return lsGet('ls_users',MY_ID).then(function(remote){
       remote=remote||defaultData;
-      // local gewinnt für eigene/ausgehende Felder, ABER:
       var merged=Object.assign({},remote,local);
-      // requests (eingehend, von anderen geschrieben) → remote behalten + neue lokale ergänzen
       var rReqs=remote.requests||[];
       var lReqs=local.requests||[];
       var allReqs=rReqs.slice();
       lReqs.forEach(function(r){if(!allReqs.find(function(x){return x.fromId===r.fromId;}))allReqs.push(r);});
       merged.requests=allReqs;
-      // friends → Union aus remote + local (Annahmen von anderen Seiten nicht verlieren)
       var rFr=remote.friends||[];var lFr=local.friends||[];
       var allFr=rFr.slice();
       lFr.forEach(function(f){if(!allFr.find(function(x){return x.id===f.id;}))allFr.push(f);});
       merged.friends=allFr;
       return lsSet('ls_users',MY_ID,merged).then(function(){
         savingRef.current=false;
-        // State mit gemergtem Resultat synchronisieren (eingehende Anfragen/Freunde sichtbar machen)
         setLsData(merged);
         return merged;
       });
-    }).catch(function(){savingRef.current=false;showToast('\u274C Sync-Fehler');});
+    }).catch(function(err){savingRef.current=false;dlog('X saveData FEHLER: '+(err&&err.message?err.message:err));});
   }
 
   function sendFriendRequest(){
+    dlog('FR start: '+inviteId);
     var tid=inviteId.trim();
-    if(!tid||tid===MY_ID){showToast('Ung\u00fcltige ID');return;}
-    if((lsData.friends||[]).find(function(f){return f.id===tid;})){showToast('Bereits befreundet');return;}
-    if((lsData.sentRequests||[]).find(function(r){return r.toId===tid;})){showToast('Anfrage bereits gesendet');return;}
+    if(!tid||tid===MY_ID){dlog('X Ungueltige ID tid='+tid);showToast('Ung\u00fcltige ID');return;}
+    if((lsData.friends||[]).find(function(f){return f.id===tid;})){dlog('! bereits befreundet');showToast('Bereits befreundet');return;}
+    if((lsData.sentRequests||[]).find(function(r){return r.toId===tid;})){dlog('! anfrage bereits gesendet');showToast('Bereits gesendet');return;}
+    dlog('lsGet '+tid);
     lsGet('ls_users',tid).then(function(td){
+      dlog('lsGet ok td='+(td?'gefunden':'NULL'));
       var tData=td||defaultData;
       var reqs=[].concat(tData.requests||[]);
-      if(reqs.find(function(r){return r.fromId===MY_ID;})){showToast('Anfrage bereits gesendet');return null;}
+      if(reqs.find(function(r){return r.fromId===MY_ID;})){dlog('! req schon da');return null;}
       reqs.push({fromId:MY_ID,ts:Date.now()});
+      dlog('lsSet '+tid);
       return lsSet('ls_users',tid,Object.assign({},tData,{requests:reqs}));
     }).then(function(res){
       if(!res)return;
+      dlog('lsSet ok, save sentReq');
       var newSent=[].concat(lsData.sentRequests||[],[{toId:tid,ts:Date.now()}]);
       saveData({sentRequests:newSent});
       showToast('\uD83D\uDCE8 Anfrage gesendet!');
       setInviteId('');
-    }).catch(function(){showToast('\u274C Fehler beim Senden');});
+    }).catch(function(err){showToast('\u274C FEHLER: '+(err&&err.message?err.message:err));});
   }
 
   function cancelRequest(toId){
@@ -2181,13 +2186,17 @@ function LernSpaceView(p){
   }
 
   function createGroup(){
+    dlog('createGroup start');
     if(!groupName.trim()){showToast('Name eingeben');return;}
+    if(!lsData){dlog('X lsData NULL');return;}
     var gid=uid();
     var g={id:gid,name:groupName.trim(),emoji:groupEmoji,members:[MY_ID],deckIds:[],created:Date.now()};
     var newGroups=[].concat(lsData.groups||[],[g]);
-    saveData({groups:newGroups});
+    dlog('saveData mit '+newGroups.length+' Gruppen');
+    saveData({groups:newGroups}).then(function(merged){
+      if(merged){dlog('OK '+(merged.groups||[]).length+' Gruppen am Server');showToast('Gruppe erstellt!');}else{dlog('! saveData ohne Ergebnis');}
+    });
     setGroupName('');
-    showToast('\uD83C\uDFEB Gruppe erstellt!');
     lsSet('ls_groups',gid,g).catch(function(){});
   }
 
@@ -2652,6 +2661,13 @@ function LernSpaceView(p){
   }
 
   return h('div',null,
+    dbgLog.length>0&&h('div',{style:{position:'fixed',bottom:0,left:0,right:0,maxHeight:'40vh',overflowY:'auto',background:'rgba(0,0,0,.92)',borderTop:'2px solid #fbbf24',padding:'8px 12px',zIndex:9999,fontFamily:'monospace',fontSize:'.62rem',color:'#4ade80',lineHeight:1.5}},
+      h('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:4}},
+        h('span',{style:{color:'#fbbf24',fontWeight:800}},'\uD83D\uDC1B DEBUG LOG'),
+        h('span',{style:{color:'#f87171',cursor:'pointer'},onClick:function(){setDbgLog([]);}},'\u2715 Clear')
+      ),
+      dbgLog.map(function(line,i){return h('div',{key:i},line);})
+    ),
     h('div',{className:'ls-wrap'},
       lsPage!=='home'&&h('button',{className:'ls-back',onClick:function(){if(lsPage==='group-detail'){if(groupStackPage==='new-card'){setGroupStackPage('deck-detail');}else if(groupStackPage==='new-deck'||groupStackPage==='deck-detail'){setGroupStackPage('list');setGroupTab('stacks');}else{setLsPage('groups');}}else{setLsPage('home');}}},'\u2190 '+(lsPage==='group-detail'&&groupStackPage==='deck-detail'?'Zur\u00fcck zu Stapeln':lsPage==='group-detail'&&groupStackPage==='new-deck'?'Zur\u00fcck zu Stapeln':lsPage==='group-detail'&&groupStackPage==='new-card'?'Zur\u00fcck zur Karte':lsPage==='group-detail'?'Zur\u00fcck zu Gruppen':'Zur\u00fcck zur \u00DCbersicht')),
       loading&&lsPage==='home'?h('div',{className:'ls-loading'},h('div',{className:'ls-spinner'}),h('div',null,'Lade Lern Space\u2026'))
