@@ -481,8 +481,11 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .ls-group-row{background:linear-gradient(155deg,rgba(10,21,64,.18) 0%,rgba(6,12,42,.1) 100%);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(212,175,55,.3);border-radius:18px;padding:14px;margin-bottom:10px;cursor:pointer;transition:.15s;box-shadow:0 0 10px rgba(212,175,55,.1),0 0 22px rgba(212,175,55,.05);position:relative;overflow:hidden}
 .ls-group-row::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,175,55,.6),transparent)}
 .ls-group-row:active{background:rgba(212,175,55,.07);transform:scale(.98)}
-.ls-gd-hero{text-align:center;padding:10px 0 16px;background:radial-gradient(ellipse at 50% 0%,rgba(139,92,246,.18) 0%,transparent 70%)}
-.ls-gd-av{width:68px;height:68px;border-radius:20px;background:linear-gradient(135deg,rgba(139,92,246,.3),rgba(212,175,55,.12));border:2px solid rgba(212,175,55,.38);display:flex;align-items:center;justify-content:center;font-size:2.1rem;margin:0 auto 10px;box-shadow:0 0 0 6px rgba(212,175,55,.06),0 0 28px rgba(139,92,246,.25)}
+.ls-gd-hero{text-align:center;padding:10px 0 16px}
+.ls-gd-av{width:68px;height:68px;border-radius:20px;background:linear-gradient(135deg,rgba(139,92,246,.3),rgba(212,175,55,.12));border:2px solid rgba(212,175,55,.38);display:flex;align-items:center;justify-content:center;font-size:2.1rem;margin:0 auto 10px;box-shadow:0 0 44px rgba(139,92,246,.38),0 0 22px rgba(212,175,55,.22)}
+.ls-gd-av-wrap{position:relative;width:68px;margin:0 auto 10px;cursor:pointer}
+.ls-gd-av-wrap .ls-gd-av{margin:0}
+.ls-gd-av-cam{position:absolute;bottom:-4px;right:-4px;width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#2563eb);border:2px solid rgba(6,12,42,.8);display:flex;align-items:center;justify-content:center;font-size:.65rem}
 .ls-gd-name{font-size:1.1rem;font-weight:900;background:linear-gradient(135deg,#fff 0%,#c4b5fd 55%,#fbbf24 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:4px}
 .ls-gd-meta{font-size:.7rem;color:rgba(255,255,255,.6);margin-bottom:14px}
 .ls-gd-stats{display:flex;gap:8px;justify-content:center}
@@ -514,6 +517,31 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .ls-gd-chat-text{font-size:.82rem;color:#fff}
 .ls-gd-chat-time{font-size:.58rem;color:rgba(255,255,255,.3);margin-top:3px}
 .ls-gd-chat-inp{display:flex;gap:8px;margin-top:14px;align-items:center}
+.ls-gd-toggle-card{background:rgba(212,175,55,.06);border:1px solid rgba(212,175,55,.22);border-radius:17px;padding:13px 15px;margin-bottom:14px;display:flex;align-items:center;gap:12px;cursor:pointer;position:relative;overflow:hidden}
+.ls-gd-toggle-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,175,55,.55),transparent)}
+.ls-gd-toggle-sw{width:46px;height:26px;border-radius:13px;position:relative;transition:.25s;flex-shrink:0}
+.ls-gd-toggle-sw.on{background:linear-gradient(135deg,#7c3aed,#2563eb);box-shadow:0 0 12px rgba(124,58,237,.3)}
+.ls-gd-toggle-sw.off{background:rgba(255,255,255,.14)}
+.ls-gd-toggle-knob{width:22px;height:22px;border-radius:50%;background:#fff;position:absolute;top:2px;transition:.25s;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.ls-gd-toggle-sw.on .ls-gd-toggle-knob{left:22px}
+.ls-gd-toggle-sw.off .ls-gd-toggle-knob{left:2px}
+.ls-gd-card-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:10px}
+.ls-gd-card-tile{background:linear-gradient(145deg,rgba(10,21,64,.3),rgba(6,12,42,.2));border:1px solid rgba(139,92,246,.2);border-radius:14px;padding:12px 11px;cursor:pointer;transition:.15s;min-height:82px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.ls-gd-card-tile::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(139,92,246,.45),transparent)}
+.ls-gd-card-tile:active{transform:scale(.96)}
+.ls-gd-card-tile.add-tile{border-style:dashed;border-color:rgba(212,175,55,.32);background:rgba(212,175,55,.03);align-items:center;justify-content:center;gap:5px}
+.ls-gd-card-front{font-size:.78rem;font-weight:700;color:#fff;line-height:1.35}
+.ls-gd-card-num{font-size:.55rem;color:rgba(255,255,255,.28);margin-top:3px}
+.ls-gd-solid-btn{width:100%;padding:11px;border-radius:12px;border:none;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;font-weight:800;font-size:.87rem;cursor:pointer;box-shadow:0 0 20px rgba(139,92,246,.5);margin-bottom:8px}
+.ls-gd-deck-centered{text-align:center!important;padding:16px 13px}
+.ls-gd-deck-big-em{font-size:2rem;display:block;margin-bottom:8px}
+.ls-gd-emo-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:14px}
+.ls-gd-emo{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;cursor:pointer;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);transition:.15s}
+.ls-gd-emo.sel{background:rgba(212,175,55,.15);border-color:rgba(212,175,55,.5)}
+.ls-gd-stats-row{display:flex;gap:8px;margin-bottom:13px}
+.ls-gd-stat-box{flex:1;background:rgba(212,175,55,.07);border:1px solid rgba(212,175,55,.16);border-radius:12px;padding:8px;text-align:center}
+.ls-gd-stat-num{font-size:1rem;font-weight:900;color:#fbbf24;display:block}
+.ls-gd-stat-lbl{font-size:.56rem;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.05em}
 .ls-gd-chat-input{flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:9px 14px;color:#fff;font-size:.85rem;outline:none}
 .ls-gd-send{width:38px;height:38px;border-radius:50%;border:none;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:.95rem;cursor:pointer;flex-shrink:0}
 .ls-group-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
@@ -532,6 +560,8 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .av-edit-btn{position:absolute;bottom:-1px;right:-1px;width:20px;height:20px;border-radius:50%;background:#7c3aed;display:flex;align-items:center;justify-content:center;font-size:.62rem;cursor:pointer;border:2px solid #0f0d1e;pointer-events:none}
 .av-picker-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:14px 0}
 .av-picker-item{aspect-ratio:1;border-radius:50%;cursor:pointer;overflow:hidden;border:2.5px solid transparent;transition:.15s;position:relative}
+.av-picker-item-sq{aspect-ratio:1;border-radius:10px;cursor:pointer;overflow:hidden;border:2.5px solid transparent;transition:.15s;position:relative}
+.av-picker-item-sq.apsel{border-color:#a78bfa;box-shadow:0 0 12px rgba(167,139,250,.55)}
 .av-picker-item.apsel{border-color:#a78bfa;box-shadow:0 0 12px rgba(167,139,250,.55)}
 .av-picker-item img{width:100%;height:100%;display:block}
 .av-photo-btn{width:100%;padding:10px;border-radius:12px;border:1.5px dashed rgba(139,92,246,.4);background:none;color:#a78bfa;font-size:.84rem;font-weight:700;cursor:pointer;margin-bottom:10px;text-align:center}
@@ -1695,7 +1725,7 @@ function lsSet(col,docId,data){
   return fetch(FB_BASE+'/'+col+'/'+encodeURIComponent(docId)+'?key='+FB_KEY,{
     method:'PATCH',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({fields:{data:{stringValue:JSON.stringify(data)}}})
-  });
+  }).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r;});
 }
 function copyDeckNewIds(deck){
   var newDeck=Object.assign({},deck,{id:uid()});
@@ -1705,16 +1735,16 @@ function copyDeckNewIds(deck){
 }
 
 var LS_AVATARS=[
-  {id:'av1',name:'Astro',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='#0d1b4b'/><circle cx='50' cy='44' r='25' fill='#1d4ed8'/><ellipse cx='50' cy='44' rx='17' ry='14' fill='#93c5fd'/><circle cx='43' cy='42' r='3' fill='#1e3a8a'/><circle cx='57' cy='42' r='3' fill='#1e3a8a'/><ellipse cx='40' cy='35' rx='5' ry='3' fill='white' opacity='.3'/><path d='M28 63 Q50 56 72 63 L74 76 Q50 70 26 76 Z' fill='#2563eb'/><line x1='50' y1='19' x2='50' y2='11' stroke='#60a5fa' stroke-width='2.5'/><circle cx='50' cy='8' r='4' fill='#60a5fa'/></svg>"},
-  {id:'av2',name:'Fuchs',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='#1c0a00'/><polygon points='28,38 20,14 43,27' fill='#f97316'/><polygon points='72,38 80,14 57,27' fill='#f97316'/><polygon points='30,36 24,19 41,27' fill='#fca5a5'/><polygon points='70,36 76,19 59,27' fill='#fca5a5'/><circle cx='50' cy='54' r='24' fill='#fb923c'/><ellipse cx='50' cy='63' rx='13' ry='9' fill='#fff'/><circle cx='42' cy='50' r='5' fill='#1c1917'/><circle cx='58' cy='50' r='5' fill='#1c1917'/><circle cx='43.5' cy='48.5' r='1.5' fill='white'/><circle cx='59.5' cy='48.5' r='1.5' fill='white'/><ellipse cx='50' cy='60' rx='3.5' ry='2.5' fill='#9a3412'/></svg>"},
-  {id:'av3',name:'Panda',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='#1a1a2e'/><circle cx='27' cy='30' r='13' fill='#1f2937'/><circle cx='73' cy='30' r='13' fill='#1f2937'/><circle cx='50' cy='55' r='27' fill='#f0f0f0'/><ellipse cx='40' cy='49' rx='9' ry='8' fill='#1f2937'/><ellipse cx='60' cy='49' rx='9' ry='8' fill='#1f2937'/><circle cx='40' cy='49' r='4.5' fill='white'/><circle cx='60' cy='49' r='4.5' fill='white'/><circle cx='40' cy='50' r='2.5' fill='#111'/><circle cx='60' cy='50' r='2.5' fill='#111'/><circle cx='41' cy='49' r='1' fill='white'/><circle cx='61' cy='49' r='1' fill='white'/><ellipse cx='50' cy='61' rx='4' ry='3' fill='#374151'/><path d='M46 64 Q50 68 54 64' stroke='#374151' stroke-width='1.5' fill='none'/></svg>"},
-  {id:'av4',name:'Drache',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='#1e0038'/><polygon points='34,26 29,8 43,21' fill='#c084fc'/><polygon points='66,26 71,8 57,21' fill='#c084fc'/><circle cx='50' cy='52' r='26' fill='#7c3aed'/><circle cx='50' cy='52' r='22' fill='#8b5cf6'/><circle cx='41' cy='47' r='7' fill='#fbbf24'/><circle cx='59' cy='47' r='7' fill='#fbbf24'/><ellipse cx='41' cy='48' rx='3' ry='5' fill='#111'/><ellipse cx='59' cy='48' rx='3' ry='5' fill='#111'/><circle cx='42' cy='46' r='1.5' fill='white'/><circle cx='60' cy='46' r='1.5' fill='white'/><ellipse cx='50' cy='62' rx='9' ry='6' fill='#6d28d9'/><circle cx='47' cy='63' r='1.5' fill='#4c1d95'/><circle cx='53' cy='63' r='1.5' fill='#4c1d95'/></svg>"},
-  {id:'av5',name:'Katze',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='#0f0d1e'/><polygon points='27,35 21,12 43,26' fill='#c4b5fd'/><polygon points='73,35 79,12 57,26' fill='#c4b5fd'/><polygon points='29,33 25,16 41,26' fill='#fda4af'/><polygon points='71,33 75,16 59,26' fill='#fda4af'/><circle cx='50' cy='53' r='26' fill='#ede9fe'/><circle cx='40' cy='49' r='6' fill='#a78bfa'/><circle cx='60' cy='49' r='6' fill='#a78bfa'/><ellipse cx='40' cy='50' rx='2.5' ry='5' fill='#111'/><ellipse cx='60' cy='50' rx='2.5' ry='5' fill='#111'/><circle cx='41' cy='48' r='1.5' fill='white'/><circle cx='61' cy='48' r='1.5' fill='white'/><polygon points='50,60 47,64 53,64' fill='#f9a8d4'/></svg>"},
-  {id:'av6',name:'Hase',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='#1e0d2e'/><ellipse cx='37' cy='23' rx='9' ry='20' fill='#e9d5ff'/><ellipse cx='63' cy='23' rx='9' ry='20' fill='#e9d5ff'/><ellipse cx='37' cy='23' rx='5' ry='16' fill='#f9a8d4'/><ellipse cx='63' cy='23' rx='5' ry='16' fill='#f9a8d4'/><circle cx='50' cy='57' r='24' fill='#f3e8ff'/><circle cx='41' cy='53' r='5' fill='#7c3aed'/><circle cx='59' cy='53' r='5' fill='#7c3aed'/><circle cx='42' cy='52' r='2' fill='white'/><circle cx='60' cy='52' r='2' fill='white'/><ellipse cx='50' cy='63' rx='3' ry='2' fill='#fb7185'/><path d='M47 65 Q50 69 53 65' stroke='#e879a0' stroke-width='1.5' fill='none'/></svg>"},
-  {id:'av7',name:'Roboter',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='#0a1a0a'/><line x1='50' y1='20' x2='50' y2='12' stroke='#4ade80' stroke-width='2'/><circle cx='50' cy='9' r='4' fill='#4ade80'/><rect x='22' y='24' width='56' height='46' rx='10' fill='#374151'/><rect x='24' y='26' width='52' height='42' rx='8' fill='#4b5563'/><rect x='32' y='36' width='14' height='10' rx='3' fill='#111'/><rect x='54' y='36' width='14' height='10' rx='3' fill='#111'/><rect x='33' y='37' width='12' height='8' rx='2' fill='#4ade80'/><rect x='55' y='37' width='12' height='8' rx='2' fill='#4ade80'/><rect x='32' y='52' width='36' height='8' rx='3' fill='#111'/><line x1='38' y1='52' x2='38' y2='60' stroke='#374151' stroke-width='1'/><line x1='44' y1='52' x2='44' y2='60' stroke='#374151' stroke-width='1'/><line x1='50' y1='52' x2='50' y2='60' stroke='#374151' stroke-width='1'/><line x1='56' y1='52' x2='56' y2='60' stroke='#374151' stroke-width='1'/><line x1='62' y1='52' x2='62' y2='60' stroke='#374151' stroke-width='1'/><circle cx='22' cy='47' r='5' fill='#374151'/><circle cx='78' cy='47' r='5' fill='#374151'/></svg>"},
-  {id:'av8',name:'Eule',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='#0c0a1e'/><polygon points='33,28 27,11 42,21' fill='#a78bfa'/><polygon points='67,28 73,11 58,21' fill='#a78bfa'/><circle cx='50' cy='53' r='26' fill='#6d28d9'/><ellipse cx='50' cy='65' rx='14' ry='9' fill='#c4b5fd'/><circle cx='39' cy='47' r='10' fill='#fbbf24'/><circle cx='61' cy='47' r='10' fill='#fbbf24'/><circle cx='39' cy='47' r='7' fill='#111'/><circle cx='61' cy='47' r='7' fill='#111'/><circle cx='39' cy='47' r='3.5' fill='#fbbf24'/><circle cx='61' cy='47' r='3.5' fill='#fbbf24'/><circle cx='39' cy='47' r='1.5' fill='#111'/><circle cx='61' cy='47' r='1.5' fill='#111'/><circle cx='41' cy='45' r='2' fill='white' opacity='.6'/><circle cx='63' cy='45' r='2' fill='white' opacity='.6'/><polygon points='50,56 46,63 54,63' fill='#fbbf24'/></svg>"},
-  {id:'av9',name:'Loewe',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='#1c0a00'/><circle cx='50' cy='52' r='30' fill='#b45309'/><circle cx='50' cy='52' r='26' fill='#d97706'/><circle cx='50' cy='52' r='22' fill='#fbbf24'/><circle cx='41' cy='48' r='5' fill='#a16207'/><circle cx='59' cy='48' r='5' fill='#a16207'/><circle cx='41' cy='48' r='3' fill='#111'/><circle cx='59' cy='48' r='3' fill='#111'/><circle cx='42' cy='47' r='1.2' fill='white'/><circle cx='60' cy='47' r='1.2' fill='white'/><ellipse cx='50' cy='59' rx='10' ry='7' fill='#fde68a'/><ellipse cx='50' cy='57' rx='3.5' ry='2.5' fill='#92400e'/><path d='M47 60 Q50 64 53 60' stroke='#92400e' stroke-width='1.5' fill='none'/></svg>"},
-  {id:'av10',name:'Kosmos',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='#0f0d1e'/><circle cx='20' cy='20' r='1.5' fill='white' opacity='.6'/><circle cx='80' cy='15' r='1' fill='white' opacity='.5'/><circle cx='15' cy='70' r='1' fill='white' opacity='.5'/><circle cx='85' cy='75' r='1.5' fill='white' opacity='.6'/><circle cx='25' cy='80' r='1' fill='white' opacity='.4'/><circle cx='50' cy='50' r='27' fill='#4c1d95'/><circle cx='50' cy='50' r='23' fill='#7c3aed'/><circle cx='41' cy='46' r='5' fill='#fbbf24'/><circle cx='59' cy='46' r='5' fill='#fbbf24'/><circle cx='41' cy='46' r='3' fill='white'/><circle cx='59' cy='46' r='3' fill='white'/><circle cx='41' cy='46' r='1.5' fill='#111'/><circle cx='59' cy='46' r='1.5' fill='#111'/><path d='M40 58 Q50 65 60 58' stroke='#c4b5fd' stroke-width='2' fill='none' stroke-linecap='round'/><path d='M50 30 L51.5 34 L55.5 34 L52.5 36.5 L53.5 40 L50 38 L46.5 40 L47.5 36.5 L44.5 34 L48.5 34 Z' fill='#fbbf24'/></svg>"}
+  {id:'av1',name:'Astro',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='14' fill='#0d1b4b'/><circle cx='50' cy='44' r='25' fill='#1d4ed8'/><ellipse cx='50' cy='44' rx='17' ry='14' fill='#93c5fd'/><circle cx='43' cy='42' r='3' fill='#1e3a8a'/><circle cx='57' cy='42' r='3' fill='#1e3a8a'/><ellipse cx='40' cy='35' rx='5' ry='3' fill='white' opacity='.3'/><path d='M28 63 Q50 56 72 63 L74 76 Q50 70 26 76 Z' fill='#2563eb'/><line x1='50' y1='19' x2='50' y2='11' stroke='#60a5fa' stroke-width='2.5'/><circle cx='50' cy='8' r='4' fill='#60a5fa'/></svg>"},
+  {id:'av2',name:'Fuchs',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='14' fill='#1c0a00'/><polygon points='28,38 20,14 43,27' fill='#f97316'/><polygon points='72,38 80,14 57,27' fill='#f97316'/><polygon points='30,36 24,19 41,27' fill='#fca5a5'/><polygon points='70,36 76,19 59,27' fill='#fca5a5'/><circle cx='50' cy='54' r='24' fill='#fb923c'/><ellipse cx='50' cy='63' rx='13' ry='9' fill='#fff'/><circle cx='42' cy='50' r='5' fill='#1c1917'/><circle cx='58' cy='50' r='5' fill='#1c1917'/><circle cx='43.5' cy='48.5' r='1.5' fill='white'/><circle cx='59.5' cy='48.5' r='1.5' fill='white'/><ellipse cx='50' cy='60' rx='3.5' ry='2.5' fill='#9a3412'/></svg>"},
+  {id:'av3',name:'Panda',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='14' fill='#1a1a2e'/><circle cx='27' cy='30' r='13' fill='#1f2937'/><circle cx='73' cy='30' r='13' fill='#1f2937'/><circle cx='50' cy='55' r='27' fill='#f0f0f0'/><ellipse cx='40' cy='49' rx='9' ry='8' fill='#1f2937'/><ellipse cx='60' cy='49' rx='9' ry='8' fill='#1f2937'/><circle cx='40' cy='49' r='4.5' fill='white'/><circle cx='60' cy='49' r='4.5' fill='white'/><circle cx='40' cy='50' r='2.5' fill='#111'/><circle cx='60' cy='50' r='2.5' fill='#111'/><circle cx='41' cy='49' r='1' fill='white'/><circle cx='61' cy='49' r='1' fill='white'/><ellipse cx='50' cy='61' rx='4' ry='3' fill='#374151'/><path d='M46 64 Q50 68 54 64' stroke='#374151' stroke-width='1.5' fill='none'/></svg>"},
+  {id:'av4',name:'Drache',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='14' fill='#1e0038'/><polygon points='34,26 29,8 43,21' fill='#c084fc'/><polygon points='66,26 71,8 57,21' fill='#c084fc'/><circle cx='50' cy='52' r='26' fill='#7c3aed'/><circle cx='50' cy='52' r='22' fill='#8b5cf6'/><circle cx='41' cy='47' r='7' fill='#fbbf24'/><circle cx='59' cy='47' r='7' fill='#fbbf24'/><ellipse cx='41' cy='48' rx='3' ry='5' fill='#111'/><ellipse cx='59' cy='48' rx='3' ry='5' fill='#111'/><circle cx='42' cy='46' r='1.5' fill='white'/><circle cx='60' cy='46' r='1.5' fill='white'/><ellipse cx='50' cy='62' rx='9' ry='6' fill='#6d28d9'/><circle cx='47' cy='63' r='1.5' fill='#4c1d95'/><circle cx='53' cy='63' r='1.5' fill='#4c1d95'/></svg>"},
+  {id:'av5',name:'Katze',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='14' fill='#0f0d1e'/><polygon points='27,35 21,12 43,26' fill='#c4b5fd'/><polygon points='73,35 79,12 57,26' fill='#c4b5fd'/><polygon points='29,33 25,16 41,26' fill='#fda4af'/><polygon points='71,33 75,16 59,26' fill='#fda4af'/><circle cx='50' cy='53' r='26' fill='#ede9fe'/><circle cx='40' cy='49' r='6' fill='#a78bfa'/><circle cx='60' cy='49' r='6' fill='#a78bfa'/><ellipse cx='40' cy='50' rx='2.5' ry='5' fill='#111'/><ellipse cx='60' cy='50' rx='2.5' ry='5' fill='#111'/><circle cx='41' cy='48' r='1.5' fill='white'/><circle cx='61' cy='48' r='1.5' fill='white'/><polygon points='50,60 47,64 53,64' fill='#f9a8d4'/></svg>"},
+  {id:'av6',name:'Hase',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='14' fill='#1e0d2e'/><ellipse cx='37' cy='23' rx='9' ry='20' fill='#e9d5ff'/><ellipse cx='63' cy='23' rx='9' ry='20' fill='#e9d5ff'/><ellipse cx='37' cy='23' rx='5' ry='16' fill='#f9a8d4'/><ellipse cx='63' cy='23' rx='5' ry='16' fill='#f9a8d4'/><circle cx='50' cy='57' r='24' fill='#f3e8ff'/><circle cx='41' cy='53' r='5' fill='#7c3aed'/><circle cx='59' cy='53' r='5' fill='#7c3aed'/><circle cx='42' cy='52' r='2' fill='white'/><circle cx='60' cy='52' r='2' fill='white'/><ellipse cx='50' cy='63' rx='3' ry='2' fill='#fb7185'/><path d='M47 65 Q50 69 53 65' stroke='#e879a0' stroke-width='1.5' fill='none'/></svg>"},
+  {id:'av7',name:'Roboter',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='14' fill='#0a1a0a'/><line x1='50' y1='20' x2='50' y2='12' stroke='#4ade80' stroke-width='2'/><circle cx='50' cy='9' r='4' fill='#4ade80'/><rect x='22' y='24' width='56' height='46' rx='10' fill='#374151'/><rect x='24' y='26' width='52' height='42' rx='8' fill='#4b5563'/><rect x='32' y='36' width='14' height='10' rx='3' fill='#111'/><rect x='54' y='36' width='14' height='10' rx='3' fill='#111'/><rect x='33' y='37' width='12' height='8' rx='2' fill='#4ade80'/><rect x='55' y='37' width='12' height='8' rx='2' fill='#4ade80'/><rect x='32' y='52' width='36' height='8' rx='3' fill='#111'/><line x1='38' y1='52' x2='38' y2='60' stroke='#374151' stroke-width='1'/><line x1='44' y1='52' x2='44' y2='60' stroke='#374151' stroke-width='1'/><line x1='50' y1='52' x2='50' y2='60' stroke='#374151' stroke-width='1'/><line x1='56' y1='52' x2='56' y2='60' stroke='#374151' stroke-width='1'/><line x1='62' y1='52' x2='62' y2='60' stroke='#374151' stroke-width='1'/><circle cx='22' cy='47' r='5' fill='#374151'/><circle cx='78' cy='47' r='5' fill='#374151'/></svg>"},
+  {id:'av8',name:'Eule',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='14' fill='#0c0a1e'/><polygon points='33,28 27,11 42,21' fill='#a78bfa'/><polygon points='67,28 73,11 58,21' fill='#a78bfa'/><circle cx='50' cy='53' r='26' fill='#6d28d9'/><ellipse cx='50' cy='65' rx='14' ry='9' fill='#c4b5fd'/><circle cx='39' cy='47' r='10' fill='#fbbf24'/><circle cx='61' cy='47' r='10' fill='#fbbf24'/><circle cx='39' cy='47' r='7' fill='#111'/><circle cx='61' cy='47' r='7' fill='#111'/><circle cx='39' cy='47' r='3.5' fill='#fbbf24'/><circle cx='61' cy='47' r='3.5' fill='#fbbf24'/><circle cx='39' cy='47' r='1.5' fill='#111'/><circle cx='61' cy='47' r='1.5' fill='#111'/><circle cx='41' cy='45' r='2' fill='white' opacity='.6'/><circle cx='63' cy='45' r='2' fill='white' opacity='.6'/><polygon points='50,56 46,63 54,63' fill='#fbbf24'/></svg>"},
+  {id:'av9',name:'Loewe',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='14' fill='#1c0a00'/><circle cx='50' cy='52' r='30' fill='#b45309'/><circle cx='50' cy='52' r='26' fill='#d97706'/><circle cx='50' cy='52' r='22' fill='#fbbf24'/><circle cx='41' cy='48' r='5' fill='#a16207'/><circle cx='59' cy='48' r='5' fill='#a16207'/><circle cx='41' cy='48' r='3' fill='#111'/><circle cx='59' cy='48' r='3' fill='#111'/><circle cx='42' cy='47' r='1.2' fill='white'/><circle cx='60' cy='47' r='1.2' fill='white'/><ellipse cx='50' cy='59' rx='10' ry='7' fill='#fde68a'/><ellipse cx='50' cy='57' rx='3.5' ry='2.5' fill='#92400e'/><path d='M47 60 Q50 64 53 60' stroke='#92400e' stroke-width='1.5' fill='none'/></svg>"},
+  {id:'av10',name:'Kosmos',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='14' fill='#0f0d1e'/><circle cx='20' cy='20' r='1.5' fill='white' opacity='.6'/><circle cx='80' cy='15' r='1' fill='white' opacity='.5'/><circle cx='15' cy='70' r='1' fill='white' opacity='.5'/><circle cx='85' cy='75' r='1.5' fill='white' opacity='.6'/><circle cx='25' cy='80' r='1' fill='white' opacity='.4'/><circle cx='50' cy='50' r='27' fill='#4c1d95'/><circle cx='50' cy='50' r='23' fill='#7c3aed'/><circle cx='41' cy='46' r='5' fill='#fbbf24'/><circle cx='59' cy='46' r='5' fill='#fbbf24'/><circle cx='41' cy='46' r='3' fill='white'/><circle cx='59' cy='46' r='3' fill='white'/><circle cx='41' cy='46' r='1.5' fill='#111'/><circle cx='59' cy='46' r='1.5' fill='#111'/><path d='M40 58 Q50 65 60 58' stroke='#c4b5fd' stroke-width='2' fill='none' stroke-linecap='round'/><path d='M50 30 L51.5 34 L55.5 34 L52.5 36.5 L53.5 40 L50 38 L46.5 40 L47.5 36.5 L44.5 34 L48.5 34 Z' fill='#fbbf24'/></svg>"}
 ];
 
 function getAvatarSrc(avId){
@@ -1869,6 +1899,77 @@ function AvatarPickerModal(p){
   );
 }
 
+
+function GroupAvatarPickerModal(p){
+  var ts=useState('avatar');var tab=ts[0];var setTab=ts[1];
+  var ss=useState(p.current||'av1');var sel=ss[0];var setSel=ss[1];
+  var phs=useState(p.currentPhoto||null);var photo=phs[0];var setPhoto=phs[1];
+  var es=useState(p.currentEmoji||'\uD83C\uDFEB');var selEmoji=es[0];var setSelEmoji=es[1];
+  var cps=useState(false);var cropMode=cps[0];var setCropMode=cps[1];
+  var raws=useState(null);var rawPhoto=raws[0];var setRawPhoto=raws[1];
+  var fref=useRef(null);
+  var EMOJIS=['\uD83D\uDE0A','\uD83D\uDE0E','\uD83E\uDD13','\uD83E\uDDE0','\uD83D\uDCAA','\uD83D\uDE80','\u2B50','\u2728','\uD83C\uDF1F','\uD83D\uDCAB','\uD83D\uDCDA','\uD83D\uDCD6','\uD83D\uDD2C','\uD83E\uDDEA','\uD83C\uDF93','\uD83D\uDCDD','\uD83E\uDD81','\uD83D\uDC2F','\uD83E\uDD8A','\uD83D\uDC3A','\uD83E\uDD85','\uD83E\uDD8B','\uD83C\uDF08','\uD83C\uDFC6','\uD83C\uDFAF','\uD83C\uDFAE','\uD83D\uDD25','\u26A1','\uD83D\uDCA1','\uD83C\uDFEB','\uD83C\uDF19','\uD83C\uDF1E','\uD83C\uDFA8','\uD83C\uDFB5','\u26BD','\uD83C\uDFC0','\uD83C\uDFB2','\uD83C\uDFAD','\uD83D\uDC09','\uD83E\uDD8C','\uD83D\uDC08','\uD83D\uDC36','\uD83D\uDC31','\uD83D\uDC27','\uD83D\uDC3B','\uD83C\uDF0D','\uD83D\uDD2D','\uD83E\uDD96','\uD83E\uDD8F'];
+  function handleFile(e){
+    var f=e.target.files&&e.target.files[0];if(!f)return;
+    var reader=new FileReader();
+    reader.onload=function(ev){setRawPhoto(ev.target.result);setCropMode(true);};
+    reader.readAsDataURL(f);
+  }
+  if(cropMode&&rawPhoto){
+    return h('div',{className:'ov'},
+      h('div',{className:'modal',style:{maxWidth:'300px'},onClick:function(e){e.stopPropagation();}},
+        h('div',{className:'modal-title'},'Foto ausrichten'),
+        h(CropperView,{imgSrc:rawPhoto,
+          onConfirm:function(b64){setPhoto(b64);setSel('photo');setCropMode(false);setRawPhoto(null);},
+          onCancel:function(){setCropMode(false);setRawPhoto(null);}})
+      )
+    );
+  }
+  var tabBtnBase={flex:1,padding:'8px 4px',borderRadius:10,border:'1px solid rgba(255,255,255,.1)',background:'rgba(255,255,255,.04)',color:'rgba(255,255,255,.45)',fontWeight:700,fontSize:'.78rem',cursor:'pointer'};
+  var tabBtnActive=Object.assign({},tabBtnBase,{background:'rgba(212,175,55,.15)',borderColor:'rgba(212,175,55,.4)',color:'#fbbf24'});
+  var squareStyle={width:'68px',height:'68px',borderRadius:'18px',objectFit:'cover',border:'2.5px solid #a78bfa',display:'block',margin:'0 auto 14px'};
+  var previewSrc=sel==='photo'&&photo?photo:getAvatarSrc(sel);
+  return h('div',{className:'ov',onClick:p.onClose},
+    h('div',{className:'modal',style:{maxWidth:'380px'},onClick:function(e){e.stopPropagation();}},
+      h('div',{className:'modal-title'},'Gruppen-Avatar w\u00e4hlen'),
+      h('div',{style:{display:'flex',gap:8,marginBottom:16}},
+        h('button',{style:tab==='avatar'?tabBtnActive:tabBtnBase,onClick:function(){setTab('avatar');}},' Avatar'),
+        h('button',{style:tab==='emoji'?tabBtnActive:tabBtnBase,onClick:function(){setTab('emoji');}},'\uD83D\uDE0A Emoji')
+      ),
+      tab==='avatar'&&h('div',null,
+        h('img',{src:previewSrc,style:squareStyle}),
+        h('div',{className:'av-picker-grid'},
+          LS_AVATARS.map(function(av){
+            return h('div',{key:av.id,className:'av-picker-item-sq'+(sel===av.id?' apsel':''),
+              onClick:function(){setSel(av.id);setPhoto(null);}},
+              h('img',{src:getAvatarSrc(av.id),alt:av.name})
+            );
+          })
+        ),
+        h('button',{className:'av-photo-btn',onClick:function(){fref.current&&fref.current.click();}},'\uD83D\uDCF7 Eigenes Foto'),
+        h('input',{ref:fref,type:'file',accept:'image/*',style:{display:'none'},onChange:handleFile})
+      ),
+      tab==='emoji'&&h('div',null,
+        h('div',{style:{width:'68px',height:'68px',borderRadius:'18px',background:'linear-gradient(135deg,rgba(139,92,246,.3),rgba(212,175,55,.12))',border:'2px solid rgba(212,175,55,.38)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'2rem',margin:'0 auto 14px',boxShadow:'0 0 24px rgba(139,92,246,.25)'}},selEmoji),
+        h('div',{style:{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:6,margin:'10px 0 14px'}},
+          EMOJIS.map(function(em,i){
+            var isActive=em===selEmoji;
+            return h('div',{key:i,onClick:function(){setSelEmoji(em);},
+              style:{width:'42px',height:'42px',borderRadius:'10px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.4rem',cursor:'pointer',background:isActive?'rgba(212,175,55,.18)':'rgba(255,255,255,.04)',border:isActive?'1.5px solid rgba(212,175,55,.5)':'1.5px solid rgba(255,255,255,.07)',transition:'.15s'}},em);
+          })
+        )
+      ),
+      h('div',{style:{display:'flex',gap:10,marginTop:4}},
+        h('button',{className:'btn btn-g',style:{flex:1},onClick:p.onClose},'Abbrechen'),
+        h('button',{className:'btn btn-p',style:{flex:1},onClick:function(){
+          if(tab==='emoji')p.onSaveEmoji(selEmoji);
+          else p.onSaveAvatar(sel,sel==='photo'?photo:null);
+        }},'\u2713 Speichern')
+      )
+    )
+  );
+}
+
 function LsConsentModal(p){
   return h("div",{className:"ov",style:{zIndex:300}},
     h("div",{className:"modal",style:{maxWidth:"370px",background:"rgba(8,6,24,.97)",border:"1px solid rgba(212,175,55,.32)",boxShadow:"0 0 40px rgba(212,175,55,.12),0 0 0 1px rgba(212,175,55,.08)"},onClick:function(e){e.stopPropagation();}},
@@ -1901,6 +2002,14 @@ function LernSpaceView(p){
   var gts=useState('members');var groupTab=gts[0];var setGroupTab=gts[1];
   var cis=useState('');var chatInput=cis[0];var setChatInput=cis[1];
   var gcms=useState({});var groupChats=gcms[0];var setGroupChats=gcms[1];
+  var sgaps=useState(false);var showGroupAvPicker=sgaps[0];var setShowGroupAvPicker=sgaps[1];
+  var gspages=useState('list');var groupStackPage=gspages[0];var setGroupStackPage=gspages[1];
+  var sgds=useState(null);var selectedGroupDeck=sgds[0];var setSelectedGroupDeck=sgds[1];
+  var sghomes=useState({});var showGroupOnHome=sghomes[0];var setShowGroupOnHome=sghomes[1];
+  var ndns=useState('');var newDeckName=ndns[0];var setNewDeckName=ndns[1];
+  var ndes=useState('\uD83D\uDCDA');var newDeckEmoji=ndes[0];var setNewDeckEmoji=ndes[1];
+  var ncfs=useState('');var newCardFront=ncfs[0];var setNewCardFront=ncfs[1];
+  var ncbs=useState('');var newCardBack=ncbs[0];var setNewCardBack=ncbs[1];
   var tms=useToast();var toast=tms[0];var showToast=tms[1];
   var saps=useState(false);var showAvPicker=saps[0];var setShowAvPicker=saps[1];
   var cns=useState(!localStorage.getItem(LS_CONSENT_KEY));var showConsent=cns[0];var setShowConsent=cns[1];
@@ -1951,7 +2060,7 @@ function LernSpaceView(p){
   }
 
   useEffect(function(){loadData();},[]);
-  useEffect(function(){if(lsPage==="friends"||lsPage==="shared")loadData();},[lsPage]);
+  useEffect(function(){if(lsPage==="friends"||lsPage==="shared"||lsPage==="groups")loadData();},[lsPage]);
 
   function loadData(){
     setLoading(true);
@@ -2035,12 +2144,11 @@ function LernSpaceView(p){
     if(!groupName.trim()){showToast('Name eingeben');return;}
     var gid=uid();
     var g={id:gid,name:groupName.trim(),emoji:groupEmoji,members:[MY_ID],deckIds:[],created:Date.now()};
-    lsSet('ls_groups',gid,g).then(function(){
-      var newGroups=[].concat(lsData.groups||[],[g]);
-      saveData({groups:newGroups});
-      setGroupName('');
-      showToast('\uD83C\uDFEB Gruppe erstellt!');
-    });
+    var newGroups=[].concat(lsData.groups||[],[g]);
+    saveData({groups:newGroups});
+    setGroupName('');
+    showToast('\uD83C\uDFEB Gruppe erstellt!');
+    lsSet('ls_groups',gid,g).catch(function(){});
   }
 
   function shareStackWith(deck,friendId){
@@ -2270,11 +2378,165 @@ function LernSpaceView(p){
     );
   }
 
+  function renderGroupStacks(g,gid){
+    var groupDecks=g.groupDecks||[];
+    var homeOn=showGroupOnHome[gid]!==false;
+    var DECK_EMOJIS=['\uD83D\uDE0A','\uD83D\uDE0E','\uD83E\uDD13','\uD83E\uDDE0','\uD83D\uDCAA','\uD83D\uDE80','\u2B50','\u2728','\uD83C\uDF1F','\uD83D\uDCAB','\uD83D\uDCDA','\uD83D\uDCD6','\uD83D\uDD2C','\uD83E\uDDEA','\uD83C\uDF93','\uD83D\uDCDD','\uD83E\uDD81','\uD83D\uDC2F','\uD83E\uDD8A','\uD83D\uDC3A','\uD83E\uDD85','\uD83E\uDD8B','\uD83C\uDF08','\uD83C\uDFC6','\uD83C\uDFAF','\uD83C\uDFAE','\uD83D\uDD25','\u26A1','\uD83D\uDCA1','\uD83C\uDFEB','\uD83C\uDF19','\uD83C\uDF1E','\uD83C\uDFA8','\uD83C\uDFB5','\u26BD','\uD83C\uDFC0','\uD83C\uDFB2','\uD83D\uDC09','\uD83E\uDD8C','\uD83D\uDC08'];
+
+    function toggleHome(){var upd=Object.assign({},showGroupOnHome);upd[gid]=!homeOn;setShowGroupOnHome(upd);}
+
+    function openDeck(deck){setSelectedGroupDeck(deck);setGroupStackPage('deck-detail');}
+
+    function startCreateDeck(){setNewDeckName('');setNewDeckEmoji('\uD83D\uDCDA');setGroupStackPage('new-deck');}
+
+    function createGroupDeck(){
+      if(!newDeckName.trim()){showToast('Name eingeben');return;}
+      var deck={id:uid(),name:newDeckName.trim(),emoji:newDeckEmoji,cards:[],created:Date.now(),createdBy:MY_ID};
+      var updDecks=[].concat(groupDecks,[deck]);
+      var updG=Object.assign({},g,{groupDecks:updDecks});
+      setSelectedGroup(updG);setSelectedGroupDeck(deck);
+      var newGroups=(lsData.groups||[]).map(function(gr){return gr.id===updG.id?updG:gr;});
+      saveData({groups:newGroups});
+      setGroupStackPage('deck-detail');
+      showToast('\uD83D\uDCDA Stapel erstellt!');
+    }
+
+    function saveGroupCard(){
+      if(!newCardFront.trim()||!newCardBack.trim()){showToast('Vorder- und R\u00FCckseite eingeben');return;}
+      var card={id:uid(),front:newCardFront.trim(),back:newCardBack.trim(),lvl:0,nextReview:todayStr()};
+      var updDeck=Object.assign({},selectedGroupDeck,{cards:[].concat(selectedGroupDeck.cards||[],[card])});
+      var updDecks=(g.groupDecks||[]).map(function(d){return d.id===updDeck.id?updDeck:d;});
+      var updG=Object.assign({},g,{groupDecks:updDecks});
+      setSelectedGroup(updG);setSelectedGroupDeck(updDeck);
+      var newGroups=(lsData.groups||[]).map(function(gr){return gr.id===updG.id?updG:gr;});
+      saveData({groups:newGroups});
+      setNewCardFront('');setNewCardBack('');
+      showToast('\u2705 Karte gespeichert!');
+      setGroupStackPage('deck-detail');
+    }
+
+    function finishStudy(upd){
+      if(upd&&selectedGroupDeck){
+        var updCards=(selectedGroupDeck.cards||[]).map(function(c){return upd[c.id]||c;});
+        var updDeck=Object.assign({},selectedGroupDeck,{cards:updCards});
+        var updDecks=(g.groupDecks||[]).map(function(d){return d.id===updDeck.id?updDeck:d;});
+        var updG=Object.assign({},g,{groupDecks:updDecks});
+        setSelectedGroup(updG);setSelectedGroupDeck(updDeck);
+        var newGroups=(lsData.groups||[]).map(function(gr){return gr.id===updG.id?updG:gr;});
+        saveData({groups:newGroups});
+      }
+      setGroupStackPage('deck-detail');
+    }
+
+    // STUDY
+    if(groupStackPage==='study'&&selectedGroupDeck){
+      return h(StudyView,{deck:selectedGroupDeck,onFinish:finishStudy});
+    }
+
+    // NEW CARD
+    if(groupStackPage==='new-card'){
+      return h('div',null,
+        h('div',{className:'ls-sec-lbl'},'\u270F\uFE0F Neue Karte'),
+        h('div',{style:{marginBottom:13}},
+          h('div',{style:{fontSize:'.67rem',fontWeight:700,color:'rgba(212,175,55,.85)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:6}},'Vorderseite \u2013 Frage'),
+          h('textarea',{className:'ls-input',rows:3,placeholder:'z. B. Was ergibt 2/3 + 1/6 ?',value:newCardFront,onInput:function(e){setNewCardFront(e.target.value);}})
+        ),
+        h('div',{style:{marginBottom:13}},
+          h('div',{style:{fontSize:'.67rem',fontWeight:700,color:'rgba(212,175,55,.85)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:6}},'R\u00FCckseite \u2013 Antwort'),
+          h('textarea',{className:'ls-input',rows:3,placeholder:'z. B. 5/6',value:newCardBack,onInput:function(e){setNewCardBack(e.target.value);}})
+        ),
+        h('button',{className:'ls-gd-solid-btn',onClick:saveGroupCard},'\uD83D\uDCBE Karte speichern')
+      );
+    }
+
+    // NEW DECK
+    if(groupStackPage==='new-deck'){
+      return h('div',null,
+        h('div',{className:'ls-sec-lbl'},'\uD83D\uDCDA Stapel anlegen'),
+        h('div',{style:{marginBottom:13}},
+          h('div',{style:{fontSize:'.67rem',fontWeight:700,color:'rgba(212,175,55,.85)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:6}},'Name'),
+          h('input',{className:'ls-input',placeholder:'z. B. Physik Formeln',value:newDeckName,onInput:function(e){setNewDeckName(e.target.value);}})
+        ),
+        h('div',{style:{marginBottom:14}},
+          h('div',{style:{fontSize:'.67rem',fontWeight:700,color:'rgba(212,175,55,.85)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:8}},'Emoji'),
+          h('div',{className:'ls-gd-emo-grid'},
+            DECK_EMOJIS.map(function(em,i){
+              return h('div',{key:i,className:'ls-gd-emo'+(newDeckEmoji===em?' sel':''),onClick:function(){setNewDeckEmoji(em);}},em);
+            })
+          )
+        ),
+        h('button',{className:'ls-gd-solid-btn',onClick:createGroupDeck},'\uD83D\uDCDA Stapel erstellen')
+      );
+    }
+
+    // DECK DETAIL
+    if(groupStackPage==='deck-detail'&&selectedGroupDeck){
+      var deck=selectedGroupDeck;
+      var cards=deck.cards||[];
+      var due=cards.filter(function(c){return !c.nextReview||c.nextReview<=todayStr();});
+      return h('div',null,
+        h('div',{className:'ls-gd-deck ls-gd-deck-centered'},
+          h('span',{className:'ls-gd-deck-big-em'},deck.emoji||'\uD83D\uDCDA'),
+          h('div',{className:'ls-gd-deck-name',style:{fontSize:'1rem'}},deck.name),
+          h('div',{className:'ls-gd-deck-meta',style:{marginTop:4}},'von '+(deck.createdBy===MY_ID?'Dir':deck.createdBy||MY_ID)+' \u00B7 '+g.name)
+        ),
+        h('div',{className:'ls-gd-stats-row'},
+          h('div',{className:'ls-gd-stat-box'},h('span',{className:'ls-gd-stat-num'},cards.length),h('span',{className:'ls-gd-stat-lbl'},'Karten')),
+          h('div',{className:'ls-gd-stat-box'},h('span',{className:'ls-gd-stat-num',style:{color:'#4ade80'}},cards.length-due.length),h('span',{className:'ls-gd-stat-lbl'},'Gelernt')),
+          h('div',{className:'ls-gd-stat-box'},h('span',{className:'ls-gd-stat-num',style:{color:'#ef4444'}},due.length),h('span',{className:'ls-gd-stat-lbl'},'Offen'))
+        ),
+        due.length>0&&h('button',{className:'ls-gd-solid-btn',onClick:function(){setGroupStackPage('study');}},'\uD83D\uDCDA Lernen ('+due.length+')'),
+        h('div',{className:'ls-sec-lbl'},'\uD83C\uDFB4 Karten ('+cards.length+')'),
+        cards.length===0&&h('div',{className:'ls-gd-empty'},'\uD83C\uDFB4 Noch keine Karten \u2013 f\u00FCge jetzt eine hinzu!'),
+        h('div',{className:'ls-gd-card-grid'},
+          cards.slice(0,5).map(function(c,i){
+            return h('div',{key:i,className:'ls-gd-card-tile'},
+              h('div',{className:'ls-gd-card-front'},c.front),
+              h('div',{className:'ls-gd-card-num'},'#'+(i+1))
+            );
+          }).concat([
+            h('div',{key:'add',className:'ls-gd-card-tile add-tile',onClick:function(){setNewCardFront('');setNewCardBack('');setGroupStackPage('new-card');}},
+              h('span',{style:{fontSize:'1.3rem',opacity:.45}},'\u2795'),
+              h('span',{style:{fontSize:'.7rem',color:'rgba(212,175,55,.6)',fontWeight:700}},'Neue Karte')
+            )
+          ])
+        )
+      );
+    }
+
+    // STACKS LIST
+    return h('div',null,
+      h('div',{className:'ls-gd-toggle-card',onClick:toggleHome},
+        h('span',{style:{fontSize:'1.25rem'}},'\uD83C\uDFE0'),
+        h('div',{style:{flex:1}},
+          h('div',{style:{fontSize:'.84rem',fontWeight:800,color:'#fff',marginBottom:2}},'Auf Startseite anzeigen'),
+          h('div',{style:{fontSize:'.62rem',color:'rgba(255,255,255,.5)'}},homeOn?'Alle Stapel in deiner Lern\u00FCbersicht':'Stapel ausgeblendet')
+        ),
+        h('div',{className:'ls-gd-toggle-sw '+(homeOn?'on':'off')},h('div',{className:'ls-gd-toggle-knob'}))
+      ),
+      h('div',{className:'ls-sec-lbl'},'\uD83D\uDCDA Gruppen-Stapel ('+groupDecks.length+')'),
+      groupDecks.length===0
+        ?h('div',{className:'ls-gd-empty'},'\uD83D\uDCDA Noch keine Stapel \u2013 erstelle jetzt deinen ersten!')
+        :groupDecks.map(function(deck,i){
+            return h('div',{key:i,className:'ls-gd-deck',onClick:function(){openDeck(deck);},style:{cursor:'pointer'}},
+              h('span',{style:{fontSize:'1.4rem'}},deck.emoji||'\uD83D\uDCDA'),
+              h('div',null,
+                h('div',{className:'ls-gd-deck-name'},deck.name),
+                h('div',{className:'ls-gd-deck-meta'},(deck.cards||[]).length+' Karten')
+              ),
+              h('div',{style:{marginLeft:'auto',color:'rgba(212,175,55,.5)',fontSize:'1rem'}},'\u203A')
+            );
+          }),
+      h('button',{className:'ls-gd-add-btn',onClick:startCreateDeck},'\u2795 Neuen Gruppen-Stapel erstellen')
+    );
+  }
+
+
   function renderGroupDetail(){
     var g=selectedGroup;
     if(!g)return null;
     var members=g.members||[];
-    var deckIds=g.deckIds||[];
+    var groupDecks=g.groupDecks||[];
     var gid=g.id;
     var msgs=groupChats[gid]||[];
     var isAdmin=members[0]===MY_ID;
@@ -2289,12 +2551,17 @@ function LernSpaceView(p){
     }
     return h('div',{style:{position:'relative',zIndex:2}},
       h('div',{className:'ls-gd-hero'},
-        h('div',{className:'ls-gd-av'},g.emoji||'\ud83c\udfeb'),
+        h('div',{className:'ls-gd-av-wrap',onClick:function(){setShowGroupAvPicker(true);}},
+          g.avatar
+            ?h('img',{src:g.avatar==='photo'&&g.avatarPhoto?g.avatarPhoto:getAvatarSrc(g.avatar),style:{width:'68px',height:'68px',borderRadius:'18px',objectFit:'cover',border:'2px solid rgba(212,175,55,.38)',display:'block',boxShadow:'0 0 44px rgba(139,92,246,.38),0 0 22px rgba(212,175,55,.22)'}})
+            :h('div',{className:'ls-gd-av'},g.emoji||'\ud83c\udfeb'),
+          h('div',{className:'ls-gd-av-cam'},'\ud83d\udcf7')
+        ),
         h('div',{className:'ls-gd-name'},g.name),
         h('div',{className:'ls-gd-meta'},'Erstellt '+(new Date(g.created||Date.now()).toLocaleDateString('de-DE'))),
         h('div',{className:'ls-gd-stats'},
           h('div',{className:'ls-gd-stat'},h('span',{className:'ls-gd-stat-n'},members.length),h('span',{className:'ls-gd-stat-l'},'Mitglieder')),
-          h('div',{className:'ls-gd-stat'},h('span',{className:'ls-gd-stat-n'},deckIds.length),h('span',{className:'ls-gd-stat-l'},'Stapel')),
+          h('div',{className:'ls-gd-stat'},h('span',{className:'ls-gd-stat-n'},(g.groupDecks||[]).length),h('span',{className:'ls-gd-stat-l'},'Stapel')),
           h('div',{className:'ls-gd-stat'},h('span',{className:'ls-gd-stat-n'},msgs.length),h('span',{className:'ls-gd-stat-l'},'Nachrichten'))
         ),
         h('div',{className:'ls-gd-tabs'},
@@ -2316,21 +2583,7 @@ function LernSpaceView(p){
           );
         })
       ),
-      groupTab==='stacks'&&h('div',{className:'ls-gd-content'},
-        h('div',{className:'ls-sec-lbl'},'\ud83d\udcda Gruppen-Stapel ('+deckIds.length+')'),
-        deckIds.length===0
-          ?h('div',{className:'ls-gd-empty'},'\ud83d\udcda Noch keine Stapel \u2013 f\u00fcge jetzt einen hinzu!')
-          :deckIds.map(function(did,i){
-              return h('div',{key:i,className:'ls-gd-deck'},
-                h('span',{style:{fontSize:'1.4rem'}},['➗','📐','📊','📖','🔬','🌍'][i%6]),
-                h('div',null,
-                  h('div',{className:'ls-gd-deck-name'},'Stapel '+did.slice(0,8)),
-                  h('div',{className:'ls-gd-deck-meta'},'Geteilt mit der Gruppe')
-                )
-              );
-            }),
-        h('button',{className:'ls-gd-add-btn'},'\u2795 Stapel zur Gruppe hinzuf\u00fcgen')
-      ),
+      groupTab==='stacks'&&h('div',{className:'ls-gd-content'},renderGroupStacks(g,gid)),
       groupTab==='chat'&&h('div',{className:'ls-gd-content'},
         h('div',{className:'ls-sec-lbl'},'\ud83d\udcac Gruppen-Chat'),
         msgs.length===0
@@ -2360,7 +2613,7 @@ function LernSpaceView(p){
 
   return h('div',null,
     h('div',{className:'ls-wrap'},
-      lsPage!=='home'&&h('button',{className:'ls-back',onClick:function(){if(lsPage==='group-detail'){setLsPage('groups');}else{setLsPage('home');}}},'\u2190 '+(lsPage==='group-detail'?'Zur\u00fcck zu Gruppen':'Zur\u00fcck zur \u00DCbersicht')),
+      lsPage!=='home'&&h('button',{className:'ls-back',onClick:function(){if(lsPage==='group-detail'){if(groupStackPage==='new-card'){setGroupStackPage('deck-detail');}else if(groupStackPage==='new-deck'||groupStackPage==='deck-detail'){setGroupStackPage('list');setGroupTab('stacks');}else{setLsPage('groups');}}else{setLsPage('home');}}},'\u2190 '+(lsPage==='group-detail'&&groupStackPage==='deck-detail'?'Zur\u00fcck zu Stapeln':lsPage==='group-detail'&&groupStackPage==='new-deck'?'Zur\u00fcck zu Stapeln':lsPage==='group-detail'&&groupStackPage==='new-card'?'Zur\u00fcck zur Karte':lsPage==='group-detail'?'Zur\u00fcck zu Gruppen':'Zur\u00fcck zur \u00DCbersicht')),
       loading&&lsPage==='home'?h('div',{className:'ls-loading'},h('div',{className:'ls-spinner'}),h('div',null,'Lade Lern Space\u2026'))
       :lsPage==='home'?renderHome()
       :lsPage==='friends'?renderFriends()
@@ -2374,6 +2627,28 @@ function LernSpaceView(p){
       currentPhoto:lsData&&lsData.avatarPhoto||null,
       onSave:saveAvatar,
       onClose:function(){setShowAvPicker(false);}
+    }),
+    showGroupAvPicker&&selectedGroup&&h(GroupAvatarPickerModal,{
+      current:selectedGroup.avatar||'av1',
+      currentPhoto:selectedGroup.avatarPhoto||null,
+      currentEmoji:selectedGroup.emoji||'\uD83C\uDFEB',
+      onSaveAvatar:function(avId,photo){
+        var upd=Object.assign({},selectedGroup,{avatar:avId,avatarPhoto:photo||null});
+        setSelectedGroup(upd);
+        var newGroups=(lsData.groups||[]).map(function(g){return g.id===upd.id?upd:g;});
+        saveData({groups:newGroups});
+        setShowGroupAvPicker(false);
+        showToast('\u2728 Avatar gespeichert!');
+      },
+      onSaveEmoji:function(emoji){
+        var upd=Object.assign({},selectedGroup,{emoji:emoji,avatar:null,avatarPhoto:null});
+        setSelectedGroup(upd);
+        var newGroups=(lsData.groups||[]).map(function(g){return g.id===upd.id?upd:g;});
+        saveData({groups:newGroups});
+        setShowGroupAvPicker(false);
+        showToast('\u2728 Emoji gespeichert!');
+      },
+      onClose:function(){setShowGroupAvPicker(false);}
     }),
     showConsent&&h(LsConsentModal,{
       onAccept:function(){localStorage.setItem(LS_CONSENT_KEY,'1');setShowConsent(false);},
