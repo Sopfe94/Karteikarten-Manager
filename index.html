@@ -2013,6 +2013,7 @@ function LernSpaceView(p){
   var tms=useToast();var toast=tms[0];var showToast=tms[1];
   var saps=useState(false);var showAvPicker=saps[0];var setShowAvPicker=saps[1];
   var cns=useState(!localStorage.getItem(LS_CONSENT_KEY));var showConsent=cns[0];var setShowConsent=cns[1];
+  var savingRef=useRef(false);
   useEffect(function(){
     document.body.classList.add('ls-view');
     return function(){document.body.classList.remove('ls-view');};
@@ -2063,8 +2064,10 @@ function LernSpaceView(p){
   useEffect(function(){if(lsPage==="friends"||lsPage==="shared"||lsPage==="groups")loadData();},[lsPage]);
 
   function loadData(){
+    if(savingRef.current)return;
     setLoading(true);
     lsGet('ls_users',MY_ID).then(function(d){
+      if(savingRef.current){setLoading(false);return;}
       setLsData(d||defaultData);
       setLoading(false);
     }).catch(function(){setLsData(defaultData);setLoading(false);});
@@ -2073,20 +2076,30 @@ function LernSpaceView(p){
   function saveData(d){
     var local=Object.assign({},lsData,d);
     setLsData(local);
+    savingRef.current=true;
     // Server-Merge: erst aktuellen Stand holen, dann fields mergen
-    lsGet('ls_users',MY_ID).then(function(remote){
-      var merged=Object.assign({},remote||defaultData,local);
-      // Anfragen und Freundeslisten aus Remote behalten falls neuer
-      if(remote){
-        var rReqs=remote.requests||[];
-        var lReqs=local.requests||[];
-        // Anfragen zusammenführen (remote-only Anfragen nicht verlieren)
-        var allReqs=rReqs.slice();
-        lReqs.forEach(function(r){if(!allReqs.find(function(x){return x.fromId===r.fromId;}))allReqs.push(r);});
-        merged.requests=allReqs;
-      }
-      return lsSet('ls_users',MY_ID,merged);
-    }).catch(function(){showToast('\u274C Sync-Fehler');});
+    return lsGet('ls_users',MY_ID).then(function(remote){
+      remote=remote||defaultData;
+      // local gewinnt für eigene/ausgehende Felder, ABER:
+      var merged=Object.assign({},remote,local);
+      // requests (eingehend, von anderen geschrieben) → remote behalten + neue lokale ergänzen
+      var rReqs=remote.requests||[];
+      var lReqs=local.requests||[];
+      var allReqs=rReqs.slice();
+      lReqs.forEach(function(r){if(!allReqs.find(function(x){return x.fromId===r.fromId;}))allReqs.push(r);});
+      merged.requests=allReqs;
+      // friends → Union aus remote + local (Annahmen von anderen Seiten nicht verlieren)
+      var rFr=remote.friends||[];var lFr=local.friends||[];
+      var allFr=rFr.slice();
+      lFr.forEach(function(f){if(!allFr.find(function(x){return x.id===f.id;}))allFr.push(f);});
+      merged.friends=allFr;
+      return lsSet('ls_users',MY_ID,merged).then(function(){
+        savingRef.current=false;
+        // State mit gemergtem Resultat synchronisieren (eingehende Anfragen/Freunde sichtbar machen)
+        setLsData(merged);
+        return merged;
+      });
+    }).catch(function(){savingRef.current=false;showToast('\u274C Sync-Fehler');});
   }
 
   function sendFriendRequest(){
@@ -2122,22 +2135,49 @@ function LernSpaceView(p){
   }
 
   function acceptRequest(req){
-    var newFriends=[].concat(lsData.friends||[],[{id:req.fromId,since:Date.now()}]);
+    var newFriends=(lsData.friends||[]).find(function(f){return f.id===req.fromId;})
+      ?lsData.friends
+      :[].concat(lsData.friends||[],[{id:req.fromId,since:Date.now()}]);
     var newReqs=(lsData.requests||[]).filter(function(r){return r.fromId!==req.fromId;});
     var newActs=[{type:'friend',text:req.fromId+' ist jetzt dein Freund',ts:Date.now()}].concat(lsData.activities||[]).slice(0,20);
-    saveData({friends:newFriends,requests:newReqs,activities:newActs});
-    // Add back to their friends list too
+    // saveData merged requests mit remote (Union) – darum die akzeptierte Anfrage explizit als removedReq markieren:
+    saveDataAccept({friends:newFriends,requests:newReqs,activities:newActs},req.fromId);
+    // Bei der anderen Seite: mich zu friends hinzufügen + meine sentRequest dort entfernen
     lsGet('ls_users',req.fromId).then(function(td){
       if(td){
-        var tf=[].concat(td.friends||[],[{id:MY_ID,since:Date.now()}]);
-        return lsSet('ls_users',req.fromId,Object.assign({},td,{friends:tf}));
+        var tf=(td.friends||[]).find(function(f){return f.id===MY_ID;})?td.friends:[].concat(td.friends||[],[{id:MY_ID,since:Date.now()}]);
+        var tSent=(td.sentRequests||[]).filter(function(s){return s.toId!==MY_ID;});
+        return lsSet('ls_users',req.fromId,Object.assign({},td,{friends:tf,sentRequests:tSent}));
       }
     }).catch(function(){});
     showToast('\uD83C\uDF89 Freund hinzugef\u00fcgt!');
   }
 
+  // Wie saveData, aber entfernt eine akzeptierte Anfrage zuverlässig aus dem Merge
+  function saveDataAccept(d,acceptedFromId){
+    var local=Object.assign({},lsData,d);
+    setLsData(local);
+    savingRef.current=true;
+    return lsGet('ls_users',MY_ID).then(function(remote){
+      remote=remote||defaultData;
+      var merged=Object.assign({},remote,local);
+      // requests: remote-Union, ABER die akzeptierte Anfrage explizit raus
+      var rReqs=remote.requests||[];var lReqs=local.requests||[];
+      var allReqs=rReqs.slice();
+      lReqs.forEach(function(r){if(!allReqs.find(function(x){return x.fromId===r.fromId;}))allReqs.push(r);});
+      merged.requests=allReqs.filter(function(r){return r.fromId!==acceptedFromId;});
+      // friends: Union
+      var rFr=remote.friends||[];var lFr=local.friends||[];var allFr=rFr.slice();
+      lFr.forEach(function(f){if(!allFr.find(function(x){return x.id===f.id;}))allFr.push(f);});
+      merged.friends=allFr;
+      return lsSet('ls_users',MY_ID,merged).then(function(){
+        savingRef.current=false;setLsData(merged);return merged;
+      });
+    }).catch(function(){savingRef.current=false;showToast('\u274C Sync-Fehler');});
+  }
+
   function declineRequest(req){
-    saveData({requests:(lsData.requests||[]).filter(function(r){return r.fromId!==req.fromId;})});
+    saveDataAccept({requests:(lsData.requests||[]).filter(function(r){return r.fromId!==req.fromId;})},req.fromId);
   }
 
   function createGroup(){
