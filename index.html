@@ -592,7 +592,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.1.28-AKTUELL -->
+<body><!-- KKM-v1.1.29-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -618,7 +618,16 @@ var FB_BASE = "https://firestore.googleapis.com/v1/projects/"+FB_PROJECT+"/datab
 
 var SB_URL = "https://ujzdkzombacnsnryhehr.supabase.co";
 var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqemRrem9tYmFjbnNucnloZWhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDYyODgsImV4cCI6MjA5NzI4MjI4OH0.8r-cTs3IWkduAt3TkPEQfHu0f5m_zAe4j5KUeDjc9tI";
-var sbClient = window.supabase.createClient(SB_URL, SB_KEY);
+var _sbClient = null;
+function getSb(){
+  if(!_sbClient){
+    if(!window.supabase||!window.supabase.createClient){
+      throw new Error('Supabase CDN nicht geladen');
+    }
+    _sbClient = window.supabase.createClient(SB_URL, SB_KEY);
+  }
+  return _sbClient;
+}
 
 function fsSync(code, localData){
   var url = FB_BASE+"/syncdata/"+encodeURIComponent(code)+"?key="+FB_KEY;
@@ -1720,7 +1729,7 @@ function getLsId(){
 }
 function lsGet(col,docId){
   if(col==='ls_users'){
-    return sbClient.from('ls_users').select('data').eq('ls_id',docId).maybeSingle()
+    return getSb().from('ls_users').select('data').eq('ls_id',docId).maybeSingle()
       .then(function(res){
         if(res.error){console.error('[lsGet] error:',res.error);throw res.error;}
         return res.data?res.data.data:null;
@@ -1730,12 +1739,12 @@ function lsGet(col,docId){
 }
 function lsSet(col,docId,data){
   if(col==='ls_users'){
-    return sbClient.from('ls_users')
+    return getSb().from('ls_users')
       .upsert({ls_id:docId,data:data,updated_at:new Date().toISOString()},{onConflict:'ls_id'})
       .then(function(res){if(res.error){console.error('[lsSet users] error:',res.error);throw res.error;}return res;});
   }
   if(col==='ls_groups'){
-    return sbClient.from('ls_groups')
+    return getSb().from('ls_groups')
       .upsert({
         id:docId,name:data.name,emoji:data.emoji||null,
         members:data.members||[],group_decks:data.groupDecks||[],
