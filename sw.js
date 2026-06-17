@@ -1,5 +1,5 @@
-// Service Worker v13 - index.html Network-First (immer frisch, Cache nur Offline-Fallback)
-const CACHE = 'kkm-v13';
+// Service Worker v14 - Cross-Origin (Supabase etc.) nie cachen + index.html Network-First
+const CACHE = 'kkm-v14';
 const BASE = self.location.hostname === 'www.gross-apps.de' ? '/KM' : '';
 const STATIC = [BASE+'/manifest.json', BASE+'/icon.svg', BASE+'/logo.svg'];
 
@@ -26,6 +26,9 @@ keys.filter(function(k){ return k !== CACHE; })
 self.addEventListener('fetch', function(e){
 if(e.request.method !== 'GET') return;
 var url = new URL(e.request.url);
+
+// Fremde Domains (Supabase, Firebase, Fonts, CDNs) NIE cachen -> direkt ans Netz
+if(url.origin !== self.location.origin) return;
 
 // sw.js: immer frisch
 if(url.pathname === BASE+'/sw.js'){
