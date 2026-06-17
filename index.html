@@ -482,7 +482,8 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .ls-group-row{background:linear-gradient(155deg,rgba(10,21,64,.18) 0%,rgba(6,12,42,.1) 100%);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(212,175,55,.3);border-radius:18px;padding:14px;margin-bottom:10px;cursor:pointer;transition:.15s;box-shadow:0 0 10px rgba(212,175,55,.1),0 0 22px rgba(212,175,55,.05);position:relative;overflow:hidden}
 .ls-group-row::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,175,55,.6),transparent)}
 .ls-group-row:active{background:rgba(212,175,55,.07);transform:scale(.98)}
-.ls-gd-hero{text-align:center;padding:10px 0 16px}
+.ls-gd-hero{text-align:center;padding:10px 0 16px;position:relative}
+.ls-gd-menu-btn{position:absolute;top:6px;right:0;width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#fff;font-size:1.3rem;line-height:1;cursor:pointer;z-index:3;display:flex;align-items:center;justify-content:center}
 .ls-gd-av{width:68px;height:68px;border-radius:20px;background:linear-gradient(135deg,rgba(139,92,246,.3),rgba(212,175,55,.12));border:2px solid rgba(212,175,55,.38);display:flex;align-items:center;justify-content:center;font-size:2.1rem;margin:0 auto 10px;box-shadow:0 0 44px rgba(139,92,246,.38),0 0 22px rgba(212,175,55,.22)}
 .ls-gd-av-wrap{position:relative;width:68px;margin:0 auto 10px;cursor:pointer}
 .ls-gd-av-wrap .ls-gd-av{margin:0}
@@ -503,6 +504,15 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .ls-gd-mname{font-size:.88rem;font-weight:700;color:#fff}
 .ls-gd-mrole{font-size:.62rem;color:rgba(255,255,255,.5);margin-top:2px}
 .ls-gd-mbadge{margin-left:auto;font-size:.58rem;font-weight:800;background:rgba(212,175,55,.12);border:1px solid rgba(212,175,55,.3);border-radius:6px;padding:2px 7px;color:#fbbf24;white-space:nowrap}
+.ls-modal-ov{position:fixed;inset:0;background:rgba(6,8,26,.78);backdrop-filter:blur(4px);z-index:9000;display:flex;align-items:center;justify-content:center;padding:18px}
+.ls-modal{width:100%;max-width:420px;max-height:84vh;overflow:auto;background:linear-gradient(165deg,#1a1540,#0d0b25);border:1px solid rgba(139,92,246,.35);border-radius:18px;padding:18px;box-shadow:0 18px 60px rgba(0,0,0,.6)}
+.ls-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.ls-modal-title{font-size:1rem;font-weight:900;color:#fff}
+.ls-modal-x{width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#fff;font-size:.9rem;cursor:pointer}
+.ls-role-btn{flex:1;padding:9px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:rgba(255,255,255,.7);font-weight:700;font-size:.8rem;cursor:pointer}
+.ls-role-btn.active{background:linear-gradient(135deg,rgba(139,92,246,.4),rgba(37,99,235,.3));border-color:rgba(139,92,246,.6);color:#fff}
+.ls-mini-btn{padding:6px 10px;border-radius:9px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#c4b5fd;font-size:.7rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.ls-mini-btn.danger{color:#fca5a5;border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.08)}
 .ls-gd-deck{display:flex;align-items:center;gap:10px;background:linear-gradient(155deg,rgba(10,21,64,.25),rgba(6,12,42,.15));border:1px solid rgba(212,175,55,.25);border-radius:14px;padding:12px;margin-bottom:8px;position:relative;overflow:hidden}
 .ls-gd-deck::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,175,55,.5),transparent)}
 .ls-gd-deck-name{font-size:.88rem;font-weight:700;color:#fff}
@@ -592,7 +602,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.1.34-AKTUELL -->
+<body><!-- KKM-v1.1.36-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -1820,6 +1830,21 @@ function copyDeckNewIds(deck){
   return newDeck;
 }
 
+// Mitglieder-Helper: unterstützt altes String-Format UND neues {id,role}-Format
+function memId(m){return (m&&typeof m==='object')?m.id:m;}
+function normalizeMembers(members){
+  return (members||[]).map(function(m,i){
+    if(m&&typeof m==='object')return {id:m.id,role:m.role||'user'};
+    return {id:m,role:i===0?'admin':'user'};
+  });
+}
+function memberRole(members,id){
+  var nm=normalizeMembers(members);
+  for(var i=0;i<nm.length;i++){if(nm[i].id===id)return nm[i].role;}
+  return null;
+}
+function isGroupAdmin(g,id){return memberRole(g&&g.members,id)==='admin';}
+
 var LS_AVATARS=[
   {id:'av1',name:'Astro',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='14' fill='#0d1b4b'/><circle cx='50' cy='44' r='25' fill='#1d4ed8'/><ellipse cx='50' cy='44' rx='17' ry='14' fill='#93c5fd'/><circle cx='43' cy='42' r='3' fill='#1e3a8a'/><circle cx='57' cy='42' r='3' fill='#1e3a8a'/><ellipse cx='40' cy='35' rx='5' ry='3' fill='white' opacity='.3'/><path d='M28 63 Q50 56 72 63 L74 76 Q50 70 26 76 Z' fill='#2563eb'/><line x1='50' y1='19' x2='50' y2='11' stroke='#60a5fa' stroke-width='2.5'/><circle cx='50' cy='8' r='4' fill='#60a5fa'/></svg>"},
   {id:'av2',name:'Fuchs',svg:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='14' fill='#1c0a00'/><polygon points='28,38 20,14 43,27' fill='#f97316'/><polygon points='72,38 80,14 57,27' fill='#f97316'/><polygon points='30,36 24,19 41,27' fill='#fca5a5'/><polygon points='70,36 76,19 59,27' fill='#fca5a5'/><circle cx='50' cy='54' r='24' fill='#fb923c'/><ellipse cx='50' cy='63' rx='13' ry='9' fill='#fff'/><circle cx='42' cy='50' r='5' fill='#1c1917'/><circle cx='58' cy='50' r='5' fill='#1c1917'/><circle cx='43.5' cy='48.5' r='1.5' fill='white'/><circle cx='59.5' cy='48.5' r='1.5' fill='white'/><ellipse cx='50' cy='60' rx='3.5' ry='2.5' fill='#9a3412'/></svg>"},
@@ -2089,6 +2114,9 @@ function LernSpaceView(p){
   var cis=useState('');var chatInput=cis[0];var setChatInput=cis[1];
   var gcms=useState({});var groupChats=gcms[0];var setGroupChats=gcms[1];
   var sgaps=useState(false);var showGroupAvPicker=sgaps[0];var setShowGroupAvPicker=sgaps[1];
+  var sgss=useState(false);var showGroupSettings=sgss[0];var setShowGroupSettings=sgss[1];
+  var imis=useState('');var inviteMemberId=imis[0];var setInviteMemberId=imis[1];
+  var irs=useState('user');var inviteRole=irs[0];var setInviteRole=irs[1];
   var gspages=useState('list');var groupStackPage=gspages[0];var setGroupStackPage=gspages[1];
   var sgds=useState(null);var selectedGroupDeck=sgds[0];var setSelectedGroupDeck=sgds[1];
   var sghomes=useState({});var showGroupOnHome=sghomes[0];var setShowGroupOnHome=sghomes[1];
@@ -2150,9 +2178,6 @@ function LernSpaceView(p){
 
   useEffect(function(){loadData();},[]);
   useEffect(function(){if(lsPage==="friends"||lsPage==="shared"||lsPage==="groups")loadData();},[lsPage]);
-  useEffect(function(){
-    if((lsPage==="groups"||lsPage==="group-detail")&&lsData&&(lsData.groups||[]).length){loadGroups();}
-  },[lsPage,lsData&&lsData.groups?lsData.groups.length:0]);
 
   function loadData(){
     if(savingRef.current)return;
@@ -2161,6 +2186,9 @@ function LernSpaceView(p){
       if(savingRef.current){setLoading(false);return;}
       if(d){
         setLsData(d);
+        if((lsPage==="groups"||lsPage==="group-detail")&&(d.groups||[]).length){
+          loadGroups(d.groups);
+        }
       }else if(!lsData){
         setLsData(defaultData);
       }
@@ -2168,10 +2196,10 @@ function LernSpaceView(p){
     }).catch(function(e){dbg('❌ loadData:',(e&&e.message)||e);setLoading(false);});
   }
 
-  function loadGroups(){
+  function loadGroups(groupsArg){
     if(savingRef.current||loadingGroupsRef.current)return;
-    var myGroups=(lsData&&lsData.groups)||[];
-    if(!myGroups.length)return;
+    var myGroups=groupsArg||(lsData&&lsData.groups)||[];
+    if(!myGroups.length){dbg('loadGroups: keine Gruppen');return;}
     loadingGroupsRef.current=true;
     dbg('loadGroups: '+myGroups.length+' Gruppe(n)');
     Promise.all(myGroups.map(function(g){
@@ -2184,7 +2212,8 @@ function LernSpaceView(p){
         if(fresh[i]&&JSON.stringify(fresh[i])!==JSON.stringify(g)){changed=true;return fresh[i];}
         return g;
       });
-      if(changed){setLsData(function(prev){return Object.assign({},prev,{groups:merged});});}
+      if(changed){dbg('loadGroups: aktualisiert');setLsData(function(prev){return Object.assign({},prev,{groups:merged});});}
+      else{dbg('loadGroups: keine Änderung');}
     }).catch(function(){loadingGroupsRef.current=false;});
   }
 
@@ -2276,12 +2305,82 @@ function LernSpaceView(p){
   function createGroup(){
     if(!groupName.trim()){showToast('Name eingeben');return;}
     var gid=uid();
-    var g={id:gid,name:groupName.trim(),emoji:groupEmoji,members:[MY_ID],deckIds:[],created:Date.now()};
+    var g={id:gid,name:groupName.trim(),emoji:groupEmoji,members:[{id:MY_ID,role:'admin'}],deckIds:[],created:Date.now()};
     var newGroups=[].concat(lsData.groups||[],[g]);
     saveData({groups:newGroups});
     setGroupName('');
     showToast('\uD83C\uDFEB Gruppe erstellt!');
     lsSet('ls_groups',gid,g).catch(function(){});
+  }
+
+  function applyGroupUpdate(updG){
+    setSelectedGroup(updG);
+    var newGroups=(lsData.groups||[]).map(function(gr){return gr.id===updG.id?updG:gr;});
+    if(!newGroups.find(function(gr){return gr.id===updG.id;}))newGroups=newGroups.concat([updG]);
+    saveData({groups:newGroups});
+    return lsSet('ls_groups',updG.id,updG);
+  }
+
+  function inviteMember(){
+    var tid=inviteMemberId.trim();
+    var g=selectedGroup;
+    if(!g)return;
+    if(!isGroupAdmin(g,MY_ID)){showToast('Nur Admins d\u00fcrfen einladen');return;}
+    if(!tid){showToast('ID eingeben');return;}
+    if(tid===MY_ID){showToast('Das bist du selbst');return;}
+    var nm=normalizeMembers(g.members);
+    if(nm.find(function(m){return m.id===tid;})){showToast('Bereits Mitglied');return;}
+    var newMembers=nm.concat([{id:tid,role:inviteRole}]);
+    var updG=Object.assign({},g,{members:newMembers});
+    applyGroupUpdate(updG).then(function(){
+      // Gruppen-Referenz in die ls_users-Daten des Eingeladenen schreiben
+      return lsGet('ls_users',tid).then(function(td){
+        var tData=td||defaultData;
+        var tGroups=tData.groups||[];
+        if(!tGroups.find(function(x){return x.id===g.id;})){
+          tGroups=tGroups.concat([{id:g.id,name:g.name,emoji:g.emoji,members:newMembers,deckIds:[],created:g.created}]);
+        }else{
+          tGroups=tGroups.map(function(x){return x.id===g.id?Object.assign({},x,{members:newMembers}):x;});
+        }
+        return lsSet('ls_users',tid,Object.assign({},tData,{groups:tGroups}));
+      });
+    }).then(function(){
+      showToast('\u2705 '+tid+' eingeladen!');
+      setInviteMemberId('');
+      setInviteRole('user');
+    }).catch(function(){showToast('\u274C Fehler beim Einladen');});
+  }
+
+  function changeMemberRole(targetId,newRole){
+    var g=selectedGroup;
+    if(!g)return;
+    if(!isGroupAdmin(g,MY_ID)){showToast('Nur Admins');return;}
+    if(targetId===MY_ID){showToast('Eigene Rolle nicht \u00e4nderbar');return;}
+    var newMembers=normalizeMembers(g.members).map(function(m){
+      return m.id===targetId?Object.assign({},m,{role:newRole}):m;
+    });
+    var updG=Object.assign({},g,{members:newMembers});
+    applyGroupUpdate(updG).then(function(){
+      showToast('Rolle aktualisiert');
+    }).catch(function(){showToast('\u274C Fehler');});
+  }
+
+  function removeMember(targetId){
+    var g=selectedGroup;
+    if(!g)return;
+    if(!isGroupAdmin(g,MY_ID)){showToast('Nur Admins');return;}
+    if(targetId===MY_ID){showToast('Dich selbst nicht entfernbar');return;}
+    if(!confirm(targetId+' aus der Gruppe entfernen?'))return;
+    var newMembers=normalizeMembers(g.members).filter(function(m){return m.id!==targetId;});
+    var updG=Object.assign({},g,{members:newMembers});
+    applyGroupUpdate(updG).then(function(){
+      // Gruppe aus den ls_users-Daten des Entfernten löschen
+      return lsGet('ls_users',targetId).then(function(td){
+        if(!td)return;
+        var tGroups=(td.groups||[]).filter(function(x){return x.id!==g.id;});
+        return lsSet('ls_users',targetId,Object.assign({},td,{groups:tGroups}));
+      });
+    }).then(function(){showToast('Mitglied entfernt');}).catch(function(){showToast('\u274C Fehler');});
   }
 
   function shareStackWith(deck,friendId){
@@ -2676,7 +2775,7 @@ function LernSpaceView(p){
     var groupDecks=g.groupDecks||[];
     var gid=g.id;
     var msgs=groupChats[gid]||[];
-    var isAdmin=members[0]===MY_ID;
+    var isAdmin=isGroupAdmin(g,MY_ID);
     function sendMsg(){
       if(!chatInput.trim())return;
       var ts=Date.now();
@@ -2688,6 +2787,7 @@ function LernSpaceView(p){
     }
     return h('div',{style:{position:'relative',zIndex:2}},
       h('div',{className:'ls-gd-hero'},
+        isAdmin&&h('button',{className:'ls-gd-menu-btn',onClick:function(){setShowGroupSettings(true);},title:'Gruppen-Einstellungen'},'\u22EE'),
         h('div',{className:'ls-gd-av-wrap',onClick:function(){setShowGroupAvPicker(true);}},
           g.avatar
             ?h('img',{src:g.avatar==='photo'&&g.avatarPhoto?g.avatarPhoto:getAvatarSrc(g.avatar),style:{width:'68px',height:'68px',borderRadius:'18px',objectFit:'cover',border:'2px solid rgba(212,175,55,.38)',display:'block',boxShadow:'0 0 44px rgba(139,92,246,.38),0 0 22px rgba(212,175,55,.22)'}})
@@ -2709,14 +2809,15 @@ function LernSpaceView(p){
       ),
       groupTab==='members'&&h('div',{className:'ls-gd-content'},
         h('div',{className:'ls-sec-lbl'},'\ud83d\udc65 Mitglieder ('+members.length+')'),
-        members.map(function(mid,i){
+        normalizeMembers(members).map(function(m,i){
+          var mid=m.id;
           return h('div',{key:i,className:'ls-gd-member'},
             h('div',{className:'ls-gd-mav'},mid===MY_ID?'\ud83e\uddd1\u200d\ud83d\udcbb':['\ud83d\udc69\u200d\ud83c\udf93','\ud83e\udd8a','\ud83d\udc09','\u2b50','\ud83c\udf19','\ud83e\udd8b'][i%6]),
             h('div',null,
               h('div',{className:'ls-gd-mname'},mid===MY_ID?'Du ('+MY_ID+')':mid),
-              h('div',{className:'ls-gd-mrole'},'Mitglied')
+              h('div',{className:'ls-gd-mrole'},m.role==='admin'?'Admin':'Mitglied')
             ),
-            i===0&&h('div',{className:'ls-gd-mbadge'},'ADMIN')
+            m.role==='admin'&&h('div',{className:'ls-gd-mbadge'},'ADMIN')
           );
         })
       ),
@@ -2805,6 +2906,34 @@ function LernSpaceView(p){
       },
       onClose:function(){setShowGroupAvPicker(false);}
     }),
+    showGroupSettings&&selectedGroup&&isGroupAdmin(selectedGroup,MY_ID)&&h('div',{className:'ls-modal-ov',onClick:function(){setShowGroupSettings(false);}},
+      h('div',{className:'ls-modal',onClick:function(e){e.stopPropagation();}},
+        h('div',{className:'ls-modal-head'},
+          h('div',{className:'ls-modal-title'},'\u2699\uFE0F Gruppen-Einstellungen'),
+          h('button',{className:'ls-modal-x',onClick:function(){setShowGroupSettings(false);}},'\u2715')
+        ),
+        h('div',{className:'ls-sec-lbl',style:{marginTop:4}},'\u2795 Mitglied einladen'),
+        h('input',{className:'ls-input',placeholder:'Lern Space ID',value:inviteMemberId,onInput:function(e){setInviteMemberId(e.target.value);}}),
+        h('div',{style:{display:'flex',gap:8,margin:'10px 0'}},
+          h('button',{className:'ls-role-btn'+(inviteRole==='user'?' active':''),onClick:function(){setInviteRole('user');}},'\ud83d\udc64 Mitglied'),
+          h('button',{className:'ls-role-btn'+(inviteRole==='admin'?' active':''),onClick:function(){setInviteRole('admin');}},'\u2b50 Admin')
+        ),
+        h('button',{className:'ls-add-btn',onClick:inviteMember},'\u2705 Einladen'),
+        h('div',{className:'ls-sec-lbl',style:{marginTop:18}},'\ud83d\udc65 Mitglieder verwalten'),
+        normalizeMembers(selectedGroup.members).map(function(m,i){
+          return h('div',{key:i,className:'ls-gd-member'},
+            h('div',{style:{flex:1}},
+              h('div',{className:'ls-gd-mname'},m.id===MY_ID?'Du ('+MY_ID+')':m.id),
+              h('div',{className:'ls-gd-mrole'},m.role==='admin'?'Admin':'Mitglied')
+            ),
+            m.id!==MY_ID&&h('div',{style:{display:'flex',gap:6}},
+              h('button',{className:'ls-mini-btn',onClick:function(){changeMemberRole(m.id,m.role==='admin'?'user':'admin');}},m.role==='admin'?'\u2192 Mitglied':'\u2192 Admin'),
+              h('button',{className:'ls-mini-btn danger',onClick:function(){removeMember(m.id);}},'\ud83d\uddd1\uFE0F')
+            )
+          );
+        })
+      )
+    ),
     showConsent&&h(LsConsentModal,{
       onAccept:function(){localStorage.setItem(LS_CONSENT_KEY,'1');setShowConsent(false);},
       onDecline:function(){setShowConsent(false);if(p.onBack)p.onBack();},
