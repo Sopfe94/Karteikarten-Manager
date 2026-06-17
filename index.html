@@ -592,7 +592,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.1.31-AKTUELL -->
+<body><!-- KKM-v1.1.32-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -1757,11 +1757,12 @@ function getLsId(){
 function lsGet(col,docId){
   if(col==='ls_users'){
     dbg('lsGet ls_users:',docId);
-    return getSb().from('ls_users').select('data').eq('ls_id',docId).maybeSingle()
+    return getSb().from('ls_users').select('data').eq('ls_id',docId).limit(1)
       .then(function(res){
         if(res.error){dbg('❌ lsGet error:',res.error.message||res.error);throw res.error;}
-        dbg('✅ lsGet ok. Daten vorhanden:',!!res.data);
-        return res.data?res.data.data:null;
+        var row=(res.data&&res.data.length)?res.data[0]:null;
+        dbg('✅ lsGet ok. Daten vorhanden:',!!row);
+        return row?row.data:null;
       });
   }
   return Promise.resolve(null);
@@ -2137,9 +2138,13 @@ function LernSpaceView(p){
     setLoading(true);
     lsGet('ls_users',MY_ID).then(function(d){
       if(savingRef.current){setLoading(false);return;}
-      setLsData(d||defaultData);
+      if(d){
+        setLsData(d);
+      }else if(!lsData){
+        setLsData(defaultData);
+      }
       setLoading(false);
-    }).catch(function(e){console.error('[loadData]',e);showToast('\u274C Laden fehlgeschlagen');setLoading(false);});
+    }).catch(function(e){dbg('❌ loadData:',(e&&e.message)||e);setLoading(false);});
   }
 
   function saveData(d){
