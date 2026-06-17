@@ -2010,12 +2010,11 @@ function LernSpaceView(p){
   var ndes=useState('\uD83D\uDCDA');var newDeckEmoji=ndes[0];var setNewDeckEmoji=ndes[1];
   var ncfs=useState('');var newCardFront=ncfs[0];var setNewCardFront=ncfs[1];
   var ncbs=useState('');var newCardBack=ncbs[0];var setNewCardBack=ncbs[1];
+  var savingRef=useRef(false);
+  var rps=useState({});var reqProfiles=rps[0];var setReqProfiles=rps[1];
   var tms=useToast();var toast=tms[0];var showToast=tms[1];
   var saps=useState(false);var showAvPicker=saps[0];var setShowAvPicker=saps[1];
   var cns=useState(!localStorage.getItem(LS_CONSENT_KEY));var showConsent=cns[0];var setShowConsent=cns[1];
-  var savingRef=useRef(false);
-  var dbgs=useState([]);var dbgLog=dbgs[0];var setDbgLog=dbgs[1];
-  function dlog(m){setDbgLog(function(prev){return prev.concat([new Date().toLocaleTimeString().slice(3)+' '+m]).slice(-14);});}
   useEffect(function(){
     document.body.classList.add('ls-view');
     return function(){document.body.classList.remove('ls-view');};
@@ -2066,65 +2065,67 @@ function LernSpaceView(p){
   useEffect(function(){if(lsPage==="friends"||lsPage==="shared"||lsPage==="groups")loadData();},[lsPage]);
 
   function loadData(){
-    if(savingRef.current){dlog('loadData SKIP (saving)');return;}
+    if(savingRef.current)return;
     setLoading(true);
-    dlog('loadData start');
     lsGet('ls_users',MY_ID).then(function(d){
-      if(savingRef.current){dlog('loadData abort (saving)');setLoading(false);return;}
-      dlog('loadData ok: '+((d&&d.groups||[]).length)+' Gruppen, '+((d&&d.requests||[]).length)+' Anfragen');
+      if(savingRef.current){setLoading(false);return;}
       setLsData(d||defaultData);
       setLoading(false);
-    }).catch(function(err){dlog('loadData FEHLER: '+(err&&err.message?err.message:err));setLsData(defaultData);setLoading(false);});
+    }).catch(function(){setLsData(defaultData);setLoading(false);});
   }
 
   function saveData(d){
     var local=Object.assign({},lsData,d);
     setLsData(local);
     savingRef.current=true;
-    // Server-Merge: erst aktuellen Stand holen, dann fields mergen
     return lsGet('ls_users',MY_ID).then(function(remote){
       remote=remote||defaultData;
       var merged=Object.assign({},remote,local);
-      var rReqs=remote.requests||[];
-      var lReqs=local.requests||[];
-      var allReqs=rReqs.slice();
+      var rReqs=remote.requests||[];var lReqs=local.requests||[];var allReqs=rReqs.slice();
       lReqs.forEach(function(r){if(!allReqs.find(function(x){return x.fromId===r.fromId;}))allReqs.push(r);});
       merged.requests=allReqs;
-      var rFr=remote.friends||[];var lFr=local.friends||[];
-      var allFr=rFr.slice();
+      var rFr=remote.friends||[];var lFr=local.friends||[];var allFr=rFr.slice();
       lFr.forEach(function(f){if(!allFr.find(function(x){return x.id===f.id;}))allFr.push(f);});
       merged.friends=allFr;
       return lsSet('ls_users',MY_ID,merged).then(function(){
-        savingRef.current=false;
-        setLsData(merged);
-        return merged;
+        savingRef.current=false;setLsData(merged);return merged;
       });
-    }).catch(function(err){savingRef.current=false;dlog('X saveData FEHLER: '+(err&&err.message?err.message:err));});
+    }).catch(function(){savingRef.current=false;showToast('\u274C Sync-Fehler');});
+  }
+  function saveDataAccept(d,acceptedFromId){
+    var local=Object.assign({},lsData,d);setLsData(local);savingRef.current=true;
+    return lsGet('ls_users',MY_ID).then(function(remote){
+      remote=remote||defaultData;var merged=Object.assign({},remote,local);
+      var rReqs=remote.requests||[];var lReqs=local.requests||[];var allReqs=rReqs.slice();
+      lReqs.forEach(function(r){if(!allReqs.find(function(x){return x.fromId===r.fromId;}))allReqs.push(r);});
+      merged.requests=allReqs.filter(function(r){return r.fromId!==acceptedFromId;});
+      var rFr=remote.friends||[];var lFr=local.friends||[];var allFr=rFr.slice();
+      lFr.forEach(function(f){if(!allFr.find(function(x){return x.id===f.id;}))allFr.push(f);});
+      merged.friends=allFr;
+      return lsSet('ls_users',MY_ID,merged).then(function(){
+        savingRef.current=false;setLsData(merged);return merged;
+      });
+    }).catch(function(){savingRef.current=false;showToast('\u274C Sync-Fehler');});
   }
 
   function sendFriendRequest(){
-    dlog('FR start: '+inviteId);
     var tid=inviteId.trim();
-    if(!tid||tid===MY_ID){dlog('X Ungueltige ID tid='+tid);showToast('Ung\u00fcltige ID');return;}
-    if((lsData.friends||[]).find(function(f){return f.id===tid;})){dlog('! bereits befreundet');showToast('Bereits befreundet');return;}
-    if((lsData.sentRequests||[]).find(function(r){return r.toId===tid;})){dlog('! anfrage bereits gesendet');showToast('Bereits gesendet');return;}
-    dlog('lsGet '+tid);
+    if(!tid||tid===MY_ID){showToast('Ung\u00fcltige ID');return;}
+    if((lsData.friends||[]).find(function(f){return f.id===tid;})){showToast('Bereits befreundet');return;}
+    if((lsData.sentRequests||[]).find(function(r){return r.toId===tid;})){showToast('Anfrage bereits gesendet');return;}
     lsGet('ls_users',tid).then(function(td){
-      dlog('lsGet ok td='+(td?'gefunden':'NULL'));
       var tData=td||defaultData;
       var reqs=[].concat(tData.requests||[]);
-      if(reqs.find(function(r){return r.fromId===MY_ID;})){dlog('! req schon da');return null;}
+      if(reqs.find(function(r){return r.fromId===MY_ID;})){showToast('Anfrage bereits gesendet');return null;}
       reqs.push({fromId:MY_ID,ts:Date.now()});
-      dlog('lsSet '+tid);
       return lsSet('ls_users',tid,Object.assign({},tData,{requests:reqs}));
     }).then(function(res){
       if(!res)return;
-      dlog('lsSet ok, save sentReq');
       var newSent=[].concat(lsData.sentRequests||[],[{toId:tid,ts:Date.now()}]);
       saveData({sentRequests:newSent});
       showToast('\uD83D\uDCE8 Anfrage gesendet!');
       setInviteId('');
-    }).catch(function(err){showToast('\u274C FEHLER: '+(err&&err.message?err.message:err));});
+    }).catch(function(){showToast('\u274C Fehler beim Senden');});
   }
 
   function cancelRequest(toId){
@@ -2140,14 +2141,10 @@ function LernSpaceView(p){
   }
 
   function acceptRequest(req){
-    var newFriends=(lsData.friends||[]).find(function(f){return f.id===req.fromId;})
-      ?lsData.friends
-      :[].concat(lsData.friends||[],[{id:req.fromId,since:Date.now()}]);
+    var newFriends=(lsData.friends||[]).find(function(f){return f.id===req.fromId;})?lsData.friends:[].concat(lsData.friends||[],[{id:req.fromId,since:Date.now()}]);
     var newReqs=(lsData.requests||[]).filter(function(r){return r.fromId!==req.fromId;});
     var newActs=[{type:'friend',text:req.fromId+' ist jetzt dein Freund',ts:Date.now()}].concat(lsData.activities||[]).slice(0,20);
-    // saveData merged requests mit remote (Union) – darum die akzeptierte Anfrage explizit als removedReq markieren:
     saveDataAccept({friends:newFriends,requests:newReqs,activities:newActs},req.fromId);
-    // Bei der anderen Seite: mich zu friends hinzufügen + meine sentRequest dort entfernen
     lsGet('ls_users',req.fromId).then(function(td){
       if(td){
         var tf=(td.friends||[]).find(function(f){return f.id===MY_ID;})?td.friends:[].concat(td.friends||[],[{id:MY_ID,since:Date.now()}]);
@@ -2158,45 +2155,18 @@ function LernSpaceView(p){
     showToast('\uD83C\uDF89 Freund hinzugef\u00fcgt!');
   }
 
-  // Wie saveData, aber entfernt eine akzeptierte Anfrage zuverlässig aus dem Merge
-  function saveDataAccept(d,acceptedFromId){
-    var local=Object.assign({},lsData,d);
-    setLsData(local);
-    savingRef.current=true;
-    return lsGet('ls_users',MY_ID).then(function(remote){
-      remote=remote||defaultData;
-      var merged=Object.assign({},remote,local);
-      // requests: remote-Union, ABER die akzeptierte Anfrage explizit raus
-      var rReqs=remote.requests||[];var lReqs=local.requests||[];
-      var allReqs=rReqs.slice();
-      lReqs.forEach(function(r){if(!allReqs.find(function(x){return x.fromId===r.fromId;}))allReqs.push(r);});
-      merged.requests=allReqs.filter(function(r){return r.fromId!==acceptedFromId;});
-      // friends: Union
-      var rFr=remote.friends||[];var lFr=local.friends||[];var allFr=rFr.slice();
-      lFr.forEach(function(f){if(!allFr.find(function(x){return x.id===f.id;}))allFr.push(f);});
-      merged.friends=allFr;
-      return lsSet('ls_users',MY_ID,merged).then(function(){
-        savingRef.current=false;setLsData(merged);return merged;
-      });
-    }).catch(function(){savingRef.current=false;showToast('\u274C Sync-Fehler');});
-  }
-
   function declineRequest(req){
     saveDataAccept({requests:(lsData.requests||[]).filter(function(r){return r.fromId!==req.fromId;})},req.fromId);
   }
 
   function createGroup(){
-    dlog('createGroup start');
     if(!groupName.trim()){showToast('Name eingeben');return;}
-    if(!lsData){dlog('X lsData NULL');return;}
     var gid=uid();
     var g={id:gid,name:groupName.trim(),emoji:groupEmoji,members:[MY_ID],deckIds:[],created:Date.now()};
     var newGroups=[].concat(lsData.groups||[],[g]);
-    dlog('saveData mit '+newGroups.length+' Gruppen');
-    saveData({groups:newGroups}).then(function(merged){
-      if(merged){dlog('OK '+(merged.groups||[]).length+' Gruppen am Server');showToast('Gruppe erstellt!');}else{dlog('! saveData ohne Ergebnis');}
-    });
+    saveData({groups:newGroups});
     setGroupName('');
+    showToast('\uD83C\uDFEB Gruppe erstellt!');
     lsSet('ls_groups',gid,g).catch(function(){});
   }
 
@@ -2306,9 +2276,13 @@ function LernSpaceView(p){
       requests.length>0&&h('div',null,
         h('div',{className:'ls-sec-lbl'},'\uD83D\uDCE8 Anfragen ('+requests.length+')'),
         requests.map(function(req,i){
+          var prof=reqProfiles[req.fromId];
+          var avEl=prof
+            ?h('img',{src:(prof.avatar==='photo'&&prof.avatarPhoto)?prof.avatarPhoto:getAvatarSrc(prof.avatar||'av1'),style:{width:40,height:40,borderRadius:'50%',objectFit:'cover',border:'1.5px solid rgba(251,191,36,.4)',flexShrink:0}})
+            :h('div',{style:{width:40,height:40,borderRadius:'50%',background:'linear-gradient(135deg,rgba(251,191,36,.22),rgba(251,191,36,.08))',border:'1px solid rgba(251,191,36,.35)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem',flexShrink:0}},'\u23F3');
           return h('div',{key:i,className:'ls-req-card'},
             h('div',{style:{display:'flex',alignItems:'center',gap:10,marginBottom:10}},
-              h('div',{style:{width:40,height:40,borderRadius:'50%',background:'linear-gradient(135deg,rgba(251,191,36,.22),rgba(251,191,36,.08))',border:'1px solid rgba(251,191,36,.35)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem',flexShrink:0}},'\uD83C\uDF1F'),
+              avEl,
               h('div',null,
                 h('div',{style:{fontSize:'.87rem',fontWeight:700,color:'#fff',marginBottom:2}},req.fromId),
                 h('div',{style:{fontSize:'.65rem',color:'rgba(255,255,255,.38)'}},'m\u00f6chte Freunde werden')
@@ -2661,13 +2635,6 @@ function LernSpaceView(p){
   }
 
   return h('div',null,
-    dbgLog.length>0&&h('div',{style:{position:'fixed',bottom:0,left:0,right:0,maxHeight:'40vh',overflowY:'auto',background:'rgba(0,0,0,.92)',borderTop:'2px solid #fbbf24',padding:'8px 12px',zIndex:9999,fontFamily:'monospace',fontSize:'.62rem',color:'#4ade80',lineHeight:1.5}},
-      h('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:4}},
-        h('span',{style:{color:'#fbbf24',fontWeight:800}},'\uD83D\uDC1B DEBUG LOG'),
-        h('span',{style:{color:'#f87171',cursor:'pointer'},onClick:function(){setDbgLog([]);}},'\u2715 Clear')
-      ),
-      dbgLog.map(function(line,i){return h('div',{key:i},line);})
-    ),
     h('div',{className:'ls-wrap'},
       lsPage!=='home'&&h('button',{className:'ls-back',onClick:function(){if(lsPage==='group-detail'){if(groupStackPage==='new-card'){setGroupStackPage('deck-detail');}else if(groupStackPage==='new-deck'||groupStackPage==='deck-detail'){setGroupStackPage('list');setGroupTab('stacks');}else{setLsPage('groups');}}else{setLsPage('home');}}},'\u2190 '+(lsPage==='group-detail'&&groupStackPage==='deck-detail'?'Zur\u00fcck zu Stapeln':lsPage==='group-detail'&&groupStackPage==='new-deck'?'Zur\u00fcck zu Stapeln':lsPage==='group-detail'&&groupStackPage==='new-card'?'Zur\u00fcck zur Karte':lsPage==='group-detail'?'Zur\u00fcck zu Gruppen':'Zur\u00fcck zur \u00DCbersicht')),
       loading&&lsPage==='home'?h('div',{className:'ls-loading'},h('div',{className:'ls-spinner'}),h('div',null,'Lade Lern Space\u2026'))
@@ -2683,6 +2650,24 @@ function LernSpaceView(p){
       currentPhoto:lsData&&lsData.avatarPhoto||null,
       onSave:saveAvatar,
       onClose:function(){setShowAvPicker(false);}
+    }),
+    showGroupAvPicker&&selectedGroup&&h(GroupAvatarPickerModal,{
+      current:selectedGroup.avatar||'av1',
+      currentPhoto:selectedGroup.avatarPhoto||null,
+      currentEmoji:selectedGroup.emoji||'\uD83C\uDFEB',
+      onSaveAvatar:function(avId,photo){
+        var upd=Object.assign({},selectedGroup,{avatar:avId,avatarPhoto:photo||null});
+        setSelectedGroup(upd);
+        var newGroups=(lsData.groups||[]).map(function(g){return g.id===upd.id?upd:g;});
+        saveData({groups:newGroups});setShowGroupAvPicker(false);showToast('\u2728 Avatar gespeichert!');
+      },
+      onSaveEmoji:function(emoji){
+        var upd=Object.assign({},selectedGroup,{emoji:emoji,avatar:null,avatarPhoto:null});
+        setSelectedGroup(upd);
+        var newGroups=(lsData.groups||[]).map(function(g){return g.id===upd.id?upd:g;});
+        saveData({groups:newGroups});setShowGroupAvPicker(false);showToast('\u2728 Emoji gespeichert!');
+      },
+      onClose:function(){setShowGroupAvPicker(false);}
     }),
     showGroupAvPicker&&selectedGroup&&h(GroupAvatarPickerModal,{
       current:selectedGroup.avatar||'av1',
