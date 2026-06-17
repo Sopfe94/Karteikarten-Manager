@@ -592,7 +592,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.1.27-AKTUELL -->
+<body><!-- KKM-v1.1.28-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -1722,7 +1722,7 @@ function lsGet(col,docId){
   if(col==='ls_users'){
     return sbClient.from('ls_users').select('data').eq('ls_id',docId).maybeSingle()
       .then(function(res){
-        if(res.error)throw res.error;
+        if(res.error){console.error('[lsGet] error:',res.error);throw res.error;}
         return res.data?res.data.data:null;
       });
   }
@@ -1732,7 +1732,7 @@ function lsSet(col,docId,data){
   if(col==='ls_users'){
     return sbClient.from('ls_users')
       .upsert({ls_id:docId,data:data,updated_at:new Date().toISOString()},{onConflict:'ls_id'})
-      .then(function(res){if(res.error)throw res.error;return res;});
+      .then(function(res){if(res.error){console.error('[lsSet users] error:',res.error);throw res.error;}return res;});
   }
   if(col==='ls_groups'){
     return sbClient.from('ls_groups')
@@ -1743,7 +1743,7 @@ function lsSet(col,docId,data){
         created_by:data.createdBy||null,
         updated_at:new Date().toISOString()
       },{onConflict:'id'})
-      .then(function(res){if(res.error)throw res.error;return res;});
+      .then(function(res){if(res.error){console.error('[lsSet groups] error:',res.error);throw res.error;}return res;});
   }
   return Promise.resolve();
 }
@@ -2091,7 +2091,7 @@ function LernSpaceView(p){
       if(savingRef.current){setLoading(false);return;}
       setLsData(d||defaultData);
       setLoading(false);
-    }).catch(function(){setLsData(defaultData);setLoading(false);});
+    }).catch(function(e){console.error('[loadData]',e);showToast('\u274C Laden fehlgeschlagen');setLoading(false);});
   }
 
   function saveData(d){
