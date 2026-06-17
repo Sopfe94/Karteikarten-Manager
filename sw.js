@@ -1,9 +1,6 @@
-// Service Worker v11 - 24h Cache für index.html (Beta: kein Cache)
-const CACHE = 'kkm-v12';
+// Service Worker v13 - index.html Network-First (immer frisch, Cache nur Offline-Fallback)
+const CACHE = 'kkm-v13';
 const BASE = self.location.hostname === 'www.gross-apps.de' ? '/KM' : '';
-const CACHE_TS_KEY = 'kkm-html-ts';
-const IS_BETA = /beta|localhost/.test(self.location.hostname);
-const ONE_DAY = IS_BETA ? 0 : 24 * 60 * 60 * 1000;
 const STATIC = [BASE+'/manifest.json', BASE+'/icon.svg', BASE+'/logo.svg'];
 
 self.addEventListener('install', function(e){
@@ -45,41 +42,18 @@ fetch(new Request(e.request,{cache:'no-store'}))
 return;
 }
 
-// index.html: max einmal pro 24h vom Server holen
+// index.html: Network-First (immer frisch laden, Cache nur als Offline-Fallback)
 if(url.pathname === BASE+'/' || url.pathname === BASE+'/index.html'){
 e.respondWith(
-caches.open(CACHE).then(function(c){
-var now = Date.now();
-if(e.request.cache === 'no-store'){
-return fetch(new Request(BASE+'/index.html',{cache:'no-store'})).then(function(res){
+fetch(new Request(BASE+'/index.html',{cache:'no-store'})).then(function(res){
 if(res && res.status === 200){
-c.put(BASE+'/index.html', res.clone());
-c.put(CACHE_TS_KEY, new Response(String(now)));
+var clone = res.clone();
+caches.open(CACHE).then(function(c){ c.put(BASE+'/index.html', clone); });
 }
 return res;
 }).catch(function(){
-return c.match(BASE+'/index.html') || new Response('<p>Bitte einmal online öffnen.</p>',{headers:{'Content-Type':'text/html'}});
-});
-}
-return c.match(BASE+'/index.html').then(function(cached){
-return c.match(CACHE_TS_KEY).then(function(tsRes){
-return tsRes ? tsRes.text() : '0';
-}).then(function(tsStr){
-var ts = parseInt(tsStr)||0;
-var expired = (now - ts) > ONE_DAY;
-if(cached && !expired){
-return cached;
-}
-return fetch(new Request(BASE+'/index.html',{cache:'no-store'})).then(function(res){
-if(res && res.status === 200){
-c.put(BASE+'/index.html', res.clone());
-c.put(CACHE_TS_KEY, new Response(String(now)));
-}
-return res;
-}).catch(function(){
+return caches.match(BASE+'/index.html').then(function(cached){
 return cached || new Response('<p>Bitte einmal online öffnen.</p>',{headers:{'Content-Type':'text/html'}});
-});
-});
 });
 })
 );
