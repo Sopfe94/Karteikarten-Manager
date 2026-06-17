@@ -592,7 +592,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.1.33-AKTUELL -->
+<body><!-- KKM-v1.1.34-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -1765,6 +1765,23 @@ function lsGet(col,docId){
         return row?row.data:null;
       });
   }
+  if(col==='ls_groups'){
+    dbg('lsGet ls_groups:',docId);
+    return getSb().from('ls_groups').select('*').eq('id',docId).limit(1)
+      .then(function(res){
+        if(res.error){dbg('❌ lsGet groups error:',res.error.message||res.error);throw res.error;}
+        var row=(res.data&&res.data.length)?res.data[0]:null;
+        dbg('✅ lsGet groups ok. Vorhanden:',!!row);
+        if(!row)return null;
+        return {
+          id:row.id,name:row.name,emoji:row.emoji,
+          avatar:row.avatar,members:row.members||[],
+          groupDecks:row.group_decks||[],
+          created:row.created?Number(row.created):null,
+          createdBy:row.created_by,deckIds:[]
+        };
+      });
+  }
   return Promise.resolve(null);
 }
 function lsSet(col,docId,data){
@@ -2080,6 +2097,7 @@ function LernSpaceView(p){
   var ncfs=useState('');var newCardFront=ncfs[0];var setNewCardFront=ncfs[1];
   var ncbs=useState('');var newCardBack=ncbs[0];var setNewCardBack=ncbs[1];
   var savingRef=useRef(false);
+  var loadingGroupsRef=useRef(false);
   var rps=useState({});var reqProfiles=rps[0];var setReqProfiles=rps[1];
   var tms=useToast();var toast=tms[0];var showToast=tms[1];
   var saps=useState(false);var showAvPicker=saps[0];var setShowAvPicker=saps[1];
@@ -2132,6 +2150,9 @@ function LernSpaceView(p){
 
   useEffect(function(){loadData();},[]);
   useEffect(function(){if(lsPage==="friends"||lsPage==="shared"||lsPage==="groups")loadData();},[lsPage]);
+  useEffect(function(){
+    if((lsPage==="groups"||lsPage==="group-detail")&&lsData&&(lsData.groups||[]).length){loadGroups();}
+  },[lsPage,lsData&&lsData.groups?lsData.groups.length:0]);
 
   function loadData(){
     if(savingRef.current)return;
@@ -2145,6 +2166,26 @@ function LernSpaceView(p){
       }
       setLoading(false);
     }).catch(function(e){dbg('❌ loadData:',(e&&e.message)||e);setLoading(false);});
+  }
+
+  function loadGroups(){
+    if(savingRef.current||loadingGroupsRef.current)return;
+    var myGroups=(lsData&&lsData.groups)||[];
+    if(!myGroups.length)return;
+    loadingGroupsRef.current=true;
+    dbg('loadGroups: '+myGroups.length+' Gruppe(n)');
+    Promise.all(myGroups.map(function(g){
+      return lsGet('ls_groups',g.id).catch(function(){return null;});
+    })).then(function(fresh){
+      loadingGroupsRef.current=false;
+      if(savingRef.current)return;
+      var changed=false;
+      var merged=myGroups.map(function(g,i){
+        if(fresh[i]&&JSON.stringify(fresh[i])!==JSON.stringify(g)){changed=true;return fresh[i];}
+        return g;
+      });
+      if(changed){setLsData(function(prev){return Object.assign({},prev,{groups:merged});});}
+    }).catch(function(){loadingGroupsRef.current=false;});
   }
 
   function saveData(d){
