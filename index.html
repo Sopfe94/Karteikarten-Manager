@@ -591,7 +591,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.1.27-AKTUELL -->
+<body><!-- KKM-v1.1.28-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -2003,7 +2003,6 @@ function LernSpaceView(p){
   var sgaps=useState(false);var showGroupAvPicker=sgaps[0];var setShowGroupAvPicker=sgaps[1];
   var gspages=useState('list');var groupStackPage=gspages[0];var setGroupStackPage=gspages[1];
   var sgds=useState(null);var selectedGroupDeck=sgds[0];var setSelectedGroupDeck=sgds[1];
-  var sghomes=useState({});var showGroupOnHome=sghomes[0];var setShowGroupOnHome=sghomes[1];
   var ndns=useState('');var newDeckName=ndns[0];var setNewDeckName=ndns[1];
   var ndes=useState('\uD83D\uDCDA');var newDeckEmoji=ndes[0];var setNewDeckEmoji=ndes[1];
   var ncfs=useState('');var newCardFront=ncfs[0];var setNewCardFront=ncfs[1];
@@ -2044,7 +2043,7 @@ function LernSpaceView(p){
     };
   },[lsPage]);
 
-  var defaultData={friends:[],requests:[],sentRequests:[],groups:[],sharedIncoming:[],challenges:[],activities:[]};
+  var defaultData={friends:[],requests:[],sentRequests:[],groups:[],sharedIncoming:[],challenges:[],activities:[],groupHomeSettings:{}};
 
   function saveAvatar(avId,photoData){
     var upd={avatar:avId,avatarPhoto:photoData||null};
@@ -2401,10 +2400,11 @@ function LernSpaceView(p){
 
   function renderGroupStacks(g,gid){
     var groupDecks=g.groupDecks||[];
-    var homeOn=showGroupOnHome[gid]!==false;
+    var groupHomeSettings=lsData&&lsData.groupHomeSettings||{};
+    var homeOn=groupHomeSettings[gid]!==false;
     var DECK_EMOJIS=['\uD83D\uDE0A','\uD83D\uDE0E','\uD83E\uDD13','\uD83E\uDDE0','\uD83D\uDCAA','\uD83D\uDE80','\u2B50','\u2728','\uD83C\uDF1F','\uD83D\uDCAB','\uD83D\uDCDA','\uD83D\uDCD6','\uD83D\uDD2C','\uD83E\uDDEA','\uD83C\uDF93','\uD83D\uDCDD','\uD83E\uDD81','\uD83D\uDC2F','\uD83E\uDD8A','\uD83D\uDC3A','\uD83E\uDD85','\uD83E\uDD8B','\uD83C\uDF08','\uD83C\uDFC6','\uD83C\uDFAF','\uD83C\uDFAE','\uD83D\uDD25','\u26A1','\uD83D\uDCA1','\uD83C\uDFEB','\uD83C\uDF19','\uD83C\uDF1E','\uD83C\uDFA8','\uD83C\uDFB5','\u26BD','\uD83C\uDFC0','\uD83C\uDFB2','\uD83D\uDC09','\uD83E\uDD8C','\uD83D\uDC08'];
 
-    function toggleHome(){var upd=Object.assign({},showGroupOnHome);upd[gid]=!homeOn;setShowGroupOnHome(upd);}
+    function toggleHome(){var upd=Object.assign({},groupHomeSettings);upd[gid]=!homeOn;saveData({groupHomeSettings:upd});}
 
     function openDeck(deck){setSelectedGroupDeck(deck);setGroupStackPage('deck-detail');}
 
@@ -2684,7 +2684,15 @@ function App(){
   var sys=useState(false); var showSync=sys[0]; var setShowSync=sys[1];
   var dlms=useState("home"); var deckListMode=dlms[0]; var setDeckListMode=dlms[1];
   var les=useState([]); var lernEmpf=les[0]; var setLernEmpf=les[1];
+  var lgds=useState({groups:[],settings:{}});var lsGroupData=lgds[0];var setLsGroupData=lgds[1];
   var lss=useState(false); var showLernEmpf=lss[0]; var setShowLernEmpf=lss[1];
+  useEffect(function(){
+    if(view!==='decks')return;
+    var _lsid=getLsId();
+    lsGet('ls_users',_lsid).then(function(d){
+      if(d)setLsGroupData({groups:d.groups||[],settings:d.groupHomeSettings||{}});
+    }).catch(function(){});
+  },[view]);
   useEffect(function(){
     if(view!=="decks"||deckListMode!=="home")return;
     var t=setTimeout(function(){
@@ -2865,6 +2873,28 @@ function App(){
                 h("span",{className:"home-deck-row-name"},deck.emoji," ",deck.name,folder?h("span",{style:{fontSize:".64rem",fontWeight:700,color:"var(--c-pur2)",background:"rgba(139,92,246,.15)",border:"1px solid var(--c-bor)",borderRadius:"10px",padding:"1px 6px",marginLeft:"5px"}},folder.emoji+" "+folder.name):null),
                 null);})),
           decks.length>0&&h("div",{className:"home-to-decks",onClick:function(){setDeckListMode("manage");}},"Zu den Stapeln >")),
+
+        h(function GroupDecksSection(){
+          var enabledGroups=(lsGroupData.groups||[]).filter(function(g){
+            return lsGroupData.settings[g.id]!==false&&(g.groupDecks||[]).length>0;
+          });
+          if(!enabledGroups.length)return null;
+          return h("div",null,enabledGroups.map(function(g){
+            return h("div",{key:g.id,className:"home-decks-card",style:{marginTop:12}},
+              h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"12px"}},
+                h("span",{style:{fontWeight:800,fontSize:"1rem",background:"linear-gradient(135deg,#fff,var(--c-pur2))",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}},
+                  (g.emoji||"\uD83C\uDFEB")+" "+g.name
+                ),
+                h("span",{style:{fontSize:".6rem",fontWeight:700,color:"#fbbf24",background:"rgba(251,191,36,.12)",border:"1px solid rgba(251,191,36,.3)",borderRadius:"8px",padding:"2px 7px"}},"Gruppe")
+              ),
+              h("div",{className:"home-decks"},(g.groupDecks||[]).map(function(deck){
+                return h("div",{key:deck.id,className:"home-deck-row",onClick:function(){setView("lernspace");}},
+                  h("span",{className:"home-deck-row-name"},(deck.emoji||"\uD83D\uDCDA")+" "+deck.name)
+                );
+              }))
+            );
+          }));
+        },null),
 
         h("div",{className:"faecher-card"},
           h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"14px"}},
