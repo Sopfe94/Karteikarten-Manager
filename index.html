@@ -2687,7 +2687,7 @@ function App(){
   var lgds=useState({groups:[],settings:{}});var lsGroupData=lgds[0];var setLsGroupData=lgds[1];
   var lss=useState(false); var showLernEmpf=lss[0]; var setShowLernEmpf=lss[1];
   useEffect(function(){
-    if(view!==='decks')return;
+    if(view!=='decks')return;
     var _lsid=getLsId();
     lsGet('ls_users',_lsid).then(function(d){
       if(d)setLsGroupData({groups:d.groups||[],settings:d.groupHomeSettings||{}});
