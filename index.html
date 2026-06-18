@@ -613,7 +613,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.1.39";
+var KKM_VERSION="1.1.38";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2127,6 +2127,7 @@ function LernSpaceView(p){
   var ncbs=useState('');var newCardBack=ncbs[0];var setNewCardBack=ncbs[1];
   var savingRef=useRef(false);
   var loadingGroupsRef=useRef(false);
+  var rtChannelRef=useRef(null);
   var rps=useState({});var reqProfiles=rps[0];var setReqProfiles=rps[1];
   var tms=useToast();var toast=tms[0];var showToast=tms[1];
   var saps=useState(false);var showAvPicker=saps[0];var setShowAvPicker=saps[1];
@@ -2179,6 +2180,44 @@ function LernSpaceView(p){
 
   useEffect(function(){loadData();},[]);
   useEffect(function(){if(lsPage==="friends"||lsPage==="shared"||lsPage==="groups")loadData();},[lsPage]);
+  // Realtime: Live-Updates fuer aktive Gruppe
+  useEffect(function(){
+    if(rtChannelRef.current){
+      getSb().removeChannel(rtChannelRef.current);
+      rtChannelRef.current=null;
+    }
+    if(lsPage!=='group-detail'||!selectedGroup)return;
+    var gid=selectedGroup.id;
+    dbg('RT: subscribe group '+gid);
+    var ch=getSb().channel('group-rt-'+gid)
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'ls_groups',filter:'id=eq.'+gid},
+        function(payload){
+          var row=payload.new;
+          if(!row){return;}
+          dbg('RT: update received for group '+gid);
+          var updG=Object.assign({},selectedGroup,{
+            groupDecks:row.group_decks||[],
+            members:row.members||selectedGroup.members,
+            name:row.name||selectedGroup.name
+          });
+          setSelectedGroup(updG);
+          setSelectedGroupDeck(function(prev){
+            if(!prev)return prev;
+            return (row.group_decks||[]).find(function(d){return d.id===prev.id;})||prev;
+          });
+          setLsData(function(prev){
+            if(!prev)return prev;
+            return Object.assign({},prev,{groups:(prev.groups||[]).map(function(g){return g.id===gid?updG:g;})});
+          });
+        })
+      .subscribe(function(status){dbg('RT status:',status);});
+    rtChannelRef.current=ch;
+    return function(){
+      dbg('RT: unsubscribe group '+gid);
+      getSb().removeChannel(ch);
+      rtChannelRef.current=null;
+    };
+  },[lsPage,selectedGroup&&selectedGroup.id]);
 
   function loadData(){
     if(savingRef.current)return;
@@ -2640,8 +2679,9 @@ function LernSpaceView(p){
       var deck={id:uid(),name:newDeckName.trim(),emoji:newDeckEmoji,cards:[],created:Date.now(),createdBy:MY_ID};
       var updDecks=[].concat(groupDecks,[deck]);
       var updG=Object.assign({},g,{groupDecks:updDecks});
-      setSelectedGroupDeck(deck);
-      applyGroupUpdate(updG).catch(function(){showToast('\u274C Sync-Fehler');});
+      setSelectedGroup(updG);setSelectedGroupDeck(deck);
+      var newGroups=(lsData.groups||[]).map(function(gr){return gr.id===updG.id?updG:gr;});
+      saveData({groups:newGroups});
       setGroupStackPage('deck-detail');
       showToast('\uD83D\uDCDA Stapel erstellt!');
     }
@@ -2652,8 +2692,9 @@ function LernSpaceView(p){
       var updDeck=Object.assign({},selectedGroupDeck,{cards:[].concat(selectedGroupDeck.cards||[],[card])});
       var updDecks=(g.groupDecks||[]).map(function(d){return d.id===updDeck.id?updDeck:d;});
       var updG=Object.assign({},g,{groupDecks:updDecks});
-      setSelectedGroupDeck(updDeck);
-      applyGroupUpdate(updG).catch(function(){showToast('\u274C Sync-Fehler');});
+      setSelectedGroup(updG);setSelectedGroupDeck(updDeck);
+      var newGroups=(lsData.groups||[]).map(function(gr){return gr.id===updG.id?updG:gr;});
+      saveData({groups:newGroups});
       setNewCardFront('');setNewCardBack('');
       showToast('\u2705 Karte gespeichert!');
       setGroupStackPage('deck-detail');
