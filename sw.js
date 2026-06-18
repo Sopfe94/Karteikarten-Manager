@@ -1,7 +1,7 @@
-// Service Worker v14 - Cross-Origin (Supabase etc.) nie cachen + index.html Network-First
-const CACHE = 'kkm-v15';
+// Service Worker v15 - Cross-Origin (Supabase etc.) nie cachen + index.html Cache-First
+const CACHE = 'kkm-v16';
 const BASE = self.location.hostname === 'www.gross-apps.de' ? '/KM' : '';
-const STATIC = [BASE+'/manifest.json', BASE+'/icon.svg', BASE+'/logo.svg'];
+const STATIC = [BASE+'/index.html', BASE+'/manifest.json', BASE+'/icon.svg', BASE+'/logo.svg'];
 
 self.addEventListener('install', function(e){
 self.skipWaiting();
@@ -45,18 +45,18 @@ fetch(new Request(e.request,{cache:'no-store'}))
 return;
 }
 
-// index.html: Network-First (immer frisch laden, Cache nur als Offline-Fallback)
+// index.html: Cache-First (Update kommt via CACHE-Version-Bump)
 if(url.pathname === BASE+'/' || url.pathname === BASE+'/index.html'){
 e.respondWith(
-fetch(new Request(BASE+'/index.html',{cache:'no-store'})).then(function(res){
+caches.match(BASE+'/index.html').then(function(cached){
+return cached || fetch(e.request).then(function(res){
 if(res && res.status === 200){
 var clone = res.clone();
 caches.open(CACHE).then(function(c){ c.put(BASE+'/index.html', clone); });
 }
 return res;
 }).catch(function(){
-return caches.match(BASE+'/index.html').then(function(cached){
-return cached || new Response('<p>Bitte einmal online öffnen.</p>',{headers:{'Content-Type':'text/html'}});
+return new Response('<p>Bitte einmal online öffnen.</p>',{headers:{'Content-Type':'text/html'}});
 });
 })
 );
