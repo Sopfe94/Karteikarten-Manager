@@ -613,7 +613,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.1.38";
+var KKM_VERSION="1.1.43";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2127,7 +2127,6 @@ function LernSpaceView(p){
   var ncbs=useState('');var newCardBack=ncbs[0];var setNewCardBack=ncbs[1];
   var savingRef=useRef(false);
   var loadingGroupsRef=useRef(false);
-  var rtChannelRef=useRef(null);
   var rps=useState({});var reqProfiles=rps[0];var setReqProfiles=rps[1];
   var tms=useToast();var toast=tms[0];var showToast=tms[1];
   var saps=useState(false);var showAvPicker=saps[0];var setShowAvPicker=saps[1];
@@ -2180,44 +2179,6 @@ function LernSpaceView(p){
 
   useEffect(function(){loadData();},[]);
   useEffect(function(){if(lsPage==="friends"||lsPage==="shared"||lsPage==="groups")loadData();},[lsPage]);
-  // Realtime: Live-Updates fuer aktive Gruppe
-  useEffect(function(){
-    if(rtChannelRef.current){
-      getSb().removeChannel(rtChannelRef.current);
-      rtChannelRef.current=null;
-    }
-    if(lsPage!=='group-detail'||!selectedGroup)return;
-    var gid=selectedGroup.id;
-    dbg('RT: subscribe group '+gid);
-    var ch=getSb().channel('group-rt-'+gid)
-      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'ls_groups',filter:'id=eq.'+gid},
-        function(payload){
-          var row=payload.new;
-          if(!row){return;}
-          dbg('RT: update received for group '+gid);
-          var updG=Object.assign({},selectedGroup,{
-            groupDecks:row.group_decks||[],
-            members:row.members||selectedGroup.members,
-            name:row.name||selectedGroup.name
-          });
-          setSelectedGroup(updG);
-          setSelectedGroupDeck(function(prev){
-            if(!prev)return prev;
-            return (row.group_decks||[]).find(function(d){return d.id===prev.id;})||prev;
-          });
-          setLsData(function(prev){
-            if(!prev)return prev;
-            return Object.assign({},prev,{groups:(prev.groups||[]).map(function(g){return g.id===gid?updG:g;})});
-          });
-        })
-      .subscribe(function(status){dbg('RT status:',status);});
-    rtChannelRef.current=ch;
-    return function(){
-      dbg('RT: unsubscribe group '+gid);
-      getSb().removeChannel(ch);
-      rtChannelRef.current=null;
-    };
-  },[lsPage,selectedGroup&&selectedGroup.id]);
 
   function loadData(){
     if(savingRef.current)return;
@@ -2370,25 +2331,45 @@ function LernSpaceView(p){
     if(tid===MY_ID){showToast('Das bist du selbst');return;}
     var nm=normalizeMembers(g.members);
     if(nm.find(function(m){return m.id===tid;})){showToast('Bereits Mitglied');return;}
-    var newMembers=nm.concat([{id:tid,role:inviteRole}]);
-    var updG=Object.assign({},g,{members:newMembers});
-    applyGroupUpdate(updG).then(function(){
-      // Gruppen-Referenz in die ls_users-Daten des Eingeladenen schreiben
-      return lsGet('ls_users',tid).then(function(td){
-        var tData=td||defaultData;
-        var tGroups=tData.groups||[];
-        if(!tGroups.find(function(x){return x.id===g.id;})){
-          tGroups=tGroups.concat([{id:g.id,name:g.name,emoji:g.emoji,members:newMembers,deckIds:[],created:g.created}]);
-        }else{
-          tGroups=tGroups.map(function(x){return x.id===g.id?Object.assign({},x,{members:newMembers}):x;});
-        }
-        return lsSet('ls_users',tid,Object.assign({},tData,{groups:tGroups}));
-      });
+    if((lsData.groupInvites||[]).find(function(x){return x.id===g.id&&x.toId===tid;})){showToast('Einladung bereits gesendet');return;}
+    dbg('invite: starte \u2709 '+tid+' → Gruppe '+g.id);
+    var invite={id:g.id,name:g.name,emoji:g.emoji||'\ud83c\udfeb',fromId:MY_ID,role:inviteRole,ts:Date.now()};
+    lsGet('ls_users',tid).then(function(td){
+      var tData=td||defaultData;
+      dbg('invite: ls_users gelesen, groupInvites vorher:',(tData.groupInvites||[]).length);
+      var tInvites=(tData.groupInvites||[]).filter(function(x){return x.id!==g.id;}).concat([invite]);
+      dbg('invite: schreibe groupInvites f\u00fcr '+tid);
+      return lsSet('ls_users',tid,Object.assign({},tData,{groupInvites:tInvites}));
     }).then(function(){
-      showToast('\u2705 '+tid+' eingeladen!');
-      setInviteMemberId('');
-      setInviteRole('user');
-    }).catch(function(){showToast('\u274C Fehler beim Einladen');});
+      dbg('invite: \u2705 Einladung gesendet an '+tid);
+      showToast('\u2709\ufe0f Einladung gesendet!');
+      setInviteMemberId('');setInviteRole('user');
+    }).catch(function(e){dbg('invite: \u274c',e&&(e.message||JSON.stringify(e)));showToast('\u274C Fehler beim Einladen');});
+  }
+
+  function acceptGroupInvite(invite){
+    dbg('acceptGroupInvite:',invite.id);
+    var newInvites=(lsData.groupInvites||[]).filter(function(x){return x.id!==invite.id;});
+    var groupEntry={id:invite.id,name:invite.name,emoji:invite.emoji,members:[],groupDecks:[],deckIds:[],created:invite.ts};
+    var newGroups=(lsData.groups||[]).filter(function(g){return g.id!==invite.id;}).concat([groupEntry]);
+    saveData({groupInvites:newInvites,groups:newGroups});
+    lsGet('ls_groups',invite.id).then(function(gd){
+      if(!gd){dbg('acceptGroupInvite: Gruppe nicht gefunden');return;}
+      var nm=normalizeMembers(gd.members||[]);
+      if(!nm.find(function(m){return m.id===MY_ID;})){
+        var newMembers=nm.concat([{id:MY_ID,role:invite.role||'user'}]);
+        return lsSet('ls_groups',invite.id,Object.assign({},gd,{members:newMembers}));
+      }
+    }).then(function(){
+      dbg('acceptGroupInvite: \u2705 beigetreten');
+      showToast('\u2705 Gruppe beigetreten!');
+    }).catch(function(e){dbg('acceptGroupInvite: \u274c',e&&e.message);showToast('\u274c Fehler beim Beitreten');});
+  }
+
+  function declineGroupInvite(invite){
+    var newInvites=(lsData.groupInvites||[]).filter(function(x){return x.id!==invite.id;});
+    saveData({groupInvites:newInvites});
+    showToast('Einladung abgelehnt');
   }
 
   function changeMemberRole(targetId,newRole){
@@ -2452,6 +2433,8 @@ function LernSpaceView(p){
   var activities=lsData?lsData.activities||[]:[];
   var pendingReqs=requests.length;
   var pendingShared=sharedIncoming.length;
+  var groupInvites=lsData?lsData.groupInvites||[]:[];
+  var pendingGroupInvites=groupInvites.length;
 
   function renderHome(){
     return h('div',{className:'ls-home'},
@@ -2499,7 +2482,8 @@ function LernSpaceView(p){
           h('div',{className:'ls-hc-shine'}),h('div',{className:'ls-hc-glow'}),
           h('span',{className:'ls-hc-icon'},'\uD83C\uDFEB'),
           h('div',{className:'ls-hc-name'},'Gruppen'),
-          h('div',{className:'ls-hc-sub'},groups.length+' aktiv')
+          h('div',{className:'ls-hc-sub'},groups.length+' aktiv'),
+          pendingGroupInvites>0&&h('div',{className:'ls-hc-badge'},pendingGroupInvites+' neu')
         ),
         h('div',{className:'ls-hc ls-hc3',onClick:function(){setLsPage('shared');}},
           h('div',{className:'ls-hc-shine'}),h('div',{className:'ls-hc-glow'}),
@@ -2603,6 +2587,27 @@ function LernSpaceView(p){
         h('span',{className:'ls-pg-hero-icon'},'\ud83c\udfeb'),
         h('div',{className:'ls-pg-hero-title'},'Meine Gruppen'),
         h('div',{className:'ls-pg-hero-sub'},groups.length===0?'Noch keine Gruppe gegründet':groups.length+' aktiv')
+      ),
+      groupInvites.length>0&&h('div',null,
+        h('div',{className:'ls-sec-lbl'},'\ud83d\udce8 Gruppen-Einladungen ('+groupInvites.length+')'),
+        groupInvites.map(function(invite,i){
+          return h('div',{key:i,className:'ls-req-card'},
+            h('div',{style:{display:'flex',alignItems:'center',gap:10,marginBottom:10}},
+              h('div',{style:{width:40,height:40,borderRadius:12,background:'rgba(139,92,246,.2)',border:'1px solid rgba(139,92,246,.35)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.2rem',flexShrink:0}},invite.emoji||'\ud83c\udfeb'),
+              h('div',null,
+                h('div',{style:{fontSize:'.87rem',fontWeight:700,color:'#fff',marginBottom:2}},invite.name),
+                h('div',{style:{fontSize:'.65rem',color:'rgba(255,255,255,.38)'}},
+                  '\u2709\ufe0f Von '+invite.fromId+' \u00b7 als '+(invite.role==='admin'?'\u2b50 Admin':'Mitglied'))
+              )
+            ),
+            h('div',{style:{display:'flex',gap:8}},
+              h('button',{className:'ls-req-accept',onClick:function(){acceptGroupInvite(invite);}},
+                '\u2705 Annehmen'),
+              h('button',{className:'ls-req-decline',onClick:function(){declineGroupInvite(invite);}},
+                '\u274c Ablehnen')
+            )
+          );
+        })
       ),
       h('div',{className:'ls-sec-lbl'},'\ud83c\udfeb Meine Gruppen ('+groups.length+')'),
       groups.length===0
