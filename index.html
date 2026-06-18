@@ -602,7 +602,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.1.37-AKTUELL -->
+<body><!-- KKM-v1.1.38-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -613,7 +613,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.1.37";
+var KKM_VERSION="1.1.38";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2437,7 +2437,16 @@ function LernSpaceView(p){
           }else{
             showToast('ID: '+id);
           }
-        }},'\uD83D\uDCCB ID teilen')
+        }},'\uD83D\uDCCB ID teilen'),
+        h('button',{className:'ls-home-copy',style:{marginTop:8},onClick:function(){
+          var neu=prompt('Deine bestehende Lern Space ID eingeben (z.B. Musik-Held-2650):',MY_ID);
+          if(!neu)return;
+          neu=neu.trim();
+          if(!neu||neu===MY_ID){showToast('Keine \u00c4nderung');return;}
+          localStorage.setItem('kkm-ls-id',neu);
+          showToast('\u2705 ID gesetzt \u2013 lade neu \u2026');
+          setTimeout(function(){location.reload();},700);
+        }},'\uD83D\uDD11 ID wiederherstellen')
       ),
       h('div',{className:'ls-home-grid'},
         h('div',{className:'ls-hc ls-hc1',onClick:function(){setLsPage('friends');}},
