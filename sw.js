@@ -1,5 +1,5 @@
 // Service Worker v14 - Cross-Origin (Supabase etc.) nie cachen + index.html Network-First
-const CACHE = 'kkm-v14';
+const CACHE = 'kkm-v15';
 const BASE = self.location.hostname === 'www.gross-apps.de' ? '/KM' : '';
 const STATIC = [BASE+'/manifest.json', BASE+'/icon.svg', BASE+'/logo.svg'];
 
