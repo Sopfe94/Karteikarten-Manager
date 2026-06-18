@@ -613,7 +613,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.1.38";
+var KKM_VERSION="1.1.39";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2640,9 +2640,8 @@ function LernSpaceView(p){
       var deck={id:uid(),name:newDeckName.trim(),emoji:newDeckEmoji,cards:[],created:Date.now(),createdBy:MY_ID};
       var updDecks=[].concat(groupDecks,[deck]);
       var updG=Object.assign({},g,{groupDecks:updDecks});
-      setSelectedGroup(updG);setSelectedGroupDeck(deck);
-      var newGroups=(lsData.groups||[]).map(function(gr){return gr.id===updG.id?updG:gr;});
-      saveData({groups:newGroups});
+      setSelectedGroupDeck(deck);
+      applyGroupUpdate(updG).catch(function(){showToast('\u274C Sync-Fehler');});
       setGroupStackPage('deck-detail');
       showToast('\uD83D\uDCDA Stapel erstellt!');
     }
@@ -2653,9 +2652,8 @@ function LernSpaceView(p){
       var updDeck=Object.assign({},selectedGroupDeck,{cards:[].concat(selectedGroupDeck.cards||[],[card])});
       var updDecks=(g.groupDecks||[]).map(function(d){return d.id===updDeck.id?updDeck:d;});
       var updG=Object.assign({},g,{groupDecks:updDecks});
-      setSelectedGroup(updG);setSelectedGroupDeck(updDeck);
-      var newGroups=(lsData.groups||[]).map(function(gr){return gr.id===updG.id?updG:gr;});
-      saveData({groups:newGroups});
+      setSelectedGroupDeck(updDeck);
+      applyGroupUpdate(updG).catch(function(){showToast('\u274C Sync-Fehler');});
       setNewCardFront('');setNewCardBack('');
       showToast('\u2705 Karte gespeichert!');
       setGroupStackPage('deck-detail');
