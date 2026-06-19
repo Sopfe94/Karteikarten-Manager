@@ -535,11 +535,11 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .ls-gd-chat-wrap{display:flex;flex-direction:column;gap:10px}
 .ls-gd-chat-msg{display:flex;flex-direction:column;align-items:flex-start}
 .ls-gd-chat-msg.mine{align-items:flex-end}
-.ls-gd-chat-who{font-size:.6rem;color:rgba(255,255,255,.4);margin-bottom:3px}
+.ls-gd-chat-who{font-size:.6rem;color:rgba(255,255,255,.85);margin-bottom:3px;font-weight:600}
 .ls-gd-bubble{background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.22);border-radius:0 14px 14px 14px;padding:9px 12px;max-width:82%}
 .ls-gd-bubble.mine{background:rgba(37,99,235,.2);border-color:rgba(37,99,235,.3);border-radius:14px 0 14px 14px}
 .ls-gd-chat-text{font-size:.82rem;color:#fff}
-.ls-gd-chat-time{font-size:.58rem;color:rgba(255,255,255,.3);margin-top:3px}
+.ls-gd-chat-time{font-size:.58rem;color:rgba(255,255,255,.8);margin-top:3px}
 .ls-gd-chat-inp{display:flex;gap:8px;margin-top:14px;align-items:center}
 .ls-gd-toggle-card{background:rgba(212,175,55,.06);border:1px solid rgba(212,175,55,.22);border-radius:17px;padding:13px 15px;margin-bottom:14px;display:flex;align-items:center;gap:12px;cursor:pointer;position:relative;overflow:hidden}
 .ls-gd-toggle-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,175,55,.55),transparent)}
@@ -617,7 +617,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.2.1-AKTUELL -->
+<body><!-- KKM-v1.2.2-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -628,7 +628,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.1";
+var KKM_VERSION="1.2.2";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
