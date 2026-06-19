@@ -549,11 +549,13 @@ select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:ima
 .ls-gd-toggle-knob{width:22px;height:22px;border-radius:50%;background:#fff;position:absolute;top:2px;transition:.25s;box-shadow:0 1px 4px rgba(0,0,0,.3)}
 .ls-gd-toggle-sw.on .ls-gd-toggle-knob{left:22px}
 .ls-gd-toggle-sw.off .ls-gd-toggle-knob{left:2px}
-.ls-gd-card-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:10px}
-.ls-gd-card-tile{background:linear-gradient(145deg,rgba(10,21,64,.3),rgba(6,12,42,.2));border:1px solid rgba(139,92,246,.2);border-radius:14px;padding:12px 11px;cursor:pointer;transition:.15s;min-height:82px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.ls-gd-card-grid{display:flex;flex-direction:column;gap:9px;margin-bottom:10px}
+.ls-gd-card-tile{background:linear-gradient(145deg,rgba(10,21,64,.3),rgba(6,12,42,.2));border:1px solid rgba(139,92,246,.2);border-radius:14px;padding:12px 11px;cursor:pointer;transition:.15s;display:flex;flex-direction:column;position:relative;overflow:hidden}
 .ls-gd-card-tile::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(139,92,246,.45),transparent)}
-.ls-gd-card-tile:active{transform:scale(.96)}
-.ls-gd-card-tile.add-tile{border-style:dashed;border-color:rgba(212,175,55,.32);background:rgba(212,175,55,.03);align-items:center;justify-content:center;gap:5px}
+.ls-gd-card-tile:active{transform:scale(.98)}
+.ls-gd-card-tile.add-tile{border-style:dashed;border-color:rgba(212,175,55,.32);background:rgba(212,175,55,.03);align-items:center;justify-content:center;gap:5px;min-height:56px}
+.ls-gd-learn-btn{width:100%;padding:11px;border-radius:12px;border:1.5px solid #3b82f6;background:transparent;color:#93c5fd;font-weight:800;font-size:.87rem;cursor:pointer;margin-bottom:8px}
+.ls-gd-leave-btn{width:100%;padding:10px;border-radius:12px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.07);color:#fca5a5;font-weight:700;font-size:.82rem;cursor:pointer;margin:12px 0 4px}
 .ls-gd-card-front{font-size:.78rem;font-weight:700;color:#fff;line-height:1.35}
 .ls-gd-card-num{font-size:.55rem;color:rgba(255,255,255,.28);margin-top:3px}
 .ls-gd-solid-btn{width:100%;padding:11px;border-radius:12px;border:none;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;font-weight:800;font-size:.87rem;cursor:pointer;box-shadow:0 0 20px rgba(139,92,246,.5);margin-bottom:8px}
@@ -615,7 +617,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.1.46-AKTUELL -->
+<body><!-- KKM-v1.1.48-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -626,7 +628,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.1.46";
+var KKM_VERSION="1.1.48";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1109,6 +1111,27 @@ function MultiStudyView(p){
     flip?h("div",{className:"sacts"},h("button",{className:"btn btn-o",onClick:function(){ans(false);}},"\uD83D\uDD04 Noch \u00fcben"),h("button",{className:"btn btn-grn",onClick:function(){ans(true);}},"\u2705 Gewusst")):h("div",{style:{height:"32px"}}));
 }
 
+function SingleCardView(p){
+  var fs=useState(false);var flip=fs[0];var setFlip=fs[1];
+  var card=p.card;
+  return h('div',null,
+    h('button',{className:'ls-back',style:{color:'#fff'},onClick:p.onBack},'\u2190 '+(p.backLabel||'Zur\u00fcck')),
+    h('div',{className:'scene',onClick:function(){setFlip(!flip);}},
+      h('div',{className:'flip-inner'+(flip?' flipped':'')},
+        h('div',{className:'face'},
+          h('span',{className:'flbl'},'Frage'),
+          h('div',{className:'ftxt',style:{fontSize:card.front.length>200?'0.85rem':card.front.length>120?'1rem':card.front.length>60?'1.15rem':'1.35rem',overflowY:'auto',maxHeight:'200px',whiteSpace:'pre-wrap',textAlign:'left',width:'100%'}},card.front),
+          h('span',{className:'fhnt'},'Tippen zum Umdrehen')
+        ),
+        h('div',{className:'face face-back'},
+          h('span',{className:'flbl'},'Antwort'),
+          h('div',{className:'ftxt',style:{fontSize:card.back.length>200?'0.85rem':card.back.length>120?'1rem':card.back.length>60?'1.15rem':'1.35rem',overflowY:'auto',maxHeight:'220px',whiteSpace:'pre-wrap',textAlign:'left',width:'100%'}},card.back)
+        )
+      )
+    )
+  );
+}
+
 function DeckDetail(p){
   var as=useState(false); var showAdd=as[0]; var setShowAdd=as[1];
   var ec=useState(null); var editC=ec[0]; var setEditC=ec[1];
@@ -1138,6 +1161,7 @@ function DeckDetail(p){
   }
 
   if(study) return h(StudyView,{deck:p.deck,onFinish:finish});
+  if(viewCard) return h(SingleCardView,{card:viewCard,onBack:function(){setViewCard(null);},backLabel:'Zur\u00fcck zu den Karteikarten'});
 
   function collapseBtn(id){
     var isCol=!!collapsed[id];
@@ -1201,22 +1225,6 @@ function DeckDetail(p){
     showNewFolder&&h(FolderModal,{onSave:addFolder,onClose:function(){setShowNewFolder(false);}}),
     editFolderItem&&h(FolderModal,{folder:editFolderItem,onSave:saveFolder,onClose:function(){setEditFolderItem(null);}}),
     showShare&&h(ShareModal,{deck:p.deck,onClose:function(){setShowShare(false);}}),
-    viewCard&&h('div',{className:'ls-cdm-ov',onClick:function(){setViewCard(null);}},
-      h('div',{className:'ls-cdm',onClick:function(e){e.stopPropagation();}},
-        h('div',{className:'ls-cdm-head'},
-          h('div',{style:{fontSize:'.9rem',fontWeight:900,color:'#fff'}},'\uD83C\uDFB4 Karteikarte'),
-          h('button',{className:'ls-modal-x',onClick:function(){setViewCard(null);}},'\u2715')
-        ),
-        h('div',{className:'ls-cdm-lbl'},'Vorderseite \u2013 Frage'),
-        h('div',{className:'ls-cdm-text'},viewCard.front),
-        h('div',{className:'ls-cdm-lbl'},'R\u00FCckseite \u2013 Antwort'),
-        h('div',{className:'ls-cdm-text'},viewCard.back),
-        h('div',{className:'ls-cdm-acts'},
-          h('button',{className:'ls-cdm-edit',onClick:function(){setEditC(viewCard);setViewCard(null);}},'\u270F\uFE0F Bearbeiten'),
-          h('button',{className:'ls-cdm-del',onClick:function(){var c=viewCard;setViewCard(null);delCard(c.id);}},'\uD83D\uDDD1\uFE0F L\u00f6schen')
-        )
-      )
-    ),
     h(Toast,{msg:toast}));
 }
 
@@ -2851,6 +2859,11 @@ function LernSpaceView(p){
       setGroupStackPage('deck-detail');
     }
 
+    // SINGLE CARD VIEW
+    if(viewGroupCard){
+      return h(SingleCardView,{card:viewGroupCard,onBack:function(){setViewGroupCard(null);},backLabel:'Zur\u00fcck zu den Karteikarten'});
+    }
+
     // STUDY
     if(groupStackPage==='study'&&selectedGroupDeck){
       return h(StudyView,{deck:selectedGroupDeck,onFinish:finishStudy});
@@ -2928,18 +2941,19 @@ function LernSpaceView(p){
           h('div',{className:'ls-gd-stat-box'},h('span',{className:'ls-gd-stat-num',style:{color:'#4ade80'}},cards.length-due.length),h('span',{className:'ls-gd-stat-lbl'},'Gelernt')),
           h('div',{className:'ls-gd-stat-box'},h('span',{className:'ls-gd-stat-num',style:{color:'#ef4444'}},due.length),h('span',{className:'ls-gd-stat-lbl'},'Offen'))
         ),
-        due.length>0&&h('button',{className:'ls-gd-solid-btn',onClick:function(){setGroupStackPage('study');}},'\uD83D\uDCDA Lernen ('+due.length+')'),
+        due.length>0&&h('button',{className:'ls-gd-learn-btn',onClick:function(){setGroupStackPage('study');}},'\uD83D\uDCDA Lernen ('+due.length+')'),
         h('div',{className:'ls-sec-lbl'},'\uD83C\uDFB4 Karten ('+cards.length+')'),
         cards.length===0&&h('div',{className:'ls-gd-empty'},'\uD83C\uDFB4 Noch keine Karten \u2013 f\u00FCge jetzt eine hinzu!'),
         h('div',{className:'ls-gd-card-grid'},
           cards.map(function(c,i){
             return h('div',{key:i,className:'ls-gd-card-tile',onClick:function(){setViewGroupCard(c);}},
-              h('div',{className:'ls-gd-card-front'},c.front),
-              h('div',{className:'ls-gd-card-num'},'#'+(i+1)),
-              h('div',{className:'ls-gd-card-tile-acts',onClick:function(e){e.stopPropagation();}},
-                h('button',{className:'ls-mini-btn',style:{flex:1,textAlign:'center',fontSize:'.65rem'},onClick:function(e){e.stopPropagation();setEditGroupCard(c);setEditGroupCardFront(c.front);setEditGroupCardBack(c.back);}},'\u270F\uFE0F'),
-                h('button',{className:'ls-mini-btn danger',style:{flex:1,textAlign:'center',fontSize:'.65rem'},onClick:function(e){e.stopPropagation();deleteGroupCard(c.id);}},'\uD83D\uDDD1\uFE0F')
-              )
+              h('div',{style:{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}},
+                h('div',{className:'ls-gd-card-front'},c.front),
+                h('div',{onClick:function(e){e.stopPropagation();}},
+                  h(ThreeDotMenu,{onEdit:function(){setEditGroupCard(c);setEditGroupCardFront(c.front);setEditGroupCardBack(c.back);},onDelete:function(){deleteGroupCard(c.id);}})
+                )
+              ),
+              h('div',{className:'ls-gd-card-front',style:{color:'rgba(255,255,255,.5)',fontWeight:400,fontSize:'.72rem',marginTop:4}},c.back)
             );
           }).concat([
             h('div',{key:'add',className:'ls-gd-card-tile add-tile',onClick:function(){setNewCardFront('');setNewCardBack('');setGroupStackPage('new-card');}},
@@ -2987,6 +3001,25 @@ function LernSpaceView(p){
     var gid=g.id;
     var msgs=groupChats[gid]||[];
     var isAdmin=isGroupAdmin(g,MY_ID);
+
+    function leaveGroup(){
+      if(isAdmin){
+        var otherAdmins=normalizeMembers(g.members).filter(function(m){return m.id!==MY_ID&&m.role==='admin';});
+        if(!otherAdmins.length&&normalizeMembers(g.members).length>1){
+          showToast('\u26A0\uFE0F Als einziger Admin zuerst Gruppe \u00fcbertragen oder l\u00f6schen');return;
+        }
+      }
+      if(!confirm('Gruppe "'+g.name+'" verlassen?'))return;
+      var newMembers=normalizeMembers(g.members).filter(function(m){return m.id!==MY_ID;});
+      lsSet('ls_groups',g.id,Object.assign({},g,{members:newMembers}))
+      .then(function(){
+        var newGroups=(lsData.groups||[]).filter(function(x){return x.id!==g.id;});
+        return saveData({groups:newGroups});
+      }).then(function(){
+        setSelectedGroup(null);setLsPage('groups');showToast('\uD83D\uDC4B Gruppe verlassen');
+      }).catch(function(){showToast('\u274C Fehler');});
+    }
+
     function sendMsg(){
       if(!chatInput.trim())return;
       var ts=Date.now();
@@ -3012,6 +3045,7 @@ function LernSpaceView(p){
           h('div',{className:'ls-gd-stat'},h('span',{className:'ls-gd-stat-n'},(g.groupDecks||[]).length),h('span',{className:'ls-gd-stat-l'},'Stapel')),
           h('div',{className:'ls-gd-stat'},h('span',{className:'ls-gd-stat-n'},msgs.length),h('span',{className:'ls-gd-stat-l'},'Nachrichten'))
         ),
+        h('button',{className:'ls-gd-leave-btn',onClick:leaveGroup},'\uD83D\uDEAA Gruppe verlassen'),
         h('div',{className:'ls-gd-tabs'},
           h('button',{className:'ls-gd-tab'+(groupTab==='members'?' active':''),onClick:function(){setGroupTab('members');}},'\ud83d\udc65 Mitglieder'),
           h('button',{className:'ls-gd-tab'+(groupTab==='stacks'?' active':''),onClick:function(){setGroupTab('stacks');}},'\ud83d\udcda Stapel'),
@@ -3135,34 +3169,7 @@ function LernSpaceView(p){
       onAccept:function(){localStorage.setItem(LS_CONSENT_KEY,'1');setShowConsent(false);},
       onDecline:function(){setShowConsent(false);if(p.onBack)p.onBack();},
       onShowDat:p.onShowDat||function(){}
-    }),
-    viewGroupCard&&h('div',{className:'ls-cdm-ov',onClick:function(){setViewGroupCard(null);}},
-      h('div',{className:'ls-cdm',onClick:function(e){e.stopPropagation();}},
-        h('div',{className:'ls-cdm-head'},
-          h('div',{style:{fontSize:'.9rem',fontWeight:900,color:'#fff'}},'\uD83C\uDFB4 Karteikarte'),
-          h('button',{className:'ls-modal-x',onClick:function(){setViewGroupCard(null);}},'\u2715')
-        ),
-        h('div',{className:'ls-cdm-lbl'},'Vorderseite \u2013 Frage'),
-        h('div',{className:'ls-cdm-text'},viewGroupCard.front),
-        h('div',{className:'ls-cdm-lbl'},'R\u00FCckseite \u2013 Antwort'),
-        h('div',{className:'ls-cdm-text'},viewGroupCard.back),
-        h('div',{className:'ls-cdm-acts'},
-          h('button',{className:'ls-cdm-edit',onClick:function(){setEditGroupCard(viewGroupCard);setEditGroupCardFront(viewGroupCard.front);setEditGroupCardBack(viewGroupCard.back);setViewGroupCard(null);}},'\u270F\uFE0F Bearbeiten'),
-          h('button',{className:'ls-cdm-del',onClick:function(){
-            var c=viewGroupCard;setViewGroupCard(null);
-            var g=selectedGroup;if(!g||!selectedGroupDeck)return;
-            if(!confirm('Karte l\u00f6schen?'))return;
-            var updCards=(selectedGroupDeck.cards||[]).filter(function(x){return x.id!==c.id;});
-            var updDeck=Object.assign({},selectedGroupDeck,{cards:updCards});
-            var updDecks=(g.groupDecks||[]).map(function(d){return d.id===updDeck.id?updDeck:d;});
-            var updG=Object.assign({},g,{groupDecks:updDecks});
-            setSelectedGroupDeck(updDeck);
-            applyGroupUpdate(updG).catch(function(){showToast('\u274C Sync-Fehler');});
-            showToast('\uD83D\uDDD1\uFE0F Karte gel\u00f6scht');
-          }},'\uD83D\uDDD1\uFE0F L\u00f6schen')
-        )
-      )
-    )
+    })
   );
 }
 
