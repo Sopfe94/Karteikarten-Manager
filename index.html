@@ -617,7 +617,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.2.2-AKTUELL -->
+<body><!-- KKM-v1.2.4-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -628,7 +628,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.2";
+var KKM_VERSION="1.2.4";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1487,6 +1487,38 @@ function EinstellungenView(p){
     ),
 
       h('div',{className:'settings-section',style:{marginTop:20}},
+        h('div',{className:'settings-section-hdr'},h('span',{className:'settings-section-label'},'🔐 Account'),h('span',{className:'settings-section-line'})),
+        h('div',{className:'settings-row'},
+          p.googleUser
+            ? h('div',null,
+                h('div',{style:{display:'flex',alignItems:'center',gap:10,marginBottom:12}},
+                  h('div',{style:{width:36,height:36,borderRadius:'50%',background:'linear-gradient(135deg,#4285f4,#34a853)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1rem',flexShrink:0}},'G'),
+                  h('div',null,
+                    h('div',{style:{fontSize:'.82rem',fontWeight:700,color:'#fff'}},'Eingeloggt mit Google'),
+                    h('div',{style:{fontSize:'.75rem',color:'rgba(255,255,255,.5)',marginTop:2}},p.googleUser.email)
+                  )
+                ),
+                h('button',{className:'btn btn-g',style:{width:'100%',justifyContent:'center'},onClick:p.onGoogleLogout},'Abmelden')
+              )
+            : h('div',null,
+                h('div',{style:{fontSize:'.83rem',color:'var(--c-dim)',marginBottom:12,lineHeight:1.6}},'Mit Google einloggen, um deine Daten geräteübergreifend zu sichern.'),
+                h('button',{
+                  style:{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:10,padding:'12px 16px',borderRadius:14,border:'1.5px solid rgba(255,255,255,.15)',background:'#fff',color:'#3c4043',fontWeight:700,fontSize:'.9rem',cursor:'pointer'},
+                  onClick:p.onGoogleLogin
+                },
+                  h('svg',{width:18,height:18,viewBox:'0 0 48 48'},
+                    h('path',{fill:'#EA4335',d:'M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z'}),
+                    h('path',{fill:'#4285F4',d:'M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z'}),
+                    h('path',{fill:'#FBBC05',d:'M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z'}),
+                    h('path',{fill:'#34A853',d:'M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z'})
+                  ),
+                  'Mit Google anmelden'
+                )
+              )
+        )
+      ),
+
+      !p.googleUser&&h('div',{className:'settings-section',style:{marginTop:20}},
         h('div',{className:'settings-section-hdr'},h('span',{className:'settings-section-label'},'☁️ App synchronisieren'),h('span',{className:'settings-section-line'})),
         h('div',{className:'settings-row'},
           h('div',{style:{fontSize:'.83rem',color:'var(--c-dim)',marginBottom:12,lineHeight:1.6}},'Daten mit einem Sync-Code auf mehreren Geräten synchronisieren.'),
@@ -1714,6 +1746,18 @@ function LoginScreen(p){
     h('div',{style:S.title},'Karteikarten Manager'),
     h('div',{style:S.sub},'Wie m\u00F6chtest du starten?'),
     h('button',{style:Object.assign({},S.btn,S.btnC),onClick:function(){setStep('code');setMsg('');}},'\uD83D\uDD22 Mit Sync-Code anmelden'),
+    p.onGoogleLogin&&h('button',{
+      style:{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:10,padding:'14px 16px',borderRadius:16,border:'none',background:'#fff',color:'#3c4043',fontWeight:700,fontSize:'.95rem',cursor:'pointer',marginBottom:10},
+      onClick:p.onGoogleLogin
+    },
+      h('svg',{width:20,height:20,viewBox:'0 0 48 48'},
+        h('path',{fill:'#EA4335',d:'M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z'}),
+        h('path',{fill:'#4285F4',d:'M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z'}),
+        h('path',{fill:'#FBBC05',d:'M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z'}),
+        h('path',{fill:'#34A853',d:'M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z'})
+      ),
+      'Mit Google anmelden'
+    ),
     h('button',{style:Object.assign({},S.btn,S.btnGst),onClick:handleGuest},'\uD83D\uDC64 Als Gast fortfahren'),
     msg&&h('div',{style:S.msg},msg)
   );
@@ -3245,6 +3289,62 @@ function App(){
   var qds=useState([]); var qsDecks=qds[0]; var setQsDecks=qds[1];
   var qcs=useState(null); var qsConfig=qcs[0]; var setQsConfig=qcs[1];
   var tm=useToast(); var toast=tm[0]; var showToast=tm[1];
+  var gus=useState(null); var googleUser=gus[0]; var setGoogleUser=gus[1];
+
+  useEffect(function(){
+    var sb=getSb();
+    sb.auth.getSession().then(function(res){
+      var session=res.data&&res.data.session;
+      if(session&&session.user){
+        setGoogleUser(session.user);
+        handleAuthUser(session.user);
+      }
+    });
+    var sub=sb.auth.onAuthStateChange(function(event,session){
+      if(session&&session.user){
+        setGoogleUser(session.user);
+        if(event==='SIGNED_IN')handleAuthUser(session.user);
+      } else {
+        setGoogleUser(null);
+      }
+    });
+    return function(){ if(sub&&sub.data&&sub.data.subscription)sub.data.subscription.unsubscribe(); };
+  },[]);
+
+  function handleAuthUser(user){
+    var sb=getSb();
+    sb.from('ls_users').select('id').eq('authUid',user.id).maybeSingle().then(function(res){
+      if(res.data){
+        var foundId=res.data.id;
+        var cur=localStorage.getItem('kkm-ls-id');
+        if(cur!==foundId){
+          localStorage.setItem('kkm-ls-id',foundId);
+          dbg('✅ Google-Login: lsId wiederhergestellt →',foundId);
+          showToast('Willkommen zurück! Dein Account wurde wiederhergestellt.');
+        }
+      } else {
+        var myId=localStorage.getItem('kkm-ls-id');
+        if(myId){
+          sb.from('ls_users').update({"authUid":user.id}).eq('id',myId).then(function(r){
+            if(!r.error)dbg('✅ Google-Login: authUid verknüpft mit lsId',myId);
+          });
+        }
+      }
+    });
+  }
+
+  function handleGoogleLogin(){
+    var sb=getSb();
+    sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin}});
+  }
+
+  function handleGoogleLogout(){
+    var sb=getSb();
+    sb.auth.signOut().then(function(){
+      setGoogleUser(null);
+      showToast('Abgemeldet.');
+    });
+  }
 
   useEffect(function(){
     var us=loadUpdStore();
@@ -3381,7 +3481,7 @@ function App(){
       )
     ):null;
 
-  if(showLogin)return h(LoginScreen,{onDone:function(){setShowLogin(false);},onDataLoaded:function(d){setData(d);}});
+  if(showLogin)return h(LoginScreen,{onDone:function(){setShowLogin(false);},onDataLoaded:function(d){setData(d);},onGoogleLogin:handleGoogleLogin});
   return h("div",{style:{minHeight:"100vh",background:"var(--c-bg)"}},
       showLernEmpf&&lernEmpf.length>0&&_leOverlay,
     h("header",{className:"hdr"},
@@ -3430,7 +3530,7 @@ function App(){
       view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck}),
       qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs}),
       view==="reminder"&&!qsStep&&h("div",null,h(ReminderView,{reminder:data.reminder,decks:decks,onBack:function(){setView("decks");setDeckListMode("home");},onSave:function(r){patch({reminder:r});}}),renderFooter()),
-      view==="einstellungen"&&!qsStep&&h("div",null,h(EinstellungenView,{settings:data.settings,onChange:function(s){patch({settings:s});},onDataLoaded:function(d){setData(d);},onOpenSync:function(){setShowSync(true);},onBack:function(){setView("decks");setDeckListMode("home");}}),renderFooter()),
+      view==="einstellungen"&&!qsStep&&h("div",null,h(EinstellungenView,{settings:data.settings,onChange:function(s){patch({settings:s});},onDataLoaded:function(d){setData(d);},onOpenSync:function(){setShowSync(true);},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout}),renderFooter()),
       view==="lernspace"&&!qsStep&&h("div",null,h(LernSpaceView,{userName:loadStore().userName||"Sophie",decks:decks,folders:folders,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");}}),renderFooter()),
       view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}}),renderFooter()),
       view==="updates"&&!qsStep&&h(UpdatesView,{onBack:function(){setView("decks");setDeckListMode("home");},onShowImp:function(){setShowImp(true);},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");}})),
