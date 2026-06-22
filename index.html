@@ -617,7 +617,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.2.4-AKTUELL -->
+<body><!-- KKM-v1.2.5-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -628,7 +628,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.4";
+var KKM_VERSION="1.2.5";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3335,7 +3335,8 @@ function App(){
 
   function handleGoogleLogin(){
     var sb=getSb();
-    sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin}});
+    var redirectTo=location.protocol==='https:'?window.location.origin:'https://karteikarten-manager.vercel.app';
+    sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:redirectTo}});
   }
 
   function handleGoogleLogout(){
