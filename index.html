@@ -617,7 +617,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.2.14-AKTUELL -->
+<body><!-- KKM-v1.2.20-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -628,7 +628,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.14";
+var KKM_VERSION="1.2.20";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2730,9 +2730,9 @@ function LernSpaceView(p){
         }),
       h('div',{className:'ls-invite-box'},
         h('div',{className:'ls-invite-title'},'\u2709\uFE0F Freund einladen'),
-        h('input',{className:'ls-input',placeholder:'Lern Space ID oder @Benutzername',value:inviteId,onInput:function(e){var v=e.target.value;setInviteId(v);searchInviteHints(v);}}),
-        inviteHints.length>0&&h('div',{style:{display:'flex',flexWrap:'wrap',gap:6,marginTop:6}},
-          inviteHints.map(function(u){return h('button',{key:u,style:{background:'rgba(139,92,246,.18)',border:'1px solid rgba(139,92,246,.4)',borderRadius:20,padding:'4px 12px',fontSize:'.8rem',color:'#c4b5fd',cursor:'pointer'},onClick:function(){setInviteId('@'+u);setInviteHints([]);}},'\uD83D\uDC64 @'+u);})
+        h('input',{className:'ls-input',placeholder:'@Benutzername',value:inviteId,onInput:function(e){var v=e.target.value;setInviteId(v);searchInviteHints(v);}}),
+        inviteHints.length>0&&h('div',{style:{display:'flex',flexWrap:'wrap',gap:6,marginTop:6,marginBottom:12}},
+          inviteHints.slice(0,4).map(function(u){return h('button',{key:u,style:{background:'rgba(139,92,246,.18)',border:'1px solid rgba(139,92,246,.4)',borderRadius:20,padding:'4px 12px',fontSize:'.8rem',color:'#c4b5fd',cursor:'pointer'},onClick:function(){setInviteId('@'+u);setInviteHints([]);}},'👤 @'+u);})
         ),
         h('button',{className:'ls-add-btn',onClick:sendFriendRequest},'\uD83D\uDE80 Anfrage senden')
       )
@@ -3180,9 +3180,9 @@ function LernSpaceView(p){
           h('button',{className:'ls-modal-x',onClick:function(){setShowGroupSettings(false);}},'\u2715')
         ),
         h('div',{className:'ls-sec-lbl',style:{marginTop:4}},'\u2795 Mitglied einladen'),
-        h('input',{className:'ls-input',placeholder:'@Benutzername oder Lern Space ID',value:inviteMemberId,autoCorrect:'off',autoComplete:'off',autoCapitalize:'none',spellCheck:false,onInput:function(e){var v=e.target.value;setInviteMemberId(v);searchMemberHints(v);}}),
-        memberHints.length>0&&h('div',{style:{display:'flex',flexWrap:'wrap',gap:6,marginTop:6}},
-          memberHints.map(function(u){return h('button',{key:u,style:{background:'rgba(139,92,246,.18)',border:'1px solid rgba(139,92,246,.4)',borderRadius:20,padding:'4px 12px',fontSize:'.8rem',color:'#c4b5fd',cursor:'pointer'},onClick:function(){setInviteMemberId('@'+u);setMemberHints([]);}},'\uD83D\uDC64 @'+u);})
+        h('input',{className:'ls-input',placeholder:'@Benutzername',value:inviteMemberId,autoCorrect:'off',autoComplete:'off',autoCapitalize:'none',spellCheck:false,onInput:function(e){var v=e.target.value;setInviteMemberId(v);searchMemberHints(v);}}),
+        memberHints.length>0&&h('div',{style:{display:'flex',flexWrap:'wrap',gap:6,marginTop:6,marginBottom:12}},
+          memberHints.slice(0,4).map(function(u){return h('button',{key:u,style:{background:'rgba(139,92,246,.18)',border:'1px solid rgba(139,92,246,.4)',borderRadius:20,padding:'4px 12px',fontSize:'.8rem',color:'#c4b5fd',cursor:'pointer'},onClick:function(){setInviteMemberId('@'+u);setMemberHints([]);}},'\uD83D\uDC64 @'+u);})
         ),
         h('div',{style:{display:'flex',gap:8,margin:'10px 0'}},
           h('button',{className:'ls-role-btn'+(inviteRole==='user'?' active':''),onClick:function(){setInviteRole('user');}},'\ud83d\udc64 Mitglied'),
