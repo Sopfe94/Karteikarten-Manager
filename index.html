@@ -1568,7 +1568,7 @@ function UsernamePickerModal(p){
     if(status!=='available')return;
     var val=input.trim();
     var myId=localStorage.getItem('kkm-ls-id');
-    getSb().from('ls_users').update({username:val}).eq('ls_id',myId).then(function(r){
+    getSb().from('ls_users').upsert({ls_id:myId,username:val},{onConflict:'ls_id',ignoreDuplicates:false}).then(function(r){
       if(!r.error){saveSocialUsername(val);p.onDone(val);}
       else if(r.error.code==='23505'){setStatus('taken');}
     });
@@ -1628,7 +1628,7 @@ function LoginScreen(p){
   var sm=useState('');var msg=sm[0];var setMsg=sm[1];
   var ho=useState(false);var showHelp=ho[0];var setShowHelp=ho[1];
   var tm=useToast();var toast=tm[0];var showToast=tm[1];
-  function handleGuest(){localStorage.setItem('kkm-onboarded','1');p.onDone();}
+  function handleGuest(){localStorage.setItem('kkm-onboarded','1');(p.onGuestDone||p.onDone)();}
   var S={
     wrap:{position:'fixed',inset:0,zIndex:9998,background:'#0f0d1e',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px 24px'},
     logo:{width:90,height:90,borderRadius:20,marginBottom:16},
@@ -2116,6 +2116,10 @@ function LernSpaceView(p){
   var sgss=useState(false);var showGroupSettings=sgss[0];var setShowGroupSettings=sgss[1];
   var imis=useState('');var inviteMemberId=imis[0];var setInviteMemberId=imis[1];
   var irs=useState('user');var inviteRole=irs[0];var setInviteRole=irs[1];
+  var ihts=useState([]);var inviteHints=ihts[0];var setInviteHints=ihts[1];
+  var mihts=useState([]);var memberHints=mihts[0];var setMemberHints=mihts[1];
+  var ihRef=useRef(null);
+  var mihRef=useRef(null);
   var gspages=useState('list');var groupStackPage=gspages[0];var setGroupStackPage=gspages[1];
   var sgds=useState(null);var selectedGroupDeck=sgds[0];var setSelectedGroupDeck=sgds[1];
   var sghomes=useState({});var showGroupOnHome=sghomes[0];var setShowGroupOnHome=sghomes[1];
@@ -2320,13 +2324,39 @@ function LernSpaceView(p){
     }).catch(function(){savingRef.current=false;showToast('\u274C Sync-Fehler');});
   }
 
+  function searchInviteHints(val){
+    clearTimeout(ihRef.current);
+    if(!val.startsWith('@')||val.length<2){setInviteHints([]);return;}
+    var q=val.slice(1);
+    if(!q){setInviteHints([]);return;}
+    ihRef.current=setTimeout(function(){
+      getSb().from('ls_users').select('username').ilike('username','%'+q+'%').limit(4).then(function(res){
+        if(res.data) setInviteHints(res.data.map(function(r){return r.username;}).filter(Boolean));
+      }).catch(function(){});
+    },350);
+  }
+
+  function searchMemberHints(val){
+    clearTimeout(mihRef.current);
+    if(!val.startsWith('@')||val.length<2){setMemberHints([]);return;}
+    var q=val.slice(1);
+    if(!q){setMemberHints([]);return;}
+    mihRef.current=setTimeout(function(){
+      getSb().from('ls_users').select('username').ilike('username','%'+q+'%').limit(4).then(function(res){
+        if(res.data) setMemberHints(res.data.map(function(r){return r.username;}).filter(Boolean));
+      }).catch(function(){});
+    },350);
+  }
+
   function sendFriendRequest(){
     var raw=inviteId.trim();
-    if(!raw){showToast('Ungültige ID');return;}
+    if(!raw){showToast('Ung\u00fcltige ID');return;}
     function doSend(tid){
       if(tid===MY_ID){showToast('Das bist du selbst \uD83D\uDE05');return;}
-      if((lsData.friends||[]).find(function(f){return f.id===tid;})){showToast('Bereits befreundet');return;}
-      if((lsData.sentRequests||[]).find(function(r){return r.toId===tid;})){showToast('Anfrage bereits gesendet');return;}
+      var curFriends=(lsData&&lsData.friends)||[];
+      var curSent=(lsData&&lsData.sentRequests)||[];
+      if(curFriends.find(function(f){return f.id===tid;})){showToast('Bereits befreundet');return;}
+      if(curSent.find(function(r){return r.toId===tid;})){showToast('Anfrage bereits gesendet');return;}
       lsGet('ls_users',tid).then(function(td){
         var tData=td||defaultData;
         var reqs=[].concat(tData.requests||[]);
@@ -2335,10 +2365,10 @@ function LernSpaceView(p){
         return lsSet('ls_users',tid,Object.assign({},tData,{requests:reqs}));
       }).then(function(res){
         if(!res)return;
-        var newSent=[].concat(lsData.sentRequests||[],[{toId:tid,ts:Date.now()}]);
+        var newSent=[].concat((lsData&&lsData.sentRequests)||[],[{toId:tid,ts:Date.now()}]);
         saveData({sentRequests:newSent});
         showToast('\uD83D\uDCE8 Anfrage gesendet!');
-        setInviteId('');
+        setInviteId('');setInviteHints([]);
       }).catch(function(){showToast('\u274C Fehler beim Senden');});
     }
     if(raw.startsWith('@')){
@@ -2403,28 +2433,39 @@ function LernSpaceView(p){
   }
 
   function inviteMember(){
-    var tid=inviteMemberId.trim();
+    var raw=inviteMemberId.trim();
     var g=selectedGroup;
     if(!g)return;
     if(!isGroupAdmin(g,MY_ID)){showToast('Nur Admins d\u00fcrfen einladen');return;}
-    if(!tid){showToast('ID eingeben');return;}
-    if(tid===MY_ID){showToast('Das bist du selbst');return;}
-    var nm=normalizeMembers(g.members);
-    if(nm.find(function(m){return m.id===tid;})){showToast('Bereits Mitglied');return;}
-    if((lsData.groupInvites||[]).find(function(x){return x.id===g.id&&x.toId===tid;})){showToast('Einladung bereits gesendet');return;}
-    dbg('invite: starte \u2709 '+tid+' → Gruppe '+g.id);
-    var invite={id:g.id,name:g.name,emoji:g.emoji||'\ud83c\udfeb',fromId:MY_ID,role:inviteRole,ts:Date.now()};
-    lsGet('ls_users',tid).then(function(td){
-      if(!td){dbg('invite: Benutzer nicht gefunden: '+tid);showToast('\u274c Benutzer nicht gefunden');return;}
-      dbg('invite: ls_users gelesen, groupInvites vorher:',(td.groupInvites||[]).length);
-      var tInvites=(td.groupInvites||[]).filter(function(x){return x.id!==g.id;}).concat([invite]);
-      dbg('invite: schreibe groupInvites f\u00fcr '+tid);
-      return lsSet('ls_users',tid,Object.assign({},td,{groupInvites:tInvites}));
-    }).then(function(){
-      dbg('invite: \u2705 Einladung gesendet an '+tid);
-      showToast('\u2709\ufe0f Einladung gesendet!');
-      setInviteMemberId('');setInviteRole('user');
-    }).catch(function(e){dbg('invite: \u274c',e&&(e.message||JSON.stringify(e)));showToast('\u274C Fehler beim Einladen');});
+    if(!raw){showToast('ID oder @Benutzername eingeben');return;}
+    function doInvite(tid){
+      if(tid===MY_ID){showToast('Das bist du selbst');return;}
+      var nm=normalizeMembers(g.members);
+      if(nm.find(function(m){return m.id===tid;})){showToast('Bereits Mitglied');return;}
+      if((lsData.groupInvites||[]).find(function(x){return x.id===g.id&&x.toId===tid;})){showToast('Einladung bereits gesendet');return;}
+      dbg('invite: starte \u2709 '+tid+' \u2192 Gruppe '+g.id);
+      var invite={id:g.id,name:g.name,emoji:g.emoji||'\ud83c\udfeb',fromId:MY_ID,role:inviteRole,ts:Date.now()};
+      lsGet('ls_users',tid).then(function(td){
+        if(!td){dbg('invite: Benutzer nicht gefunden: '+tid);showToast('\u274c Benutzer nicht gefunden');return;}
+        dbg('invite: ls_users gelesen, groupInvites vorher:',(td.groupInvites||[]).length);
+        var tInvites=(td.groupInvites||[]).filter(function(x){return x.id!==g.id;}).concat([invite]);
+        dbg('invite: schreibe groupInvites f\u00fcr '+tid);
+        return lsSet('ls_users',tid,Object.assign({},td,{groupInvites:tInvites}));
+      }).then(function(){
+        dbg('invite: \u2705 Einladung gesendet an '+tid);
+        showToast('\u2709\ufe0f Einladung gesendet!');
+        setInviteMemberId('');setInviteRole('user');setMemberHints([]);
+      }).catch(function(e){dbg('invite: \u274c',e&&(e.message||JSON.stringify(e)));showToast('\u274C Fehler beim Einladen');});
+    }
+    if(raw.startsWith('@')){
+      getSb().from('ls_users').select('ls_id').eq('username',raw.slice(1)).maybeSingle()
+      .then(function(res){
+        if(!res.data){showToast('Benutzername nicht gefunden');return;}
+        doInvite(res.data.ls_id);
+      }).catch(function(){showToast('\u274C Fehler beim Suchen');});
+    } else {
+      doInvite(raw);
+    }
   }
 
   function acceptGroupInvite(invite){
@@ -2583,15 +2624,6 @@ function LernSpaceView(p){
             showToast('Benutzername: '+id);
           }
         }},'\uD83D\uDCCB ID teilen'),
-        h('button',{className:'ls-home-copy',style:{marginTop:8},onClick:function(){
-          var neu=prompt('Deine bestehende Lern Space ID eingeben (z.B. Musik-Held-2650):',MY_ID);
-          if(!neu)return;
-          neu=neu.trim();
-          if(!neu||neu===MY_ID){showToast('Keine \u00c4nderung');return;}
-          localStorage.setItem('kkm-ls-id',neu);
-          showToast('\u2705 ID gesetzt \u2013 lade neu \u2026');
-          setTimeout(function(){location.reload();},700);
-        }},'\uD83D\uDD11 ID wiederherstellen')
       ),
       h('div',{className:'ls-home-grid'},
         h('div',{className:'ls-hc ls-hc1',onClick:function(){setLsPage('friends');}},
@@ -2698,7 +2730,10 @@ function LernSpaceView(p){
         }),
       h('div',{className:'ls-invite-box'},
         h('div',{className:'ls-invite-title'},'\u2709\uFE0F Freund einladen'),
-        h('input',{className:'ls-input',placeholder:'Lern Space ID oder @Benutzername',value:inviteId,onInput:function(e){setInviteId(e.target.value);}}),
+        h('input',{className:'ls-input',placeholder:'Lern Space ID oder @Benutzername',value:inviteId,onInput:function(e){var v=e.target.value;setInviteId(v);searchInviteHints(v);}}),
+        inviteHints.length>0&&h('div',{style:{display:'flex',flexWrap:'wrap',gap:6,marginTop:6}},
+          inviteHints.map(function(u){return h('button',{key:u,style:{background:'rgba(139,92,246,.18)',border:'1px solid rgba(139,92,246,.4)',borderRadius:20,padding:'4px 12px',fontSize:'.8rem',color:'#c4b5fd',cursor:'pointer'},onClick:function(){setInviteId('@'+u);setInviteHints([]);}},'\uD83D\uDC64 @'+u);})
+        ),
         h('button',{className:'ls-add-btn',onClick:sendFriendRequest},'\uD83D\uDE80 Anfrage senden')
       )
     );
@@ -3145,7 +3180,10 @@ function LernSpaceView(p){
           h('button',{className:'ls-modal-x',onClick:function(){setShowGroupSettings(false);}},'\u2715')
         ),
         h('div',{className:'ls-sec-lbl',style:{marginTop:4}},'\u2795 Mitglied einladen'),
-        h('input',{className:'ls-input',placeholder:'Lern Space ID',value:inviteMemberId,autoCorrect:'off',autoComplete:'off',autoCapitalize:'none',spellCheck:false,onInput:function(e){setInviteMemberId(e.target.value);}}),
+        h('input',{className:'ls-input',placeholder:'@Benutzername oder Lern Space ID',value:inviteMemberId,autoCorrect:'off',autoComplete:'off',autoCapitalize:'none',spellCheck:false,onInput:function(e){var v=e.target.value;setInviteMemberId(v);searchMemberHints(v);}}),
+        memberHints.length>0&&h('div',{style:{display:'flex',flexWrap:'wrap',gap:6,marginTop:6}},
+          memberHints.map(function(u){return h('button',{key:u,style:{background:'rgba(139,92,246,.18)',border:'1px solid rgba(139,92,246,.4)',borderRadius:20,padding:'4px 12px',fontSize:'.8rem',color:'#c4b5fd',cursor:'pointer'},onClick:function(){setInviteMemberId('@'+u);setMemberHints([]);}},'\uD83D\uDC64 @'+u);})
+        ),
         h('div',{style:{display:'flex',gap:8,margin:'10px 0'}},
           h('button',{className:'ls-role-btn'+(inviteRole==='user'?' active':''),onClick:function(){setInviteRole('user');}},'\ud83d\udc64 Mitglied'),
           h('button',{className:'ls-role-btn'+(inviteRole==='admin'?' active':''),onClick:function(){setInviteRole('admin');}},'\u2b50 Admin')
@@ -3487,7 +3525,7 @@ function App(){
       )
     ):null;
 
-  if(showLogin)return h(LoginScreen,{onDone:function(){setShowLogin(false);},onDataLoaded:function(d){setData(d);},onGoogleLogin:handleGoogleLogin});
+  if(showLogin)return h(LoginScreen,{onDone:function(){setShowLogin(false);},onGuestDone:function(){setShowLogin(false);if(!localStorage.getItem('kkm-social-username-v1'))setShowUsernameModal(true);},onDataLoaded:function(d){setData(d);},onGoogleLogin:handleGoogleLogin});
   return h("div",{style:{minHeight:"100vh",background:"var(--c-bg)"}},
     showUsernameModal&&h(UsernamePickerModal,{onDone:function(uname){setSocialUsername(uname);setShowUsernameModal(false);showToast('🎉 Benutzername gespeichert: '+uname);}}),
       showLernEmpf&&lernEmpf.length>0&&_leOverlay,
@@ -3538,7 +3576,7 @@ function App(){
       qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs}),
       view==="reminder"&&!qsStep&&h("div",null,h(ReminderView,{reminder:data.reminder,decks:decks,onBack:function(){setView("decks");setDeckListMode("home");},onSave:function(r){patch({reminder:r});}}),renderFooter()),
       view==="einstellungen"&&!qsStep&&h("div",null,h(EinstellungenView,{settings:data.settings,onChange:function(s){patch({settings:s});},onDataLoaded:function(d){setData(d);},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout}),renderFooter()),
-      view==="lernspace"&&!qsStep&&h("div",null,h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");}}),renderFooter()),
+      view==="lernspace"&&!qsStep&&h("div",null,h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);}}),renderFooter()),
       view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}}),renderFooter()),
       view==="updates"&&!qsStep&&h(UpdatesView,{onBack:function(){setView("decks");setDeckListMode("home");},onShowImp:function(){setShowImp(true);},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");}})),
     showNew&&h(DeckModal,{folders:folders,onSave:addDeck,onClose:function(){setShowNew(false);}}),
