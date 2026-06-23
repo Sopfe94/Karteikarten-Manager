@@ -617,7 +617,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.2.6-AKTUELL -->
+<body><!-- KKM-v1.2.14-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -628,7 +628,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.6";
+var KKM_VERSION="1.2.14";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -659,13 +659,6 @@ var FOLDER_EMOJIS = ["📁","📂","🗂️","📋","🗒️","📌","🔖","�
 var SRS_DAYS = [0,1,2,4,8,16,30];
 var STORE_KEY = "kkm-v2";
 
-var SYNC_STORE_KEY = "kkm-sync-v1";
-function loadSyncStore(){ try{var r=localStorage.getItem(SYNC_STORE_KEY);return r?JSON.parse(r):{interval:0,lastSync:null};}catch(e){return{interval:0,lastSync:null};} }
-function saveSyncStore(d){ try{localStorage.setItem(SYNC_STORE_KEY,JSON.stringify(d));}catch(e){} }
-
-var FB_PROJECT = "karteikarten-manager-48782";
-var FB_KEY = "AIzaSyDrrM3eJ8d0q8GEnNm7_mKDJGG_CioZC5o";
-var FB_BASE = "https://firestore.googleapis.com/v1/projects/"+FB_PROJECT+"/databases/(default)/documents";
 
 var SB_URL = "https://ujzdkzombacnsnryhehr.supabase.co";
 var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqemRrem9tYmFjbnNucnloZWhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDYyODgsImV4cCI6MjA5NzI4MjI4OH0.8r-cTs3IWkduAt3TkPEQfHu0f5m_zAe4j5KUeDjc9tI";
@@ -682,56 +675,17 @@ function getSb(){
   return _sbClient;
 }
 
-function fsSync(code, localData){
-  var url = FB_BASE+"/syncdata/"+encodeURIComponent(code)+"?key="+FB_KEY;
-  return fetch(url).then(function(r){ return r.ok?r.json():null; })
-    .then(function(doc){
-      var remote=null;
-      if(doc&&doc.fields&&doc.fields.kkm){
-        try{remote=JSON.parse(doc.fields.kkm.stringValue);}catch(e){}
-      }
-      if(remote){
-        var localIds=(localData.decks||[]).map(function(d){return d.id;});
-        var remoteIds=(remote.decks||[]).map(function(d){return d.id;});
-        var hasOverlap=remoteIds.some(function(id){return localIds.indexOf(id)>=0;});
-        if(!hasOverlap&&remoteIds.length>0){return {collision:true};}
-      }
-      var merged=remote?mergeSyncData(localData,remote):localData;
-      return fetch(url,{
-        method:"PATCH",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({fields:{kkm:{stringValue:JSON.stringify(merged)}}})
-      }).then(function(r){
-        if(!r.ok) throw new Error("Fehler "+r.status);
-        return merged;
-      });
-    });
-}
-
-function mergeSyncData(local,remote){
-  var merged=Object.assign({},local);
-  var dm={};
-  (local.decks||[]).forEach(function(d){dm[d.id]=d;});
-  (remote.decks||[]).forEach(function(d){
-    if(!dm[d.id]){dm[d.id]=d;}
-    else{
-      var localTs=dm[d.id].updatedAt||'';
-      var remoteTs=d.updatedAt||'';
-      if(remoteTs>localTs){dm[d.id]=d;}
-      else if(!remoteTs&&!localTs&&d.cards.length>dm[d.id].cards.length){dm[d.id]=d;}
-    }
-  });
-  merged.decks=Object.keys(dm).map(function(k){return dm[k];});
-  var fm={};
-  (local.folders||[]).forEach(function(f){fm[f.id]=f;});
-  (remote.folders||[]).forEach(function(f){if(!fm[f.id])fm[f.id]=f;});
-  merged.folders=Object.keys(fm).map(function(k){return fm[k];});
-  var today=todayStr();
-  var am={};
-  (local.arbeiten||[]).forEach(function(a){if(a.date>=today)am[a.id]=a;});
-  (remote.arbeiten||[]).forEach(function(a){if(a.date>=today&&!am[a.id])am[a.id]=a;});
-  merged.arbeiten=Object.keys(am).map(function(k){return am[k];});
-  return merged;
+var _syncUser=null; var _syncTimeout=null; var _realtimeChannel=null; var _applyingRemote=false; var _preloadedLsData=null;
+function syncAppData(d){
+  if(!_syncUser||_applyingRemote)return;
+  var myId=localStorage.getItem('kkm-ls-id');
+  if(!myId)return;
+  clearTimeout(_syncTimeout);
+  _syncTimeout=setTimeout(function(){
+    var payload=Object.assign({},d,{_syncedAt:Date.now()});
+    getSb().from('ls_users').upsert({ls_id:myId,app_data:payload,updated_at:new Date().toISOString()},{onConflict:'ls_id',ignoreDuplicates:false})
+    .then(function(r){if(!r.error)dbg('✅ App-Sync OK');else dbg('❌ App-Sync Fehler:',r.error.message);});
+  },2000);
 }
 
 var DSGVO_KEY = "kkm-dsgvo";
@@ -839,6 +793,9 @@ function HamburgerMenu(p){
 
 var USERNAME_KEY = "kkm-username-v1";
 var LEARN_LOG_KEY = "kkm-learn-log-v1";
+var SOCIAL_USERNAME_KEY = "kkm-social-username-v1";
+function loadSocialUsername(){ try{ var n=localStorage.getItem(SOCIAL_USERNAME_KEY); return n&&n.trim()!==""?n.trim():null; }catch(e){return null;} }
+function saveSocialUsername(name){ try{localStorage.setItem(SOCIAL_USERNAME_KEY,name.trim());}catch(e){} }
 function loadUsername(){ try{ var n=localStorage.getItem(USERNAME_KEY); return n&&n.trim()!==""?n.trim():null; }catch(e){return null;} }
 function saveUsername(name){ try{localStorage.setItem(USERNAME_KEY,name.trim());}catch(e){} }
 function loadTodayLog(){
@@ -886,60 +843,6 @@ function parseDeckFile(str){
 
 var _fbUser = null;
 
-
-function SyncModal(p){
-  var ss=useState(loadSyncStore());var syncStore=ss[0];var setSyncStore=ss[1];
-  var sng=useState(false);var syncing=sng[0];var setSyncing=sng[1];
-  var stc=useState("");var statusCode=stc[0];var setStatusCode=stc[1];
-  var inf=useState(false);var showInfo=inf[0];var setShowInfo=inf[1];
-  var cis=useState("");var codeInput=cis[0];var setCodeInput=cis[1];
-  var tm=useToast();var toast=tm[0];var showToast=tm[1];
-  var INTERVALS=[{v:0,l:"Manuell"},{v:5,l:"5 Minuten"},{v:15,l:"15 Minuten"},{v:30,l:"30 Minuten"},{v:60,l:"1 Stunde"}];
-  var isIosPwa=/iPhone|iPad|iPod/.test(navigator.userAgent)&&window.navigator.standalone;
-  useEffect(function(){if(syncStore.code)setCodeInput(syncStore.code);},[]);
-  function handleCodeSync(){
-    var code=codeInput.trim();
-    if(code.length<10){showToast("Code muss mind. 10 Zeichen haben.");return;}
-    setSyncing(true);setStatusCode("");
-    fsSync(code,loadStore()).then(function(merged){
-      if(merged&&merged.collision){
-        setSyncing(false);
-        setStatusCode("\u26A0\uFE0F Dieser Code geh\u00F6rt jemand anderem \u2013 Synchronisation blockiert.");
-        return;
-      }
-      saveStore(merged);if(p.onDataLoaded)p.onDataLoaded(merged);
-      var time=new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
-      var s=Object.assign({},syncStore,{lastSync:time,code:code});setSyncStore(s);saveSyncStore(s);
-      setSyncing(false);setStatusCode("\u2705 Synchronisiert um "+time);
-    }).catch(function(e){setSyncing(false);setStatusCode("\u274C "+e.message);});
-  }
-  function handleInterval(val){var s=Object.assign({},syncStore,{interval:parseInt(val)});setSyncStore(s);saveSyncStore(s);}
-  return h("div",{className:"ov",onClick:p.onClose},
-    h("div",{className:"modal",style:{maxWidth:"420px"},onClick:function(e){e.stopPropagation();}},
-      h("div",{style:{display:"flex",alignItems:"center",gap:"10px",marginBottom:"16px"}},
-        h("button",{onClick:function(){setShowInfo(!showInfo);},style:{width:"26px",height:"26px",borderRadius:"50%",border:"1.5px solid var(--c-bor)",background:"rgba(255,255,255,.07)",color:"var(--c-dim)",cursor:"pointer",fontSize:".8rem",fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},"?"),
-        h("div",{className:"modal-title",style:{margin:0}},"App synchronisieren")),
-      showInfo&&h("div",{style:{background:"rgba(251,191,36,.1)",border:"1px solid rgba(251,191,36,.3)",borderRadius:"11px",padding:"12px",marginBottom:"14px",fontSize:".81rem",color:"#fde68a",lineHeight:1.7}},"Deine Daten werden in Firebase (Server Frankfurt/EU) gespeichert. Dein Sync-Code ist pers\u00F6nlich und dient nur zur Synchronisation deiner eigenen Ger\u00E4te \u2013 bitte nicht teilen."),
-      h("div",{style:{fontSize:".83rem",color:"var(--c-dim)",marginBottom:"14px",fontWeight:600,lineHeight:1.7}},"W\u00E4hle einen eigenen Sync-Code (mind. 10 Zeichen). Gleicher Code auf allen Ger\u00E4ten."),
-      h("div",{className:"fg"},h("label",{className:"fl"},"Sync-Code"),
-        h("input",{className:"fi",type:"text",value:codeInput,placeholder:"z.B. MeinCode2026Sicher",onInput:function(e){setCodeInput(e.target.value);}})),
-      statusCode&&h("div",{style:{textAlign:"center",fontSize:".82rem",fontWeight:700,marginBottom:"12px",color:statusCode.startsWith("\u2705")?"#34d399":statusCode.startsWith("\u26A0")?"#fbbf24":"#fca5a5"}},
-        statusCode,
-        statusCode.startsWith("\u26A0")&&h("div",{style:{marginTop:"10px"}},
-          h("button",{className:"btn",style:{fontSize:".8rem",padding:"6px 14px"},onClick:function(){setStatusCode("");setCodeInput("");}},"\u274C Abbrechen")
-        )
-      ),
-      syncStore.lastSync&&syncStore.code&&h("div",{style:{fontSize:".76rem",color:"var(--c-dim)",textAlign:"center",marginBottom:"10px",fontWeight:600}},"Letzte Sync: "+syncStore.lastSync),
-      h("button",{className:"btn btn-p",style:{width:"100%",justifyContent:"center",padding:"12px",marginBottom:"10px",opacity:syncing?.5:1},disabled:syncing||codeInput.trim().length<10,onClick:handleCodeSync},syncing?"\u23F3 Synchronisiert...":"\u2194 Synchronisieren"),
-      h("div",{style:{fontSize:".73rem",color:"rgba(251,191,36,.7)",fontWeight:600,textAlign:"center"}},"\uD83D\uDD12 Dein Sync-Code ist pers\u00F6nlich \u2013 bitte nicht teilen."),
-      h("div",{style:{marginTop:"16px"}},
-        h("div",{className:"fg"},h("label",{className:"fl"},"Auto-Sync Intervall"),
-          h("select",{className:"fi",value:syncStore.interval,onChange:function(e){handleInterval(e.target.value);}},
-            INTERVALS.map(function(iv){return h("option",{key:iv.v,value:iv.v},iv.l);}))),
-        syncStore.interval>0&&isIosPwa&&h("div",{style:{fontSize:".75rem",color:"rgba(251,191,36,.8)",fontWeight:600}},"\u26A0\uFE0F Auto-Sync l\u00E4uft auf iOS nur bei ge\u00F6ffneter App.")),
-      h("div",{className:"modal-foot"},h("button",{className:"btn btn-g",onClick:p.onClose},"Schlie\u00DFen")),
-      h(Toast,{msg:toast})));
-}
 
 function DsgvoModal(p){
   var ss=useState(false);var showFull=ss[0];var setShowFull=ss[1];
@@ -1518,13 +1421,7 @@ function EinstellungenView(p){
         )
       ),
 
-      !p.googleUser&&h('div',{className:'settings-section',style:{marginTop:20}},
-        h('div',{className:'settings-section-hdr'},h('span',{className:'settings-section-label'},'☁️ App synchronisieren'),h('span',{className:'settings-section-line'})),
-        h('div',{className:'settings-row'},
-          h('div',{style:{fontSize:'.83rem',color:'var(--c-dim)',marginBottom:12,lineHeight:1.6}},'Daten mit einem Sync-Code auf mehreren Geräten synchronisieren.'),
-          h('button',{className:'btn btn-p',style:{width:'100%',justifyContent:'center'},onClick:function(){p.onOpenSync&&p.onOpenSync();}},'↔ Sync-Einstellungen öffnen')
-        )
-      ),
+
     showQ&&h('div',{className:'settings-overlay',onClick:function(){setShowQ(false);}},
       h('div',{className:'settings-overlay-box',onClick:function(e){e.stopPropagation();}},
         h('div',{className:'settings-overlay-title'},'\uD83D\uDCA1 Wie funktioniert die Lernempfehlung?'),
@@ -1575,7 +1472,7 @@ function HelpModal(p){
     {bg:"rgba(251,191,36,.08)",bc:"rgba(251,191,36,.2)",tc:"#fbbf24",icon:"\uD83C\uDF93",title:"Jetzt lernen",body:"Auf der Startseite \u2192 Lernen oder im Men\u00fc \u2192 Stapel. Stapel und Ordner ausw\u00e4hlen, dann entweder alle Karten durcheinander oder Stapel f\u00fcr Stapel."},
     {bg:"rgba(16,185,129,.08)",bc:"rgba(16,185,129,.2)",tc:"#34d399",icon:"\uD83E\uDDE0",title:"Spaced Repetition (SRS)",body:"Bewerte dich selbst: Gewusst oder Noch \u00fcben. Bekannte Karten kommen nach 1\u20132\u20134\u20138\u201316\u201330 Tagen wieder."},
     {bg:"rgba(249,115,22,.08)",bc:"rgba(249,115,22,.2)",tc:"#fb923c",icon:"\uD83D\uDCE4",title:"Teilen & Importieren",body:"Im Stapel oben rechts auf das Teilen-Symbol (\uD83D\uDCE4) tippen. Empf\u00e4nger: App \u00f6ffnen \u2192 Stapel importieren \u2192 Datei w\u00e4hlen."},
-    {bg:"rgba(96,165,250,.08)",bc:"rgba(96,165,250,.2)",tc:"#60a5fa",icon:"\u2601\uFE0F",title:"App synchronisieren",body:"Im Men\u00fc \u2192 App synchronisieren. Eigenen Sync-Code eingeben \u2014 denselben Code auf allen Ger\u00e4ten verwenden. Daten werden auf Servern in Frankfurt gespeichert."},
+    {bg:"rgba(96,165,250,.08)",bc:"rgba(96,165,250,.2)",tc:"#60a5fa",icon:"\u2601\uFE0F",title:"Automatische Synchronisation",body:"Mit Google-Login werden alle Karten, Ordner und Lernst\u00e4nde automatisch auf Supabase gesichert \u2014 ger\u00e4te\u00fcbergreifend in Echtzeit."},
     {bg:"rgba(255,255,255,.04)",bc:"rgba(139,92,246,.3)",tc:"var(--c-txt)",icon:"\u22EF",title:"Bearbeiten & L\u00f6schen",body:"Bei Stapeln und Karten auf den \u22EF-Button tippen. Es erscheinen \u270F\uFE0F Bearbeiten und \uD83D\uDDD1\uFE0F L\u00f6schen."},
     {bg:"rgba(255,255,255,.04)",bc:"rgba(16,185,129,.3)",tc:"#34d399",icon:"\uD83D\uDD12",title:"Datenschutz",body:"Alle Daten bleiben ausschlie\u00dflich auf deinem Ger\u00e4t. Keine Daten werden \u00fcbertragen."}
   ];
@@ -1615,14 +1512,13 @@ function DatenschutzContent(){
     h("span",{className:"legal-h"},"11. Minderj\u00e4hrige"),
     h("p",null,"Keine Datenerhebung, daher keine gesonderte Einwilligung n\u00f6tig."),
     h("span",{className:"legal-h"},"12. App-Synchronisation (optional)"),
-    h("p",null,"Die freiwillige Sync-Funktion erm\u00f6glicht es, Karteikarten ger\u00e4te\u00fcbergreifend zu synchronisieren. Daf\u00fcr wird Firebase (Google LLC) als Datenbank genutzt \u2014 Server: Frankfurt am Main (Deutschland). Die Daten werden verschl\u00fcsselt \u00fcbertragen und gespeichert."),
-    h("p",null,"Die Synchronisation erfolgt ausschlie\u00dflich \u00fcber einen selbst gew\u00e4hlten Sync-Code. Wer diesen Code kennt, kann auf die gespeicherten Daten zugreifen \u2014 bitte nicht teilen. Eine Konto-Registrierung ist nicht erforderlich."),
-    h("p",null,"Rechtsgrundlage: Einwilligung (Art. 6 Abs. 1 lit. a DSGVO). Die Verbindung kann jederzeit in der App getrennt werden. Anbieter: Google LLC, 1600 Amphitheatre Parkway, Mountain View, CA\u00a094043, USA. Datentransfer auf Basis von Standardvertragsklauseln (Art. 46 DSGVO). Datenschutz: ",h("a",{href:"https://firebase.google.com/support/privacy",target:"_blank",style:{color:"var(--c-pur2)"}},"firebase.google.com/support/privacy")),
+    h("p",null,"Die Synchronisation erfolgt automatisch bei Anmeldung mit Google \u00fcber Supabase (Supabase Inc.) als Datenbank. Server: EU-Region. Die Daten werden verschl\u00fcsselt \u00fcbertragen und gespeichert."),
+    h("p",null,"Rechtsgrundlage: Einwilligung (Art. 6 Abs. 1 lit. a DSGVO). Die Verbindung kann jederzeit durch Abmeldung in der App getrennt werden. Anbieter: Supabase Inc., 970 Toa Payoh N, Singapur. Datenschutz: ",h("a",{href:"https://supabase.com/privacy",target:"_blank",style:{color:"var(--c-pur2)"}},"supabase.com/privacy")),
     h("span",{className:"legal-h"},"13. Lern Space (soziale Funktionen)"),
-    h("p",null,"Der Lern Space erm\u00f6glicht soziale Funktionen wie Freundeslisten, Anfragen und Avatar. Diese Daten werden automatisch und ohne gesonderte Anmeldung auf ","Firebase (Google LLC)","\u00a0als Datenbank gespeichert \u2014 Server: Frankfurt am Main (Deutschland)."),
-    h("p",{style:{marginTop:8}},"Gespeichert werden: Lern Space ID (automatisch generiert, lokal), Avatar-Bild (base64), Freundesliste, eingehende Anfragen und geteilte Stapel. Es werden keine Namen, E-Mail-Adressen oder Klarnamen \u00fcbertragen."),
+    h("p",null,"Der Lern Space erm\u00f6glicht soziale Funktionen wie Freundeslisten, Anfragen und Avatar. Diese Daten werden auf Supabase (Supabase Inc.) gespeichert \u2014 Server: EU-Region. F\u00FCr Gäste wird eine zufällig generierte ID verwendet; mit Google-Login wird die E-Mail-Adresse als ID genutzt."),
+    h("p",{style:{marginTop:8}},"Gespeichert werden: Lern Space ID (automatisch generiert, lokal), Avatar-Bild (base64), Freundesliste, eingehende Anfragen und geteilte Stapel. Bei Google-Login wird die E-Mail-Adresse als interne Kennung (ls_id) an Supabase \u00fcbertragen \u2014 sie ist jedoch nicht \u00f6ffentlich sichtbar. Es werden keine Klarnamen \u00fcbertragen."),
     h("p",{style:{marginTop:8}},"Rechtsgrundlage: Einwilligung (Art.\u00a06 Abs.\u00a01 lit.\u00a0a DSGVO). Die Einwilligung kann jederzeit widerrufen werden, indem der Lern Space nicht genutzt wird. Gespeicherte Daten k\u00f6nnen auf Anfrage gel\u00f6scht werden (Kontakt: ",h("a",{href:"mailto:info.gross-apps@gmx.de",style:{color:"var(--c-pur2)"}},"info.gross-apps@gmx.de"),")."),
-    h("p",{style:{marginTop:8}},"Anbieter: Google LLC, 1600 Amphitheatre Parkway, Mountain View, CA\u00a094043, USA. Datentransfer auf Basis von Standardvertragsklauseln (Art.\u00a046 DSGVO). Datenschutz: ",h("a",{href:"https://firebase.google.com/support/privacy",target:"_blank",style:{color:"var(--c-pur2)"}},"firebase.google.com/support/privacy")),
+    h("p",{style:{marginTop:8}},"Anbieter: Supabase Inc., 970 Toa Payoh N, Singapur. Datentransfer auf Basis von Standardvertragsklauseln (Art.\u00a046 DSGVO). Datenschutz: ",h("a",{href:"https://supabase.com/privacy",target:"_blank",style:{color:"var(--c-pur2)"}},"supabase.com/privacy")),
     h("p",{style:{marginTop:"14px",fontSize:".76rem",color:"rgba(255,255,255,.3)",fontWeight:600}},"Stand: Juni 2026"));
 }
 
@@ -1649,6 +1545,48 @@ function DatenschutzModal(p){
       h("div",{className:"modal-title"},"Datenschutzerklärung"),
       h(DatenschutzContent,null),
       h("div",{className:"modal-foot"},h("button",{className:"btn btn-g",onClick:p.onClose},"Schließen"))));
+}
+
+function UsernamePickerModal(p){
+  var iv=useState(''); var input=iv[0]; var setInput=iv[1];
+  var sv=useState(null); var status=sv[0]; var setStatus=sv[1];
+  var dtRef=useRef(null);
+  function checkAvailability(val){
+    val=val.trim();
+    if(!val||val.length<3){setStatus(val.length>0?'invalid':null);return;}
+    if(!/^[a-zA-Z0-9_\-äöüÄÖÜß]+$/.test(val)){setStatus('invalid');return;}
+    setStatus('checking');
+    clearTimeout(dtRef.current);
+    dtRef.current=setTimeout(function(){
+      getSb().from('ls_users').select('ls_id').eq('username',val).maybeSingle().then(function(res){
+        setStatus(res.data?'taken':'available');
+      }).catch(function(){setStatus(null);});
+    },400);
+  }
+  function handleInput(e){var val=e.target.value;setInput(val);checkAvailability(val);}
+  function handleSave(){
+    if(status!=='available')return;
+    var val=input.trim();
+    var myId=localStorage.getItem('kkm-ls-id');
+    getSb().from('ls_users').update({username:val}).eq('ls_id',myId).then(function(r){
+      if(!r.error){saveSocialUsername(val);p.onDone(val);}
+      else if(r.error.code==='23505'){setStatus('taken');}
+    });
+  }
+  var statusEl=null;
+  if(status==='checking')statusEl=h('span',{style:{color:'#aaa'}},'⏳ Prüfe…');
+  else if(status==='available')statusEl=h('span',{style:{color:'#4caf50'}},'✅ Verfügbar!');
+  else if(status==='taken')statusEl=h('span',{style:{color:'#f44336'}},'❌ Bereits vergeben');
+  else if(status==='invalid')statusEl=h('span',{style:{color:'#ff9800'}},'Mindestens 3 Zeichen, nur Buchstaben/Zahlen/_/-');
+  return h('div',{className:'ov'},
+    h('div',{className:'modal',style:{maxWidth:'420px'}},
+      h('div',{className:'modal-title'},'🎭 Benutzername wählen'),
+      h('p',{style:{color:'#aaa',margin:'0 0 16px',fontSize:'0.9rem'}},'Dein öffentlicher Name in der App. Einzigartig und nicht mehr änderbar.'),
+      h('input',{type:'text',className:'name-input',placeholder:'z. B. LernProfi42',value:input,onInput:handleInput,autoFocus:true,
+        onKeyDown:function(e){if(e.key==='Enter'&&status==='available')handleSave();}}),
+      h('div',{style:{minHeight:'24px',fontSize:'0.85rem',margin:'8px 0 16px'}},statusEl),
+      h('div',{style:{display:'flex',justifyContent:'flex-end'}},
+        h('button',{className:'btn btn-p',onClick:handleSave,disabled:status!=='available',style:{opacity:status==='available'?1:0.5}},'Benutzername speichern'))));
 }
 
 function Greeting(){
@@ -1687,22 +1625,10 @@ function DailyStats(){
 function PersonalizedHeader(){ return h("div",{className:"personal-header"},h(Greeting,null),h(DailyStats,null)); }
 
 function LoginScreen(p){
-  var ss=useState('home');var step=ss[0];var setStep=ss[1];
-  var ci=useState('');var codeIn=ci[0];var setCodeIn=ci[1];
   var sm=useState('');var msg=sm[0];var setMsg=sm[1];
   var ho=useState(false);var showHelp=ho[0];var setShowHelp=ho[1];
   var tm=useToast();var toast=tm[0];var showToast=tm[1];
   function handleGuest(){localStorage.setItem('kkm-onboarded','1');p.onDone();}
-  function handleCode(){
-    var code=codeIn.trim();
-    if(code.length<10){showToast('Code muss mind. 10 Zeichen haben.');return;}
-    setStep('loading');setMsg('\u23F3 Synchronisiere\u2026');
-    fsSync(code,loadStore()).then(function(merged){
-      if(merged&&merged.collision){setStep('code');setMsg('\u26A0\uFE0F Dieser Code geh\u00F6rt jemand anderem.');return;}
-      saveStore(merged);if(p.onDataLoaded)p.onDataLoaded(merged);
-      localStorage.setItem('kkm-onboarded','1');p.onDone();
-    }).catch(function(e){setStep('code');setMsg('\u274C '+e.message);});
-  }
   var S={
     wrap:{position:'fixed',inset:0,zIndex:9998,background:'#0f0d1e',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px 24px'},
     logo:{width:90,height:90,borderRadius:20,marginBottom:16},
@@ -1716,27 +1642,18 @@ function LoginScreen(p){
     back:{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'.82rem',cursor:'pointer',marginTop:16},
     spinner:{width:40,height:40,border:'4px solid rgba(168,85,247,.2)',borderTop:'4px solid #a855f7',borderRadius:'50%',animation:'spin 1s linear infinite',marginBottom:20}
   };
-  if(step==='loading')return h('div',{style:S.wrap},h('div',{style:S.spinner}),h('div',{style:{color:'rgba(255,255,255,.6)',fontSize:'.9rem',textAlign:'center'}},msg));
-  if(step==='code')return h('div',{style:S.wrap},
-    h('img',{src:LOGO,style:S.logo}),
-    h('div',{style:S.title},'Sync-Code eingeben'),
-    h('div',{style:S.sub},'Synchronisiere deine Karten von einem anderen Ger\u00E4t'),
-    h('input',{value:codeIn,onChange:function(e){setCodeIn(e.target.value);},placeholder:'Dein Sync-Code (mind. 10 Zeichen)',style:{width:'100%',maxWidth:320,padding:'13px 16px',borderRadius:12,border:'1.5px solid rgba(255,255,255,.15)',background:'rgba(255,255,255,.07)',color:'#fff',fontSize:'1rem',marginBottom:12,boxSizing:'border-box',outline:'none'}}),
-    h('button',{style:Object.assign({},S.btn,S.btnG),onClick:handleCode},'\u2194 Synchronisieren'),
-    msg&&h('div',{style:S.msg},msg),
-    h('button',{style:S.back,onClick:function(){setStep('home');setMsg('');}},'\u2190 Zur\u00FCck')
-  );
+
   return h('div',{style:S.wrap},
     showHelp&&h('div',{onClick:function(){setShowHelp(false);},style:{position:'fixed',inset:0,zIndex:10000,background:'rgba(0,0,0,.7)',display:'flex',alignItems:'flex-end',justifyContent:'center',padding:'0 0 24px'}},
       h('div',{onClick:function(e){e.stopPropagation();},style:{background:'#1a1535',borderRadius:'20px 20px 16px 16px',padding:'28px 24px',maxWidth:360,width:'100%',color:'#fff'}},
         h('div',{style:{fontWeight:900,fontSize:'1.1rem',marginBottom:20,textAlign:'center'}},'\u2139\uFE0F Anmeldeoptionen'),
         h('div',{style:{marginBottom:16}},
-          h('div',{style:{fontWeight:700,color:'#38bdf8',marginBottom:4}},'\uD83D\uDD22 Mit Sync-Code anmelden'),
-          h('div',{style:{fontSize:'.84rem',color:'rgba(255,255,255,.6)',lineHeight:1.6}},'Gib einen selbst gew\u00E4hlten Code ein (mind. 10 Zeichen). Derselbe Code auf mehreren Ger\u00E4ten h\u00E4lt deine Karten synchron.')
+          h('div',{style:{fontWeight:700,color:'#fff',marginBottom:6,fontSize:'.95rem'}},'\uD83D\uDC65 Mit Google anmelden — empfohlen'),
+          h('div',{style:{fontSize:'.84rem',color:'rgba(255,255,255,.65)',lineHeight:1.6}},'Vollst\u00E4ndige Synchronisation auf allen Ger\u00E4ten. Karteikarten, Ordner, Lernstand und LernSpace-Daten werden automatisch gespeichert und wiederhergestellt. Du w\u00E4hlst einmalig einen Benutzernamen.')
         ),
         h('div',{style:{marginBottom:20}},
-          h('div',{style:{fontWeight:700,color:'rgba(255,255,255,.5)',marginBottom:4}},'\uD83D\uDC64 Als Gast fortfahren'),
-          h('div',{style:{fontSize:'.84rem',color:'rgba(255,255,255,.4)',lineHeight:1.6}},'Nutze die App ohne Anmeldung. Deine Karten werden lokal auf diesem Ger\u00E4t gespeichert. Eine Synchronisierung ist sp\u00E4ter \u00FCber das Sync-Men\u00FC m\u00F6glich.')
+          h('div',{style:{fontWeight:700,color:'rgba(255,255,255,.45)',marginBottom:6,fontSize:'.95rem'}},'\uD83D\uDC64 Als Gast fortfahren'),
+          h('div',{style:{fontSize:'.84rem',color:'rgba(255,255,255,.35)',lineHeight:1.6}},'Kein Konto n\u00F6tig. Karteikarten und Lernstand werden nur lokal gespeichert \u2014 keine ger\u00E4te\u00FCbergreifende Synchronisation. Der LernSpace ist verf\u00FCgbar und kommuniziert f\u00FCr soziale Funktionen (Realtime, Freunde, geteilte Stapel und Chats) direkt mit Supabase.')
         ),
         h('button',{onClick:function(){setShowHelp(false);},style:Object.assign({},S.btn,S.btnG,{marginBottom:0})},'\u2713 Verstanden')
       )
@@ -1745,7 +1662,6 @@ function LoginScreen(p){
     h('img',{src:LOGO,style:S.logo}),
     h('div',{style:S.title},'Karteikarten Manager'),
     h('div',{style:S.sub},'Wie m\u00F6chtest du starten?'),
-    h('button',{style:Object.assign({},S.btn,S.btnC),onClick:function(){setStep('code');setMsg('');}},'\uD83D\uDD22 Mit Sync-Code anmelden'),
     p.onGoogleLogin&&h('button',{
       style:{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:10,padding:'14px 16px',borderRadius:16,border:'none',background:'#fff',color:'#3c4043',fontWeight:700,fontSize:'.95rem',cursor:'pointer',marginBottom:10},
       onClick:p.onGoogleLogin
@@ -2172,7 +2088,7 @@ function LsConsentModal(p){
         h("div",{className:"modal-title",style:{margin:0,fontSize:"1rem"}},"Lern Space – Datenschutzhinweis")
       ),
       h("div",{className:"legal-body",style:{fontSize:".84rem",color:"rgba(255,255,255,.72)",lineHeight:1.55,marginBottom:4}},
-        h("p",null,"Im Lern Space werden deine sozialen Daten — darunter dein Profil, Avatar, Freundesliste und Anfragen — auf ",h("strong",{style:{color:"#fff"}},"Firebase (Google LLC)")," gespeichert."),
+        h("p",null,"Im Lern Space werden deine sozialen Daten — darunter dein Profil, Avatar, Freundesliste und Anfragen — auf ",h("strong",{style:{color:"#fff"}},"Supabase (EU)")," gespeichert. Gäste nutzen eine zufällige ID, Google-Nutzer ihre E-Mail-Adresse."),
         h("p",{style:{marginTop:10}},"Die Speicherung erfolgt über deine automatisch generierte Lern Space ID, ohne Anmeldung."),
         h("p",{style:{marginTop:10}},h("span",{style:{color:"var(--c-pur2)",cursor:"pointer",textDecoration:"underline"},onClick:p.onShowDat},"► Datenschutzerklärung lesen (Punkt 13)"))
       ),
@@ -2332,6 +2248,8 @@ function LernSpaceView(p){
 
   function loadData(){
     if(savingRef.current)return;
+    // Vorgeladene Social-Daten sofort anzeigen (neues Gerät nach Google-Login)
+    if(_preloadedLsData&&!lsData){setLsData(_preloadedLsData);_preloadedLsData=null;}
     setLoading(true);
     lsGet('ls_users',MY_ID).then(function(d){
       if(savingRef.current){setLoading(false);return;}
@@ -2403,23 +2321,35 @@ function LernSpaceView(p){
   }
 
   function sendFriendRequest(){
-    var tid=inviteId.trim();
-    if(!tid||tid===MY_ID){showToast('Ung\u00fcltige ID');return;}
-    if((lsData.friends||[]).find(function(f){return f.id===tid;})){showToast('Bereits befreundet');return;}
-    if((lsData.sentRequests||[]).find(function(r){return r.toId===tid;})){showToast('Anfrage bereits gesendet');return;}
-    lsGet('ls_users',tid).then(function(td){
-      var tData=td||defaultData;
-      var reqs=[].concat(tData.requests||[]);
-      if(reqs.find(function(r){return r.fromId===MY_ID;})){showToast('Anfrage bereits gesendet');return null;}
-      reqs.push({fromId:MY_ID,ts:Date.now()});
-      return lsSet('ls_users',tid,Object.assign({},tData,{requests:reqs}));
-    }).then(function(res){
-      if(!res)return;
-      var newSent=[].concat(lsData.sentRequests||[],[{toId:tid,ts:Date.now()}]);
-      saveData({sentRequests:newSent});
-      showToast('\uD83D\uDCE8 Anfrage gesendet!');
-      setInviteId('');
-    }).catch(function(){showToast('\u274C Fehler beim Senden');});
+    var raw=inviteId.trim();
+    if(!raw){showToast('Ungültige ID');return;}
+    function doSend(tid){
+      if(tid===MY_ID){showToast('Das bist du selbst \uD83D\uDE05');return;}
+      if((lsData.friends||[]).find(function(f){return f.id===tid;})){showToast('Bereits befreundet');return;}
+      if((lsData.sentRequests||[]).find(function(r){return r.toId===tid;})){showToast('Anfrage bereits gesendet');return;}
+      lsGet('ls_users',tid).then(function(td){
+        var tData=td||defaultData;
+        var reqs=[].concat(tData.requests||[]);
+        if(reqs.find(function(r){return r.fromId===MY_ID;})){showToast('Anfrage bereits gesendet');return null;}
+        reqs.push({fromId:MY_ID,ts:Date.now()});
+        return lsSet('ls_users',tid,Object.assign({},tData,{requests:reqs}));
+      }).then(function(res){
+        if(!res)return;
+        var newSent=[].concat(lsData.sentRequests||[],[{toId:tid,ts:Date.now()}]);
+        saveData({sentRequests:newSent});
+        showToast('\uD83D\uDCE8 Anfrage gesendet!');
+        setInviteId('');
+      }).catch(function(){showToast('\u274C Fehler beim Senden');});
+    }
+    if(raw.startsWith('@')){
+      getSb().from('ls_users').select('ls_id').eq('username',raw.slice(1)).maybeSingle()
+      .then(function(res){
+        if(!res.data){showToast('Benutzername nicht gefunden');return;}
+        doSend(res.data.ls_id);
+      }).catch(function(){showToast('\u274C Fehler beim Suchen');});
+    } else {
+      doSend(raw);
+    }
   }
 
   function cancelRequest(toId){
@@ -2641,15 +2571,16 @@ function LernSpaceView(p){
           h('div',{className:'av-edit-btn'},'\u270F\uFE0F')
         ),
         h('div',{className:'ls-home-name'},p.userName||'Mein Lern Space'),
-        h('div',{className:'ls-home-id'},'ID: '+MY_ID),
+        p.socialUsername&&h('div',{className:'ls-home-id'},'@'+p.socialUsername),
+        !p.socialUsername&&h('div',{className:'ls-home-id'},'ID: '+MY_ID),
         h('button',{className:'ls-home-copy',onClick:function(){
-          var id=MY_ID;
+          var id=p.socialUsername?('@'+p.socialUsername):MY_ID;
           if(navigator.share){
-            navigator.share({title:'Meine Lern Space ID',text:id}).catch(function(){});
+            navigator.share({title:'Mein Benutzername',text:id}).catch(function(){});
           }else if(navigator.clipboard){
-            navigator.clipboard.writeText(id).then(function(){showToast('\uD83D\uDCCB ID kopiert!');}).catch(function(){showToast('ID: '+id);});
+            navigator.clipboard.writeText(id).then(function(){showToast('📋 '+id+' kopiert!');}).catch(function(){showToast('Benutzername: '+id);});
           }else{
-            showToast('ID: '+id);
+            showToast('Benutzername: '+id);
           }
         }},'\uD83D\uDCCB ID teilen'),
         h('button',{className:'ls-home-copy',style:{marginTop:8},onClick:function(){
@@ -2767,7 +2698,7 @@ function LernSpaceView(p){
         }),
       h('div',{className:'ls-invite-box'},
         h('div',{className:'ls-invite-title'},'\u2709\uFE0F Freund einladen'),
-        h('input',{className:'ls-input',placeholder:'Lern Space ID (z. B. Mathe-Ninja-1234)',value:inviteId,onInput:function(e){setInviteId(e.target.value);}}),
+        h('input',{className:'ls-input',placeholder:'Lern Space ID oder @Benutzername',value:inviteId,onInput:function(e){setInviteId(e.target.value);}}),
         h('button',{className:'ls-add-btn',onClick:sendFriendRequest},'\uD83D\uDE80 Anfrage senden')
       )
     );
@@ -3271,7 +3202,6 @@ function App(){
   var sms=useState(false); var showMenu=sms[0]; var setShowMenu=sms[1];
   var srs=useState(false); var showReport=srs[0]; var setShowReport=srs[1];
   var dgs=useState(!dsgvoAccepted()); var showDsgvo=dgs[0]; var setShowDsgvo=dgs[1];
-  var sys=useState(false); var showSync=sys[0]; var setShowSync=sys[1];
   var dlms=useState("home"); var deckListMode=dlms[0]; var setDeckListMode=dlms[1];
   var les=useState([]); var lernEmpf=les[0]; var setLernEmpf=les[1];
   var lss=useState(false); var showLernEmpf=lss[0]; var setShowLernEmpf=lss[1];
@@ -3290,6 +3220,8 @@ function App(){
   var qcs=useState(null); var qsConfig=qcs[0]; var setQsConfig=qcs[1];
   var tm=useToast(); var toast=tm[0]; var showToast=tm[1];
   var gus=useState(null); var googleUser=gus[0]; var setGoogleUser=gus[1];
+  var ums=useState(false); var showUsernameModal=ums[0]; var setShowUsernameModal=ums[1];
+  var sus=useState(loadSocialUsername()); var socialUsername=sus[0]; var setSocialUsername=sus[1];
 
   useEffect(function(){
     var sb=getSb();
@@ -3312,29 +3244,93 @@ function App(){
         }
       } else {
         setGoogleUser(null);
+        _syncUser=null;
+        if(_realtimeChannel){getSb().removeChannel(_realtimeChannel);_realtimeChannel=null;}
       }
     });
     return function(){ if(sub&&sub.data&&sub.data.subscription)sub.data.subscription.unsubscribe(); };
   },[]);
 
+  function setupRealtimeSync(){
+    var myId=localStorage.getItem('kkm-ls-id');
+    if(!myId)return;
+    if(_realtimeChannel)getSb().removeChannel(_realtimeChannel);
+    _realtimeChannel=getSb().channel('kkm-sync-'+myId)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'ls_users',filter:'ls_id=eq.'+myId},function(payload){
+      if(!payload.new||!payload.new.app_data)return;
+      var remoteTs=payload.new.app_data._syncedAt||0;
+      var localTs=loadStore()._syncedAt||0;
+      if(remoteTs>localTs){
+        _applyingRemote=true;
+        var restored=payload.new.app_data;
+        saveStore(restored);
+        setData(restored);
+        showToast('🔄 Daten synchronisiert');
+        dbg('🔄 Realtime update angewendet');
+        setTimeout(function(){_applyingRemote=false;},200);
+      }
+    }).subscribe();
+  }
+
   function handleAuthUser(user){
+    _syncUser=user;
     var sb=getSb();
-    sb.from('ls_users').select('id').eq('authUid',user.id).maybeSingle().then(function(res){
+    sb.from('ls_users').select('ls_id,app_data,username,data').eq('authUid',user.id).maybeSingle().then(function(res){
       if(res.data){
-        var foundId=res.data.id;
+        // Bekannter User — ls_id ggf. wiederherstellen
+        var foundId=res.data.ls_id;
         var cur=localStorage.getItem('kkm-ls-id');
         if(cur!==foundId){
           localStorage.setItem('kkm-ls-id',foundId);
-          dbg('✅ Google-Login: lsId wiederhergestellt →',foundId);
-          showToast('Willkommen zurück! Dein Account wurde wiederhergestellt.');
+          showToast('Willkommen zurück! Dein Account wird wiederhergestellt…');
+          setTimeout(function(){window.location.reload();},1000);
+          return;
         }
+        // Social-Daten vorausladen (für sofortige Anzeige beim LernSpace-Öffnen)
+        if(res.data.data) _preloadedLsData=res.data.data;
+        // App-Daten wiederherstellen wenn remote neuer
+        if(res.data.app_data){
+          var remoteTs=res.data.app_data._syncedAt||0;
+          var localTs=loadStore()._syncedAt||0;
+          if(remoteTs>localTs){
+            _applyingRemote=true;
+            var restored=res.data.app_data;
+            saveStore(restored);
+            setData(restored);
+            showToast('📥 Karteikarten wiederhergestellt!');
+            dbg('✅ App-Daten aus Supabase wiederhergestellt');
+            setTimeout(function(){_applyingRemote=false;},200);
+          }
+        }
+        // Benutzername laden oder Modal zeigen
+        if(res.data.username){
+          saveSocialUsername(res.data.username);
+          setSocialUsername(res.data.username);
+        } else {
+          setShowUsernameModal(true);
+        }
+        setupRealtimeSync();
       } else {
-        var myId=localStorage.getItem('kkm-ls-id');
-        if(myId){
-          sb.from('ls_users').update({"authUid":user.id}).eq('id',myId).then(function(r){
-            if(!r.error)dbg('✅ Google-Login: authUid verknüpft mit lsId',myId);
-          });
-        }
+        // Neuer Google-User → E-Mail als ls_id
+        var emailId=user.email;
+        var oldId=localStorage.getItem('kkm-ls-id');
+        localStorage.setItem('kkm-ls-id',emailId);
+        var currentData=Object.assign({},loadStore(),{_syncedAt:Date.now()});
+        getSb().from('ls_users').upsert({ls_id:emailId,authUid:user.id,app_data:currentData,updated_at:new Date().toISOString()},{onConflict:'ls_id',ignoreDuplicates:false})
+        .then(function(r){
+          if(!r.error){
+            dbg('✅ Google-Login: Neuer User erstellt, E-Mail als ID');
+            if(oldId&&oldId!==emailId){
+              showToast('Willkommen! Dein Account wird eingerichtet…');
+              setTimeout(function(){window.location.reload();},800);
+            } else {
+              setShowUsernameModal(true);
+              setupRealtimeSync();
+            }
+          } else {
+            dbg('❌ Upsert Fehler:',r.error.message);
+          }
+        });
       }
     });
   }
@@ -3346,6 +3342,8 @@ function App(){
   }
 
   function handleGoogleLogout(){
+    _syncUser=null;
+    if(_realtimeChannel){getSb().removeChannel(_realtimeChannel);_realtimeChannel=null;}
     var sb=getSb();
     sb.auth.signOut().then(function(){
       setGoogleUser(null);
@@ -3370,6 +3368,7 @@ function App(){
   },[]);
   useEffect(function(){
     saveStore(data);
+    syncAppData(data);
     var due=(data.decks||[]).reduce(function(s,d){return s+getDue(d).length;},0);
     swMsg({type:"UPDATE_DUE",dueCount:due});
   },[data]);
@@ -3490,6 +3489,7 @@ function App(){
 
   if(showLogin)return h(LoginScreen,{onDone:function(){setShowLogin(false);},onDataLoaded:function(d){setData(d);},onGoogleLogin:handleGoogleLogin});
   return h("div",{style:{minHeight:"100vh",background:"var(--c-bg)"}},
+    showUsernameModal&&h(UsernamePickerModal,{onDone:function(uname){setSocialUsername(uname);setShowUsernameModal(false);showToast('🎉 Benutzername gespeichert: '+uname);}}),
       showLernEmpf&&lernEmpf.length>0&&_leOverlay,
     h("header",{className:"hdr"},
       view==="lernspace"
@@ -3537,8 +3537,8 @@ function App(){
       view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck}),
       qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs}),
       view==="reminder"&&!qsStep&&h("div",null,h(ReminderView,{reminder:data.reminder,decks:decks,onBack:function(){setView("decks");setDeckListMode("home");},onSave:function(r){patch({reminder:r});}}),renderFooter()),
-      view==="einstellungen"&&!qsStep&&h("div",null,h(EinstellungenView,{settings:data.settings,onChange:function(s){patch({settings:s});},onDataLoaded:function(d){setData(d);},onOpenSync:function(){setShowSync(true);},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout}),renderFooter()),
-      view==="lernspace"&&!qsStep&&h("div",null,h(LernSpaceView,{userName:loadStore().userName||"Sophie",decks:decks,folders:folders,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");}}),renderFooter()),
+      view==="einstellungen"&&!qsStep&&h("div",null,h(EinstellungenView,{settings:data.settings,onChange:function(s){patch({settings:s});},onDataLoaded:function(d){setData(d);},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout}),renderFooter()),
+      view==="lernspace"&&!qsStep&&h("div",null,h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");}}),renderFooter()),
       view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}}),renderFooter()),
       view==="updates"&&!qsStep&&h(UpdatesView,{onBack:function(){setView("decks");setDeckListMode("home");},onShowImp:function(){setShowImp(true);},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");}})),
     showNew&&h(DeckModal,{folders:folders,onSave:addDeck,onClose:function(){setShowNew(false);}}),
@@ -3550,9 +3550,7 @@ function App(){
     showMenu&&h(HamburgerMenu,{view:view,dueTotal:dueTotal,deckMode:deckListMode,
       onNav:function(v){setView(v);setDeckId(null);setDeckListMode("home");setShowMenu(false);},
       onManage:function(){setView("decks");setDeckId(null);setDeckListMode("manage");setShowMenu(false);},
-      onSync:function(){setShowSync(true);},
       onHelp:function(){setShowHelp(true);},onReport:function(){setShowReport(true);},onClose:function(){setShowMenu(false);}}),
-    showSync&&h(SyncModal,{onClose:function(){setShowSync(false);},onDataLoaded:function(d){setData(d);}}),
     showDsgvo&&h(DsgvoModal,{onAccept:function(){setShowDsgvo(false);}}),
     showReport&&h(ReportModal,{onClose:function(){setShowReport(false);}}),
     showImp&&h(ImpressumModal,{onClose:function(){setShowImp(false);}}),
