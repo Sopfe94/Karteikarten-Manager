@@ -617,7 +617,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.2.23-AKTUELL -->
+<body><!-- KKM-v1.2.24-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -628,7 +628,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.23";
+var KKM_VERSION="1.2.24";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -675,7 +675,7 @@ function getSb(){
   return _sbClient;
 }
 
-var _syncUser=null; var _syncTimeout=null; var _realtimeChannel=null; var _applyingRemote=false; var _unCache={};
+var _syncUser=null; var _syncTimeout=null; var _realtimeChannel=null; var _applyingRemote=false; var _preloadedLsData=null; var _unCache={};
 function UserLabel(p){
   var ds=useState(_unCache[p.id]||null);var disp=ds[0];var setDisp=ds[1];
   useEffect(function(){
