@@ -617,7 +617,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.2.20-AKTUELL -->
+<body><!-- KKM-v1.2.21-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -628,7 +628,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.20";
+var KKM_VERSION="1.2.21";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1568,10 +1568,19 @@ function UsernamePickerModal(p){
     if(status!=='available')return;
     var val=input.trim();
     var myId=localStorage.getItem('kkm-ls-id');
-    getSb().from('ls_users').upsert({ls_id:myId,username:val},{onConflict:'ls_id',ignoreDuplicates:false}).then(function(r){
-      if(!r.error){saveSocialUsername(val);p.onDone(val);}
-      else if(r.error.code==='23505'){setStatus('taken');}
-    });
+    function finish(){saveSocialUsername(val);p.onDone(val);}
+    getSb().from('ls_users').update({username:val}).eq('ls_id',myId).select('ls_id').then(function(r){
+      if(r.error){
+        if(r.error.code==='23505'){setStatus('taken');return;}
+        finish();return; // Netzwerkfehler → lokal trotzdem speichern
+      }
+      if(r.data&&r.data.length){finish();return;} // Existierende Row aktualisiert
+      // Kein Row → Gast: neu anlegen
+      getSb().from('ls_users').insert({ls_id:myId,username:val,data:{}}).then(function(r2){
+        if(r2.error&&r2.error.code==='23505'){setStatus('taken');return;}
+        finish();
+      }).catch(function(){finish();});
+    }).catch(function(){finish();});
   }
   var statusEl=null;
   if(status==='checking')statusEl=h('span',{style:{color:'#aaa'}},'⏳ Prüfe…');
