@@ -617,7 +617,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.2.21-AKTUELL -->
+<body><!-- KKM-v1.2.22-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -628,7 +628,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.21";
+var KKM_VERSION="1.2.22";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1587,7 +1587,7 @@ function UsernamePickerModal(p){
   else if(status==='available')statusEl=h('span',{style:{color:'#4caf50'}},'✅ Verfügbar!');
   else if(status==='taken')statusEl=h('span',{style:{color:'#f44336'}},'❌ Bereits vergeben');
   else if(status==='invalid')statusEl=h('span',{style:{color:'#ff9800'}},'Mindestens 3 Zeichen, nur Buchstaben/Zahlen/_/-');
-  return h('div',{className:'ov'},
+  return h('div',{className:'ov',style:{zIndex:10000}},
     h('div',{className:'modal',style:{maxWidth:'420px'}},
       h('div',{className:'modal-title'},'🎭 Benutzername wählen'),
       h('p',{style:{color:'#aaa',margin:'0 0 16px',fontSize:'0.9rem'}},'Dein öffentlicher Name in der App. Einzigartig und nicht mehr änderbar.'),
