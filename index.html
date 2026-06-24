@@ -617,7 +617,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.2.27-AKTUELL -->
+<body><!-- KKM-v1.2.28-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -628,7 +628,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.27";
+var KKM_VERSION="1.2.28";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2363,6 +2363,24 @@ function LernSpaceView(p){
     }).catch(function(){savingRef.current=false;showToast('\u274C Sync-Fehler');});
   }
 
+  function saveDataRemove(d){
+    // Wie saveData, aber lokale friends-Liste ist autoritativ (für Lösch-Operationen)
+    var local=Object.assign({},lsData,d);
+    setLsData(local);
+    savingRef.current=true;
+    return lsGet('ls_users',MY_ID).then(function(remote){
+      remote=remote||defaultData;
+      var merged=Object.assign({},remote,local);
+      merged.friends=local.friends||[];
+      var rReqs=remote.requests||[];var lReqs=local.requests||[];var allReqs=rReqs.slice();
+      lReqs.forEach(function(r){if(!allReqs.find(function(x){return x.fromId===r.fromId;}))allReqs.push(r);});
+      merged.requests=allReqs;
+      return lsSet('ls_users',MY_ID,merged).then(function(){
+        savingRef.current=false;setLsData(merged);return merged;
+      });
+    }).catch(function(){savingRef.current=false;showToast('\u274C Sync-Fehler');});
+  }
+
   function searchInviteHints(val){
     clearTimeout(ihRef.current);
     if(!val.startsWith('@')||val.length<2){setInviteHints([]);return;}
@@ -2454,7 +2472,7 @@ function LernSpaceView(p){
 
   function removeFriend(fid){
     var newFriends=(lsData.friends||[]).filter(function(f){return f.id!==fid;});
-    saveData({friends:newFriends});
+    saveDataRemove({friends:newFriends});
     lsGet('ls_users',fid).then(function(td){
       if(td){
         var tf=(td.friends||[]).filter(function(f){return f.id!==MY_ID;});
