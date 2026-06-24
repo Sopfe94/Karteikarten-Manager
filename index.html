@@ -617,7 +617,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.2.25-AKTUELL -->
+<body><!-- KKM-v1.2.27-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -628,7 +628,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.25";
+var KKM_VERSION="1.2.27";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -676,7 +676,24 @@ function getSb(){
 }
 
 var _syncUser=null; var _syncTimeout=null; var _realtimeChannel=null; var _applyingRemote=false; var _preloadedLsData=null; var _unCache={};
-(function(){var _id=localStorage.getItem('kkm-ls-id');var _un=localStorage.getItem('kkm-social-username-v1');if(_id&&_un)_unCache[_id]=_un;})();
+(function(){
+  var _id=localStorage.getItem('kkm-ls-id');
+  var _un=localStorage.getItem('kkm-social-username-v1');
+  if(!_id||!_un)return;
+  _unCache[_id]=_un; // Session-Cache sofort befüllen
+  // Hintergrund-Sync: Falls Supabase den Username noch nicht kennt, nachholen
+  setTimeout(function(){
+    try{
+      getSb().from('ls_users').select('username').eq('ls_id',_id).maybeSingle().then(function(res){
+        if(res.data&&res.data.username)return; // Supabase hat schon einen Username → nichts zu tun
+        dbg('🔄 Username-Sync: Schreibe',_un,'nach Supabase für',_id);
+        getSb().from('ls_users').upsert({ls_id:_id,username:_un},{onConflict:'ls_id',ignoreDuplicates:false})
+          .then(function(r){if(r.error)dbg('❌ Username-Sync Fehler:',r.error.message);else dbg('✅ Username-Sync OK');})
+          .catch(function(e){dbg('❌ Username-Sync catch:',e);});
+      }).catch(function(){});
+    }catch(e){}
+  },2000); // 2s Verzögerung damit Supabase-Client sicher initialisiert ist
+})();
 function UserLabel(p){
   var ds=useState(_unCache[p.id]||null);var disp=ds[0];var setDisp=ds[1];
   useEffect(function(){
@@ -2160,6 +2177,7 @@ function LernSpaceView(p){
   var chatEndRef=useRef(null);
   var clss=useState(false);var chatLoading=clss[0];var setChatLoading=clss[1];
   var rps=useState({});var reqProfiles=rps[0];var setReqProfiles=rps[1];
+  var rfids=useState(null);var removingFid=rfids[0];var setRemovingFid=rfids[1];
   var tms=useToast();var toast=tms[0];var showToast=tms[1];
   var saps=useState(false);var showAvPicker=saps[0];var setShowAvPicker=saps[1];
   var cns=useState(!localStorage.getItem(LS_CONSENT_KEY));var showConsent=cns[0];var setShowConsent=cns[1];
@@ -2432,6 +2450,19 @@ function LernSpaceView(p){
 
   function declineRequest(req){
     saveDataAccept({requests:(lsData.requests||[]).filter(function(r){return r.fromId!==req.fromId;})},req.fromId);
+  }
+
+  function removeFriend(fid){
+    var newFriends=(lsData.friends||[]).filter(function(f){return f.id!==fid;});
+    saveData({friends:newFriends});
+    lsGet('ls_users',fid).then(function(td){
+      if(td){
+        var tf=(td.friends||[]).filter(function(f){return f.id!==MY_ID;});
+        return lsSet('ls_users',fid,Object.assign({},td,{friends:tf}));
+      }
+    }).catch(function(){});
+    setRemovingFid(null);
+    showToast('Freundschaft beendet');
   }
 
   function createGroup(){
@@ -2746,7 +2777,14 @@ function LernSpaceView(p){
             p.decks&&p.decks.length>0&&h('button',{className:'ls-share-btn',onClick:function(e){
               e.stopPropagation();
               if(p.decks[0])shareStackWith(p.decks[0],f.id);
-            }},'\uD83D\uDCE4 Teilen')
+            }},'\uD83D\uDCE4 Teilen'),
+            removingFid===f.id
+              ?h('div',{style:{display:'flex',gap:5,alignItems:'center'}},
+                  h('span',{style:{fontSize:'.72rem',color:'#f87171',whiteSpace:'nowrap'}},'Wirklich?'),
+                  h('button',{style:{background:'#ef4444',border:'none',borderRadius:8,color:'#fff',fontSize:'.72rem',padding:'3px 8px',cursor:'pointer'},onClick:function(e){e.stopPropagation();removeFriend(f.id);}},'Ja'),
+                  h('button',{style:{background:'rgba(255,255,255,.1)',border:'none',borderRadius:8,color:'#fff',fontSize:'.72rem',padding:'3px 8px',cursor:'pointer'},onClick:function(e){e.stopPropagation();setRemovingFid(null);}},'Nein')
+                )
+              :h('button',{style:{background:'rgba(239,68,68,.12)',border:'1px solid rgba(239,68,68,.3)',borderRadius:8,color:'#f87171',fontSize:'.72rem',padding:'4px 8px',cursor:'pointer'},onClick:function(e){e.stopPropagation();setRemovingFid(f.id);}},'✕')
           );
         }),
       h('div',{className:'ls-invite-box'},
