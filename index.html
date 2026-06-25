@@ -642,7 +642,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.2.32-AKTUELL -->
+<body><!-- KKM-v1.2.35-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -653,7 +653,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.32";
+var KKM_VERSION="1.2.35";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2259,15 +2259,6 @@ function LernSpaceView(p){
     });
     p.onGroupDecksForHome(result);
   },[lsData,showGroupOnHome]);
-  useEffect(function(){
-    if(!p.pendingGroupNav||!lsData)return;
-    var g=(lsData.groups||[]).find(function(x){return x.id===p.pendingGroupNav.groupId;});
-    if(!g||!g.groupDecks)return;
-    var dk=(g.groupDecks||[]).find(function(x){return x.id===p.pendingGroupNav.deckId;});
-    if(!dk)return;
-    setSelectedGroup(g);setSelectedGroupDeck(dk);setGroupStackPage('deck-detail');setLsPage('group-detail');
-    if(p.onGroupNavDone)p.onGroupNavDone();
-  },[lsData,p.pendingGroupNav]);
   useEffect(function(){if(lsPage==="friends"||lsPage==="shared"||lsPage==="groups"||lsPage==="group-detail")loadData();},[lsPage]);
   // Autoscroll Chat nach unten bei neuen Nachrichten
   useEffect(function(){
@@ -2338,7 +2329,7 @@ function LernSpaceView(p){
       if(savingRef.current){setLoading(false);return;}
       if(d){
         setLsData(d);
-        if((lsPage==="groups"||lsPage==="group-detail"||p.pendingGroupNav)&&(d.groups||[]).length){
+        if((lsPage==="groups"||lsPage==="group-detail")&&(d.groups||[]).length){
           loadGroups(d.groups);
         }
       }else if(!lsData){
@@ -3476,9 +3467,6 @@ function App(){
   var lsss=useState(false); var showLsSplash=lsss[0]; var setShowLsSplash=lsss[1];
   var lssouts=useState(false); var lsSplashOut=lssouts[0]; var setLsSplashOut=lssouts[1];
   var lscvs=useState(false); var lsContentVis=lscvs[0]; var setLsContentVis=lscvs[1];
-  var ghds=useState(function(){try{return JSON.parse(localStorage.getItem('kkm-group-home-decks'))||[];}catch(e){return [];}});
-  var groupHomeDecks=ghds[0];var setGroupHomeDecks=ghds[1];
-  var pgnav=useState(null);var pendingGroupNav=pgnav[0];var setPendingGroupNav=pgnav[1];
 
   useEffect(function(){
     var sb=getSb();
@@ -3646,27 +3634,37 @@ function App(){
     setLsContentVis(true);
     setTimeout(function(){setShowLsSplash(false);setLsSplashOut(false);},950);
   }
-  function onGroupDecksForHome(decks){
-    setGroupHomeDecks(decks);
-    try{localStorage.setItem('kkm-group-home-decks',JSON.stringify(decks));}catch(e){}
-  }  var decks=data.decks||[];
+  function onGroupDecksForHome(gdecks){
+    patch({groupDecks:gdecks});
+  }
+  var decks=data.decks||[];
   var folders=data.folders||[];
-  var dueTotal=decks.reduce(function(s,d){return s+getDue(d).length;},0);
-  var activeDeck=decks.find(function(d){return d.id===deckId;});
+  var effectiveGroupDecks=data.settings&&data.settings.lernSpaceEnabled!==false?data.groupDecks||[]:[];
+  var dueTotal=decks.concat(effectiveGroupDecks).reduce(function(s,d){return s+getDue(d).length;},0);
+  var activeDeck=decks.find(function(d){return d.id===deckId;})||effectiveGroupDecks.find(function(d){return d.id===deckId;});
 
   function addDeck(d){patch({decks:decks.concat([Object.assign({id:uid()},d,{cards:[],created:todayStr(),updatedAt:new Date().toISOString()})])});setShowNew(false);showToast("Stapel erstellt!");}
   function saveEditDeck(d){patch({decks:decks.map(function(dk){return dk.id===editDeck.id?Object.assign({},dk,d,{updatedAt:new Date().toISOString()}):dk;})});setEditDeck(null);}
   function delDeck(id){if(!confirm("Stapel l\u00f6schen?"))return;patch({decks:decks.filter(function(d){return d.id!==id;})});if(deckId===id)setDeckId(null);}
   function doImport(deck){patch({decks:decks.concat([deck])});setShowImport(false);showToast(deck.name+" importiert!");}
-  function updateDeck(u){patch({decks:decks.map(function(d){return d.id===u.id?Object.assign({},u,{updatedAt:new Date().toISOString()}):d;})});}
+  function updateDeck(u){
+    if(u._groupId){
+      patch({groupDecks:(data.groupDecks||[]).map(function(d){return d.id===u.id?u:d;})});
+    }else{
+      patch({decks:decks.map(function(d){return d.id===u.id?Object.assign({},u,{updatedAt:new Date().toISOString()}):d;})});
+    }
+  }
+  function finishQs(upd){
+    if(upd){
+      var nd=decks.map(function(d){var qd=qsDecks.find(function(x){return x.id===d.id;});if(!qd)return d;return Object.assign({},d,{cards:d.cards.map(function(c){return upd[c.id]||c;})});});
+      var ng=(data.groupDecks||[]).map(function(d){var qd=qsDecks.find(function(x){return x.id===d.id;});if(!qd)return d;return Object.assign({},d,{cards:d.cards.map(function(c){return upd[c.id]||c;})});});
+      patch({decks:nd,groupDecks:ng});
+    }
+    setQsStep(null);setQsConfig(null);setQsDecks([]);
+  }
   function addFolder(d){patch({folders:folders.concat([Object.assign({id:uid()},d)])});setShowNewFolder(false);showToast("Fach erstellt!");}
   function saveEditFolder(d){patch({folders:folders.map(function(f){return f.id===editFolder.id?Object.assign({},f,d):f;})});setEditFolder(null);}
   function delFolder(id){if(!confirm("Fach l\u00f6schen? Stapel bleiben erhalten."))return;patch({folders:folders.filter(function(f){return f.id!==id;}),decks:decks.map(function(d){return d.folderId===id?Object.assign({},d,{folderId:null}):d;})});}
-  function finishQs(upd){
-    if(upd){var nd=decks.map(function(d){var qd=qsDecks.find(function(x){return x.id===d.id;});if(!qd)return d;return Object.assign({},d,{cards:d.cards.map(function(c){return upd[c.id]||c;})});});patch({decks:nd});}
-    setQsStep(null);setQsConfig(null);setQsDecks([]);
-  }
-
   function renderFooter(){
     return h("div",{className:"footer-btns"},
       h("button",{className:"foot-btn",onClick:function(){setShowImp(true);}},"Impressum"),
@@ -3776,15 +3774,12 @@ function App(){
             h("span",{style:{fontWeight:800,fontSize:"1rem",background:"linear-gradient(135deg,#fff,var(--c-pur2))",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}},"Meine Stapel"),
             h("div",{style:{display:"flex",gap:"8px",alignItems:"center"}},
               h("button",{className:"home-add-btn",title:"Neuen Stapel anlegen",onClick:function(){setShowNew(true);}},"+"),
-              decks.length>0&&h("button",{className:"btn btn-gold",style:{fontSize:".8rem",padding:"6px 14px"},onClick:function(){setQsStep("select");}},"> Lernen"))),
-          decks.length===0&&groupHomeDecks.filter(function(d){return data.settings&&data.settings.lernSpaceEnabled!==false;}).length===0?h("div",{className:"home-empty"},h("div",{className:"home-empty-icon"},"\uD83D\uDCDA"),h("p",null,"Noch keine Stapel. Tippe + um loszulegen.")):
-            h("div",{className:"home-decks"},(decks.concat(data.settings&&data.settings.lernSpaceEnabled!==false?groupHomeDecks:[])).map(function(deck){
+              decks.concat(effectiveGroupDecks).length>0&&h("button",{className:"btn btn-gold",style:{fontSize:".8rem",padding:"6px 14px"},onClick:function(){setQsStep("select");}},"> Lernen"))),
+          decks.length===0&&effectiveGroupDecks.length===0?h("div",{className:"home-empty"},h("div",{className:"home-empty-icon"},"\uD83D\uDCDA"),h("p",null,"Noch keine Stapel. Tippe + um loszulegen.")):
+            h("div",{className:"home-decks"},(decks.concat(effectiveGroupDecks)).map(function(deck){
               var isGroup=!!deck._groupId;
               var due=getDue(deck); var folder=!isGroup&&folders.find(function(f){return f.id===deck.folderId;});
-              return h("div",{className:"home-deck-row",key:(isGroup?'g:':'')+deck.id,onClick:function(){
-                if(isGroup){setLsSplashOut(false);setLsContentVis(false);setShowLsSplash(true);setPendingGroupNav({groupId:deck._groupId,deckId:deck.id});setView("lernspace");}
-                else{setDeckId(deck.id);}
-              }},
+              return h("div",{className:"home-deck-row",key:(isGroup?'g:':'')+deck.id,onClick:function(){setDeckId(deck.id);}},
                 h("span",{className:"home-deck-row-name"},deck.emoji," ",deck.name,
                   isGroup?h("span",{style:{fontSize:".6rem",fontWeight:700,color:"rgba(167,139,250,.7)",background:"rgba(139,92,246,.12)",border:"1px solid rgba(139,92,246,.2)",borderRadius:"8px",padding:"1px 5px",marginLeft:"5px",verticalAlign:"middle"}},"✦ Gruppe"):null,
                   folder?h("span",{style:{fontSize:".64rem",fontWeight:700,color:"var(--c-pur2)",background:"rgba(139,92,246,.15)",border:"1px solid var(--c-bor)",borderRadius:"10px",padding:"1px 6px",marginLeft:"5px"}},folder.emoji+" "+folder.name):null
@@ -3810,7 +3805,7 @@ function App(){
       view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck}),
       qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs}),
       view==="einstellungen"&&!qsStep&&h("div",null,h(EinstellungenView,{settings:data.settings,onChange:function(s){patch({settings:s});},onDataLoaded:function(d){setData(d);},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout}),renderFooter()),
-      view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},pendingGroupNav:pendingGroupNav,onGroupNavDone:function(){setPendingGroupNav(null);},onGroupDecksForHome:onGroupDecksForHome}),renderFooter()),
+      view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},onGroupDecksForHome:onGroupDecksForHome}),renderFooter()),
       view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}}),renderFooter()),
       view==="updates"&&!qsStep&&h(UpdatesView,{onBack:function(){setView("decks");setDeckListMode("home");},onShowImp:function(){setShowImp(true);},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");}})),
     showNew&&h(DeckModal,{folders:folders,onSave:addDeck,onClose:function(){setShowNew(false);}}),
@@ -3827,7 +3822,7 @@ function App(){
     showReport&&h(ReportModal,{onClose:function(){setShowReport(false);}}),
     showImp&&h(ImpressumModal,{onClose:function(){setShowImp(false);}}),
     showDat&&h(DatenschutzModal,{onClose:function(){setShowDat(false);}}),
-    qsStep==="select"&&h(DeckSelectModal,{decks:decks,folders:folders,onNext:function(sel){setQsDecks(sel);setQsStep("mode");},onClose:function(){setQsStep(null);}}),
+    qsStep==="select"&&h(DeckSelectModal,{decks:decks.concat(effectiveGroupDecks),folders:folders,onNext:function(sel){setQsDecks(sel);setQsStep("mode");},onClose:function(){setQsStep(null);}}),
     qsStep==="mode"&&h(StudyModeModal,{decks:qsDecks,onStart:function(cfg){setQsConfig(cfg);setQsStep("study");},onNext:function(){setQsStep("order");},onBack:function(){setQsStep("select");},onClose:function(){setQsStep(null);}}),
     qsStep==="order"&&h(DeckOrderModal,{decks:qsDecks,onStart:function(cfg){setQsConfig(cfg);setQsStep("study");},onBack:function(){setQsStep("mode");},onClose:function(){setQsStep(null);}}),
     showUpdOverlay&&pendingUpd&&h(UpdateOverlay,{update:pendingUpd,onClose:function(){setShowUpdOverlay(false);}}),
