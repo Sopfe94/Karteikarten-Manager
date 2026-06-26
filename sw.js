@@ -7,7 +7,7 @@ self.addEventListener('install', function(e){
 self.skipWaiting();
 e.waitUntil(
 caches.open(CACHE).then(function(c){
-return c.addAll(STATIC).catch(function(){});
+return Promise.all(STATIC.map(function(url){ return c.add(url).catch(function(){}); }));
 })
 );
 });
