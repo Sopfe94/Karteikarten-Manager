@@ -646,7 +646,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.2.41-AKTUELL -->
+<body><!-- KKM-v1.2.42-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -657,7 +657,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.41";
+var KKM_VERSION="1.2.42";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2356,6 +2356,7 @@ function LernSpaceView(p){
       if(savingRef.current){setLoading(false);return;}
       if(d){
         setLsData(d);
+        try{localStorage.setItem('kkm-ls-cache',JSON.stringify(d));}catch(e){}
         if((lsPage==="groups"||lsPage==="group-detail")&&(d.groups||[]).length){
           loadGroups(d.groups);
         }
@@ -2363,7 +2364,20 @@ function LernSpaceView(p){
         setLsData(defaultData);
       }
       setLoading(false);
-    }).catch(function(e){dbg('❌ loadData:',(e&&e.message)||e);setLoading(false);});
+    }).catch(function(e){
+      dbg('❌ loadData:',(e&&e.message)||e);
+      if(!lsData){
+        try{
+          var cached=localStorage.getItem('kkm-ls-cache');
+          if(cached){
+            var cd=JSON.parse(cached);
+            setLsData(cd);
+            if((lsPage==='groups'||lsPage==='group-detail')&&(cd.groups||[]).length){loadGroups(cd.groups);}
+          }
+        }catch(err){}
+      }
+      setLoading(false);
+    });
   }
 
   function loadGroups(groupsArg){
