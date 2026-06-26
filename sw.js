@@ -1,13 +1,20 @@
-// Service Worker v15 - Cross-Origin (Supabase etc.) nie cachen + index.html Cache-First
-const CACHE = 'kkm-v44';
+// Service Worker v16 - CDN-Scripts (React, Supabase) offline cachen
+const CACHE = 'kkm-v45';
 const BASE = self.location.hostname === 'www.gross-apps.de' ? '/KM' : '';
 const STATIC = [BASE+'/index.html', BASE+'/manifest.json', BASE+'/icon.svg', BASE+'/logo.svg'];
+const CDN = [
+'https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js',
+'https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js',
+'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js'
+];
 
 self.addEventListener('install', function(e){
 self.skipWaiting();
 e.waitUntil(
 caches.open(CACHE).then(function(c){
-return Promise.all(STATIC.map(function(url){ return c.add(url).catch(function(){}); }));
+return Promise.all(
+  STATIC.concat(CDN).map(function(url){ return c.add(url).catch(function(){}); })
+);
 })
 );
 });
@@ -26,6 +33,19 @@ keys.filter(function(k){ return k !== CACHE; })
 self.addEventListener('fetch', function(e){
 if(e.request.method !== 'GET') return;
 var url = new URL(e.request.url);
+
+// CDN-Scripts (React, Supabase): Cache-First – offline verfügbar
+if(CDN.indexOf(e.request.url) !== -1){
+e.respondWith(
+  caches.match(e.request).then(function(cached){
+    return cached || fetch(e.request).then(function(res){
+      if(res && res.status===200){var clone=res.clone();caches.open(CACHE).then(function(c){c.put(e.request,clone);});}
+      return res;
+    });
+  })
+);
+return;
+}
 
 // Fremde Domains (Supabase, Firebase, Fonts, CDNs) NIE cachen -> direkt ans Netz
 if(url.origin !== self.location.origin) return;
