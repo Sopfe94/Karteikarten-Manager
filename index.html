@@ -645,7 +645,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.2.39-AKTUELL -->
+<body><!-- KKM-v1.2.40-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -656,7 +656,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.39";
+var KKM_VERSION="1.2.40";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3162,11 +3162,17 @@ function LernSpaceView(p){
         :groupDecks.map(function(deck,i){
             return h('div',{key:i,className:'ls-gd-deck',onClick:function(){openDeck(deck);},style:{cursor:'pointer'}},
               h('span',{style:{fontSize:'1.4rem'}},deck.emoji||'\uD83D\uDCDA'),
-              h('div',null,
+              h('div',{style:{flex:1}},
                 h('div',{className:'ls-gd-deck-name'},deck.name),
                 h('div',{className:'ls-gd-deck-meta'},(deck.cards||[]).length+' Karten')
               ),
-              h('div',{style:{marginLeft:'auto',color:'rgba(212,175,55,.5)',fontSize:'1rem'}},'\u203A')
+              h('button',{style:{background:'rgba(239,68,68,.12)',border:'1px solid rgba(239,68,68,.28)',borderRadius:8,padding:'5px 9px',color:'#fca5a5',fontSize:'.75rem',cursor:'pointer',flexShrink:0},onClick:function(e){
+                e.stopPropagation();
+                if(!confirm('Stapel "'+deck.name+'" l\u00f6schen?\nDer Stapel wird aus der Gruppe entfernt.')){return;}
+                var updDecks=(g.groupDecks||[]).filter(function(d){return d.id!==deck.id;});
+                applyGroupUpdate(Object.assign({},g,{groupDecks:updDecks}));
+              }},'\uD83D\uDDD1\uFE0F'),
+              h('div',{style:{marginLeft:4,color:'rgba(212,175,55,.5)',fontSize:'1rem'}},'\u203A')
             );
           }),
       h('button',{className:'ls-gd-add-btn',onClick:startCreateDeck},'\u2795 Neuen Gruppen-Stapel erstellen')
@@ -3676,17 +3682,6 @@ function App(){
   function onGroupDecksForHome(gdecks){
     patch({groupDecks:gdecks});
   }
-  function deleteGroupDeck(deck){
-    if(!confirm('Gruppen-Stapel "'+deck.name+'" l\u00f6schen?\nDer Stapel wird auch aus der Gruppe entfernt.'))return;
-    lsGet('ls_groups',deck._groupId).then(function(grp){
-      if(!grp){showToast('\u274C Gruppe nicht gefunden');return;}
-      var updDecks=(grp.groupDecks||[]).filter(function(d){return d.id!==deck.id;});
-      return lsSet('ls_groups',deck._groupId,Object.assign({},grp,{groupDecks:updDecks}));
-    }).then(function(){
-      patch({groupDecks:(data.groupDecks||[]).filter(function(d){return d.id!==deck.id;})});
-      showToast('\uD83D\uDDD1\uFE0F Stapel gel\u00f6scht');
-    }).catch(function(){showToast('\u274C Fehler beim L\u00f6schen');});
-  }
   var decks=data.decks||[];
   var folders=data.folders||[];
   var effectiveGroupDecks=data.settings&&data.settings.lernSpaceEnabled!==false?data.groupDecks||[]:[];
@@ -3763,10 +3758,7 @@ function App(){
             return h("div",{className:"dcard",key:'g:'+deck.id,onClick:function(){setDeckId(deck.id);}},
               h("div",{className:"dcard-top"},
                 h("div",{className:"demoji"},deck.emoji),
-                h("div",{style:{display:"flex",alignItems:"center",gap:6}},
-                  h("div",{style:{fontSize:".55rem",fontWeight:700,color:"rgba(167,139,250,.7)",background:"rgba(139,92,246,.15)",border:"1px solid rgba(139,92,246,.25)",borderRadius:6,padding:"1px 4px"}},(deck._groupEmoji||'')+" "+(deck._groupName||'Gruppe')),
-                  h("button",{className:"ibtn ibtn-del",onClick:function(e){e.stopPropagation();deleteGroupDeck(deck);}},"\uD83D\uDDD1\uFE0F")
-                )
+                h("div",{style:{fontSize:".55rem",fontWeight:700,color:"rgba(167,139,250,.7)",background:"rgba(139,92,246,.15)",border:"1px solid rgba(139,92,246,.25)",borderRadius:6,padding:"1px 4px"}},(deck._groupEmoji||'')+" "+(deck._groupName||'Gruppe'))
               ),
               h("div",{className:"dname"},deck.name),h("div",{className:"dmeta"},deck.cards.length+" Karten"),
               h("div",{className:"dpill "+(due.length>0?"dpill-due":"dpill-ok")},due.length>0?due.length+" f\u00e4llig":"Alles erledigt"));
