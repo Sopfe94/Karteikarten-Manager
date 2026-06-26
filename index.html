@@ -64,8 +64,9 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 @keyframes fu{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
 /* ── LS Splash Overlay ── */
 /* LS Offline Banner */
-.ls-offline-bar{display:flex;align-items:center;gap:9px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:12px;padding:9px 13px;margin-bottom:14px;font-size:.76rem;font-weight:700;color:#fbbf24;line-height:1.45}
-.ls-offline-bar span{font-size:1rem;flex-shrink:0}
+.ls-offline-bar{display:flex;align-items:center;gap:10px;background:linear-gradient(155deg,rgba(26,14,0,.14) 0%,rgba(13,7,0,.08) 100%);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(212,175,55,.28);border-radius:18px;padding:12px 14px;margin-bottom:14px;font-size:.75rem;font-weight:600;color:rgba(255,255,255,.55);line-height:1.5}
+.ls-offline-bar span{font-size:1.1rem;flex-shrink:0}
+.ls-offline-bar strong{color:rgba(212,175,55,.85);font-weight:700}
 .ls-spl-ov{position:fixed;inset:0;z-index:9990;background:#03020f;overflow:hidden;
   transition:opacity .9s ease}
 .ls-spl-ov.out{opacity:0;pointer-events:none}
@@ -645,7 +646,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.2.40-AKTUELL -->
+<body><!-- KKM-v1.2.41-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -656,7 +657,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.40";
+var KKM_VERSION="1.2.41";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1475,7 +1476,7 @@ function EinstellungenView(p){
             ? h('div',null,
                 h('div',{style:{display:'flex',alignItems:'center',gap:10,marginBottom:12}},
                   (p.googleUser.user_metadata&&p.googleUser.user_metadata.avatar_url)
-                    ?h('img',{src:p.googleUser.user_metadata.avatar_url,style:{width:36,height:36,borderRadius:'50%',objectFit:'cover',flexShrink:0,border:'2px solid rgba(66,133,244,.5)'}})
+                    ?h('img',{src:localStorage.getItem('kkm-gphoto')||p.googleUser.user_metadata.avatar_url,style:{width:36,height:36,borderRadius:'50%',objectFit:'cover',flexShrink:0,border:'2px solid rgba(66,133,244,.5)'}})
                     :h('div',{style:{width:36,height:36,borderRadius:'50%',background:'linear-gradient(135deg,#4285f4,#34a853)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1rem',flexShrink:0}},'G'),
                   h('div',null,
                     h('div',{style:{fontSize:'.82rem',fontWeight:700,color:'#fff'}},'Eingeloggt mit Google'),
@@ -2737,7 +2738,7 @@ function LernSpaceView(p){
           h('div',{className:'ls-av-ring'}),
           renderAvatarEl(
             (lsData&&lsData.avatarPhoto)||(!(lsData&&lsData.avatarPhoto)&&!(lsData&&lsData.avatar&&lsData.avatar!=='av1')&&p.googleUser&&p.googleUser.user_metadata&&p.googleUser.user_metadata.avatar_url)?'photo':(lsData&&lsData.avatar),
-            (lsData&&lsData.avatarPhoto)||((!(lsData&&lsData.avatarPhoto)&&!(lsData&&lsData.avatar&&lsData.avatar!=='av1'))?(p.googleUser&&p.googleUser.user_metadata&&p.googleUser.user_metadata.avatar_url)||null:null),
+            (lsData&&lsData.avatarPhoto)||((!(lsData&&lsData.avatarPhoto)&&!(lsData&&lsData.avatar&&lsData.avatar!=='av1'))?(localStorage.getItem('kkm-gphoto')||(p.googleUser&&p.googleUser.user_metadata&&p.googleUser.user_metadata.avatar_url)||null):null),
             76),
           h('div',{className:'av-edit-btn'},'\u270F\uFE0F')
         ),
@@ -3564,6 +3565,11 @@ function App(){
 
   function handleAuthUser(user){
     _syncUser=user;
+    if(user.user_metadata&&user.user_metadata.avatar_url){
+      fetch(user.user_metadata.avatar_url).then(function(r){return r.blob();}).then(function(b){
+        var rd=new FileReader();rd.onload=function(){try{localStorage.setItem('kkm-gphoto',rd.result);}catch(e){}};rd.readAsDataURL(b);
+      }).catch(function(){});
+    }
     var sb=getSb();
     sb.from('ls_users').select('ls_id,app_data,username,data').eq('authUid',user.id).maybeSingle().then(function(res){
       if(res.data){
