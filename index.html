@@ -653,7 +653,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relative!important}
 </style>
 </head>
-<body><!-- KKM-v1.2.44-AKTUELL -->
+<body><!-- KKM-v1.2.45-AKTUELL -->
 <div id="root"></div>
 <script>
 "use strict";
@@ -664,7 +664,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.44";
+var KKM_VERSION="1.2.45";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1398,12 +1398,9 @@ function KalenderView(p){
           h('div',{className:'fg'},h('label',{className:'fl'},'Datum'),
             h('input',{className:'fi',type:'date',value:form.date,onInput:function(e){setForm(Object.assign({},form,{date:e.target.value}));}})),
           h('div',{className:'fg'},h('label',{className:'fl'},'Art'),
-            h('select',{className:'fi',value:form.type,onChange:function(e){setForm(Object.assign({},form,{type:e.target.value}));}},
-              TYPES.map(function(t){return h('option',{key:t,value:t},t);}))),
+            h(CustomSelect,{value:form.type,onChange:function(v){setForm(Object.assign({},form,{type:v}));},options:TYPES.map(function(t){return {value:t,label:t};})})),
           h('div',{className:'fg'},h('label',{className:'fl'},'Fach'),
-            h('select',{className:'fi',value:form.fachId,onChange:function(e){setForm(Object.assign({},form,{fachId:e.target.value}));}},
-              h('option',{value:''},'Kein Fach'),
-              folders.map(function(f){return h('option',{key:f.id,value:f.id},f.emoji+' '+f.name);}))),
+            h(CustomSelect,{value:form.fachId,onChange:function(v){setForm(Object.assign({},form,{fachId:v}));},options:[{value:'',label:'Kein Fach'}].concat(folders.map(function(f){return {value:f.id,label:f.emoji+' '+f.name};}))})),
           h('div',{className:'fg'},h('label',{className:'fl'},'Notiz (optional)'),
             h('input',{className:'fi',type:'text',value:form.note,placeholder:'z.B. Kapitel 1-5',onInput:function(e){setForm(Object.assign({},form,{note:e.target.value}));}})),
           h('div',{style:{display:'flex',gap:10,marginTop:6}},
