@@ -4862,18 +4862,30 @@ function App(){
     var btn=document.createElement('button');
     btn.id='kkm-dbg-toggle';
     btn.textContent='🐞';
-    btn.style.cssText='position:fixed;bottom:12px;right:12px;z-index:99999;width:44px;height:44px;border-radius:50%;border:none;background:#7c3aed;color:#fff;font-size:20px;box-shadow:0 2px 10px rgba(0,0,0,.5)';
+    /* ueber der Bottom-Nav parken, damit sie nicht verdeckt wird */
+    var LIFT='calc(96px + env(safe-area-inset-bottom))';
+    btn.style.cssText='position:fixed;bottom:'+LIFT+';right:12px;z-index:99999;width:44px;height:44px;'+
+      'border-radius:var(--radius-full);border:1px solid rgba(124,58,237,0.55);background:var(--color-violet);'+
+      'color:#fff;font-size:20px;cursor:pointer;box-shadow:var(--glow-btn)';
     var box=document.createElement('div');
     box.id='kkm-dbg-box';
-    box.style.cssText='position:fixed;bottom:64px;right:12px;left:12px;max-height:45vh;z-index:99999;background:#0d0b25;border:1px solid #7c3aed;border-radius:10px;padding:8px;overflow:auto;display:none;font:11px/1.4 monospace;color:#c4b5fd;white-space:pre-wrap;word-break:break-word';
+    box.style.cssText='position:fixed;bottom:calc(148px + env(safe-area-inset-bottom));right:12px;left:12px;'+
+      'max-height:45vh;z-index:99999;background:var(--color-midnight-surf);'+
+      'border:1px solid rgba(124,58,237,0.3);border-radius:var(--radius-lg);padding:12px;overflow:auto;'+
+      'display:none;font:var(--text-xs)/1.5 var(--font-mono);color:var(--color-violet-light);'+
+      'white-space:pre-wrap;word-break:break-word;box-shadow:var(--shadow-lg)';
     var bar=document.createElement('div');
-    bar.style.cssText='display:flex;gap:6px;margin-bottom:6px';
+    bar.style.cssText='display:flex;gap:8px;margin-bottom:10px';
     var copyBtn=document.createElement('button');
     copyBtn.textContent='Kopieren';
-    copyBtn.style.cssText='flex:1;padding:4px;border:none;border-radius:6px;background:#7c3aed;color:#fff;font-size:13px';
+    copyBtn.style.cssText='flex:1;height:32px;border:none;border-radius:var(--radius-md);'+
+      'background:var(--color-violet);color:#fff;font-size:var(--text-sm);font-family:var(--font-sans);'+
+      'font-weight:600;cursor:pointer';
     var clrBtn=document.createElement('button');
     clrBtn.textContent='Leeren';
-    clrBtn.style.cssText='flex:1;padding:4px;border:none;border-radius:6px;background:#374151;color:#fff;font-size:13px';
+    clrBtn.style.cssText='flex:1;height:32px;border:1px solid rgba(255,255,255,0.12);'+
+      'border-radius:var(--radius-md);background:rgba(255,255,255,0.06);color:#fff;'+
+      'font-size:var(--text-sm);font-family:var(--font-sans);font-weight:600;cursor:pointer';
     var log=document.createElement('div');
     log.id='kkm-dbg-log';
     bar.appendChild(copyBtn);bar.appendChild(clrBtn);
@@ -4893,14 +4905,15 @@ function App(){
     log.textContent=(window.__KKM_LOG||[]).join('\n');
     log.scrollTop=log.scrollHeight;
   }
-  /* Debug-Overlay nur auf Anforderung: ?debug=1 in der URL oder
-     localStorage.setItem('kkm-debug','1') in der Konsole. */
+  /* Debug-Overlay ist in der Beta standardmaessig an.
+     Ausblenden: ?debug=0 in der URL (merkt sich die Entscheidung),
+     wieder einblenden: ?debug=1. */
   function debugEnabled(){
     try{
-      if(location.search.indexOf('debug=1')>-1){localStorage.setItem('kkm-debug','1');return true;}
-      if(location.search.indexOf('debug=0')>-1){localStorage.removeItem('kkm-debug');return false;}
-      return localStorage.getItem('kkm-debug')==='1';
-    }catch(e){ return false; }
+      if(location.search.indexOf('debug=1')>-1){localStorage.removeItem('kkm-debug-off');return true;}
+      if(location.search.indexOf('debug=0')>-1){localStorage.setItem('kkm-debug-off','1');return false;}
+      return localStorage.getItem('kkm-debug-off')!=='1';
+    }catch(e){ return true; }
   }
   if(!debugEnabled())return;
   if(document.body)build(); else window.addEventListener('DOMContentLoaded',build);
