@@ -1,12 +1,12 @@
 {
-  "name": "Karteikarten Manager",
-  "short_name": "Karteikarten",
-  "description": "Lernkarten mit Spaced Repetition",
+  "name": "Lernpuls",
+  "short_name": "Lernpuls",
+  "description": "Karteikarten mit Spaced Repetition – smart lernen",
   "start_url": "/KM/",
 
   "display": "standalone",
-  "background_color": "#0d0b25",
-  "theme_color": "#1e1260",
+  "background_color": "#0F0A1E",
+  "theme_color": "#0F0A1E",
   "orientation": "portrait-primary",
   "lang": "de",
   "icons": [
