@@ -916,8 +916,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 .lp-profil-name{display:inline-block;font-size:20px;font-weight:600;letter-spacing:-0.02em;background:var(--grad-brand);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .lp-profil-email{font-size:13px;color:#fff;margin-top:4px}
 .lp-profil-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:32px}
-.lp-profil-stat{background:rgba(255,255,255,0.03);border:1px solid rgba(124,58,237,0.18);border-radius:14px;padding:20px;text-align:center;transition:box-shadow .25s}
-.lp-profil-stat:hover{box-shadow:0 0 20px rgba(124,58,237,0.35)}
+.lp-profil-stat{background:rgba(255,255,255,0.03);border:1px solid rgba(124,58,237,0.18);border-radius:14px;padding:20px;text-align:center}
 .lp-profil-stat-num{font-size:24px;font-weight:700}
 .lp-profil-stat-label{font-size:11px;font-family:var(--font-mono);color:#fff;text-transform:uppercase;margin-top:4px}
 .lp-settings-toggle-hdr{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;padding:8px 4px;cursor:pointer;margin-top:32px}
@@ -1097,7 +1096,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.47";
+var KKM_VERSION="1.2.48";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2060,8 +2059,8 @@ function ProfilView(p){
           h('div',{className:'lp-profil-email'},email))),
 
       h('div',{className:'lp-profil-stats'},
-        h('div',{className:'lp-profil-stat'},h('div',{className:'lp-profil-stat-num',style:{color:'#F59E0B'}},streak),h('div',{className:'lp-profil-stat-label'},'Tage Streak')),
-        h('div',{className:'lp-profil-stat'},h('div',{className:'lp-profil-stat-num',style:{color:'#fff'}},totalLearned),h('div',{className:'lp-profil-stat-label'},'Karten gelernt'))),
+        h(LpAnimatedProfilStat,{value:streak,color:'#F59E0B',label:'Tage Streak'}),
+        h(LpAnimatedProfilStat,{value:totalLearned,color:'#fff',label:'Karten gelernt'})),
 
       h('div',{style:{display:'flex',flexDirection:'column',gap:4}},
         h('button',{className:'lp-settings-toggle-hdr',onClick:function(){setAccOpen(!accOpen);}},
@@ -4220,6 +4219,16 @@ function LpAnimatedDeckCard(p){
   var cu=useVisibleCountUp(p.progress,1800); var elRef=cu[0]; var animPct=cu[1];
   return h("div",{ref:elRef},
     h(DsCard,{tag:p.tag,title:p.title,progress:animPct,onClick:p.onClick,style:p.style}));
+}
+
+/* Profil-Statkarte (Streak/Karten gelernt) - gleicher Hover-Glow und
+   gleicher Hochzaehl-Mechanismus wie die Stapel-Karten auf der
+   Startseite, nur ohne Fortschrittsbalken. */
+function LpAnimatedProfilStat(p){
+  var cu=useVisibleCountUp(p.value,1800); var elRef=cu[0]; var animVal=cu[1];
+  return h('div',{ref:elRef,className:'lp-profil-stat lp-hover-glow'},
+    h('div',{className:'lp-profil-stat-num',style:{color:p.color}},Math.round(animVal)),
+    h('div',{className:'lp-profil-stat-label'},p.label));
 }
 
 /* Laedt seine Daten NICHT mehr selbst - App startet den Abruf bereits
