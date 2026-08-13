@@ -1096,7 +1096,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.49";
+var KKM_VERSION="1.2.50";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -4465,6 +4465,17 @@ function App(p){
         localStorage.setItem('kkm-onboarded','1');
         setShowLogin(false);
         handleAuthUser(session.user);
+      } else {
+        /* War frueher mit Google eingeloggt (kkm-ls-id sieht wie eine
+           E-Mail aus), aber gerade keine gueltige Sitzung mehr - z.B.
+           weil die als App installierte Seite die Anmeldung nach einem
+           kompletten Neustart nicht behalten hat. Klarer Hinweis statt
+           stillschweigend in den Gastmodus zu rutschen, damit es nicht
+           wie verlorene Karteikarten aussieht. */
+        var prevId=localStorage.getItem('kkm-ls-id');
+        if(prevId&&prevId.indexOf('@')>-1){
+          showToast('⚠️ Anmeldung abgelaufen – bitte neu mit Google anmelden');
+        }
       }
     });
     var sub=sb.auth.onAuthStateChange(function(event,session){
