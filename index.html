@@ -1096,7 +1096,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.48";
+var KKM_VERSION="1.2.49";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2109,6 +2109,7 @@ function ProfilView(p){
             p.googleUser
               ? h(DsButton,{variant:'primary',style:{width:'auto',padding:'0 32px',height:48},onClick:p.onGoogleLogout},h('span',{className:'lp-btn-glow-label'},'Abmelden'))
               : h(DsButton,{variant:'primary',style:{width:'auto',padding:'0 24px',height:48},onClick:p.onGoogleLogin},h('span',{className:'lp-btn-glow-label'},'Mit Google verbinden')),
+            p.googleUser&&h(DsButton,{variant:'ghost',style:{width:'auto',padding:'0 24px',height:48},onClick:p.onForceRestore},h('span',{className:'lp-btn-glow-label'},'🔄 Von Cloud neu laden')),
             h('button',{style:{height:48,padding:'0 32px',border:'1px solid rgba(239,68,68,0.4)',cursor:'pointer',borderRadius:10,background:'transparent',fontSize:15,fontWeight:600,fontFamily:'var(--font-sans)'},onClick:p.onDeleteAccount},
               h('span',{style:{color:'#EF4444'}},'Konto löschen'))))),
 
@@ -4600,6 +4601,28 @@ function App(p){
     });
   }
 
+  /* Manueller Notfall-Restore: laedt app_data direkt aus Supabase und
+     ueberschreibt den lokalen Stand damit, ohne die sonst uebliche
+     "nur wenn neuer"-Pruefung. Noetig weil ein alter Sync-Bug den
+     lokalen _syncedAt einfrieren konnte, sodass der normale Auto-
+     Restore beim Neustart die Cloud-Daten faelschlich als "nicht
+     neuer" einstufte und nie nachlud. */
+  function handleForceRestore(){
+    if(!googleUser){showToast('Bitte zuerst mit Google anmelden.');return;}
+    if(!confirm('Deine lokalen Karteikarten werden durch den Stand aus der Cloud ersetzt. Fortfahren?'))return;
+    var myId=localStorage.getItem('kkm-ls-id');
+    if(!myId){showToast('Kein Cloud-Konto gefunden.');return;}
+    getSb().from('ls_users').select('app_data').eq('ls_id',myId).maybeSingle().then(function(res){
+      if(!res.data||!res.data.app_data){showToast('Keine Cloud-Daten gefunden.');return;}
+      _applyingRemote=true;
+      var restored=res.data.app_data;
+      saveStore(restored);
+      setData(restored);
+      showToast('📥 Cloud-Stand geladen!');
+      setTimeout(function(){_applyingRemote=false;},200);
+    }).catch(function(){showToast('Laden fehlgeschlagen.');});
+  }
+
   useEffect(function(){
     var us=loadUpdStore();
     if(us.pendingReload){us.pendingReload=false;saveUpdStore(us);window.location.reload();return;}
@@ -4632,7 +4655,7 @@ function App(p){
     localStorage.setItem('kkm-cleanup-date',today);
   },[]);
 
-  function patch(pp){setData(function(prev){return Object.assign({},prev,pp);});}
+  function patch(pp){setData(function(prev){return Object.assign({},prev,pp,{_syncedAt:Date.now()});});}
   function switchNav(id){
     setDeckId(null);setQsStep(null);
     if(id==='dashboard'){setView('decks');setDeckListMode('home');}
@@ -4991,7 +5014,7 @@ function App(p){
           view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck}),
           qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs}),
           view==="editor"&&!qsStep&&h("div",null,h(LpEditorPlaceholder,{onOpenDecks:function(){switchNav('explorer');}}),renderFooter()),
-          view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast}),renderFooter()),
+          view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onForceRestore:handleForceRestore,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast}),renderFooter()),
           view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,googleUser:googleUser,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},onGroupDecksForHome:onGroupDecksForHome}),renderFooter()),
           view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}}),renderFooter()),
           view==="updates"&&!qsStep&&h(UpdatesView,{onBack:function(){setView("decks");setDeckListMode("home");},onShowImp:function(){setShowImp(true);},onShowDat:function(){setShowDat(true);}}))),
