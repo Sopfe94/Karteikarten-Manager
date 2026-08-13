@@ -865,8 +865,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 .lp-dash-greeting{font-size:30px;font-weight:700;letter-spacing:-0.03em;line-height:1.15;margin-bottom:8px;color:#fff}
 .lp-dash-greeting .name{background:var(--grad-brand);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;cursor:pointer;border:none;background-color:transparent}
 .lp-dash-sub{font-size:14px;color:var(--color-violet-ghost);line-height:1.6}
-.lp-goal-card{background:linear-gradient(135deg,rgba(124,58,237,0.14),rgba(6,182,212,0.06));border:1px solid rgba(124,58,237,0.22);border-radius:28px;padding:24px;display:flex;flex-direction:column;gap:20px;box-shadow:0 0 0 1px rgba(255,255,255,0.06),0 0 16px rgba(103,232,249,0.14);margin-top:32px;transition:box-shadow 200ms ease}
-.lp-goal-card:hover{box-shadow:0 0 0 1px rgba(167,139,250,0.55),0 0 20px rgba(124,58,237,0.5),0 0 34px rgba(6,182,212,0.35)}
+.lp-goal-card{background:linear-gradient(135deg,rgba(124,58,237,0.14),rgba(6,182,212,0.06));border:1px solid rgba(255,255,255,0.35);border-radius:28px;padding:24px;display:flex;flex-direction:column;gap:20px;margin-top:32px}
 .lp-goal-card-header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .lp-goal-label{font-family:var(--font-mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--color-violet-ghost);margin-bottom:6px}
 .lp-goal-count{font-size:20px;font-weight:600;color:#fff}
@@ -4865,7 +4864,6 @@ function App(){
                     return h(DsCard,{key:(deck._groupId?'g:':'')+deck.id,
                       tag:deckStatusTag(pct).label,
                       title:deck.name,
-                      subtitle:(deck.cards||[]).length+" Karten",
                       progress:pct,
                       onClick:function(){setDeckId(deck.id);},
                       style:{minHeight:150}});
