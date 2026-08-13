@@ -841,7 +841,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 .lp-mobile-topbar-logo{display:flex;flex-direction:column;align-items:flex-start;gap:4px;cursor:pointer;background:none;border:none;padding:0}
 .lp-mobile-topbar-logo .lp-logo-text{font-size:20px}
 .lp-mobile-topbar-logo .lp-logo-line{width:27.5px;height:1.25px}
-.lp-mobile-topbar-logo .lp-logo-slogan{font-size:11px}
+.lp-mobile-topbar-logo .lp-logo-slogan{font-size:7px}
 
 .lp-content-scroll{flex:1;overflow-y:auto;padding:24px 16px 96px;-webkit-overflow-scrolling:touch}
 @media(min-width:768px){
@@ -4125,21 +4125,12 @@ function LpDashboardGreeting(){
    unangetastet bleibt. Zeigt ausschliesslich Felder, die im
    Datenmodell wirklich existieren (Name, Avatar, "Freund seit") -
    es gibt aktuell keine Online-Praesenz oder Pro-Freund-Streaks. */
+/* Laedt seine Daten NICHT mehr selbst - App startet den Abruf bereits
+   beim Booten (parallel zum Splash), damit die Sektion beim Erreichen
+   des Dashboards schon fertig ist statt erst 5-10s spaeter nachzuladen.
+   p.state = {loading, friends} kommt von App runter. */
 function DashboardFriends(p){
-  var st=useState({loading:true,friends:[]}); var state=st[0]; var setState=st[1];
-  useEffect(function(){
-    var cancelled=false;
-    var myId=getLsId();
-    if(!myId){setState({loading:false,friends:[]});return;}
-    lsGet('ls_users',myId).then(function(me){
-      var list=((me&&me.friends)||[]).slice().sort(function(a,b){return (b.since||0)-(a.since||0);}).slice(0,3);
-      if(!list.length){if(!cancelled)setState({loading:false,friends:[]});return;}
-      Promise.all(list.map(function(f){
-        return lsGet('ls_users',f.id).then(function(prof){return {id:f.id,since:f.since,profile:prof};}).catch(function(){return {id:f.id,since:f.since,profile:null};});
-      })).then(function(results){if(!cancelled)setState({loading:false,friends:results});});
-    }).catch(function(){if(!cancelled)setState({loading:false,friends:[]});});
-    return function(){cancelled=true;};
-  },[]);
+  var state=p.state||{loading:true,friends:[]};
   if(state.loading)return null;
   return h('div',{className:'lp-dash-friends'},
     h('div',{className:'lp-section-title'},'Freunde aktiv'),
@@ -4348,6 +4339,24 @@ function App(){
   var ums=useState(false); var showUsernameModal=ums[0]; var setShowUsernameModal=ums[1];
   var sus=useState(loadSocialUsername()); var socialUsername=sus[0]; var setSocialUsername=sus[1];
   var lscvs=useState(true); var lsContentVis=lscvs[0]; var setLsContentVis=lscvs[1];
+
+  /* Freunde fuer die Startseite bereits beim App-Start laden (parallel
+     zum Splash), nicht erst wenn das Dashboard gerendert wird - sonst
+     erscheint die Sektion erst 5-10s nach dem Erreichen der Startseite. */
+  var dfs=useState({loading:true,friends:[]}); var dashFriends=dfs[0]; var setDashFriends=dfs[1];
+  useEffect(function(){
+    var cancelled=false;
+    var myId=getLsId();
+    if(!myId){setDashFriends({loading:false,friends:[]});return;}
+    lsGet('ls_users',myId).then(function(me){
+      var list=((me&&me.friends)||[]).slice().sort(function(a,b){return (b.since||0)-(a.since||0);}).slice(0,3);
+      if(!list.length){if(!cancelled)setDashFriends({loading:false,friends:[]});return;}
+      Promise.all(list.map(function(f){
+        return lsGet('ls_users',f.id).then(function(prof){return {id:f.id,since:f.since,profile:prof};}).catch(function(){return {id:f.id,since:f.since,profile:null};});
+      })).then(function(results){if(!cancelled)setDashFriends({loading:false,friends:results});});
+    }).catch(function(){if(!cancelled)setDashFriends({loading:false,friends:[]});});
+    return function(){cancelled=true;};
+  },[]);
 
   useEffect(function(){
     var sb=getSb();
@@ -4869,7 +4878,7 @@ function App(){
                       style:{minHeight:150}});
                   })),
 
-            lpLernSpaceOn&&h(DashboardFriends,{onNav:switchNav})),
+            lpLernSpaceOn&&h(DashboardFriends,{onNav:switchNav,state:dashFriends})),
 
           view==="decks"&&!activeDeck&&!qsStep&&deckListMode==="manage"&&h("div",null,
             h("button",{className:"manage-back",onClick:function(){setDeckListMode("home");}},"← Startseite"),
