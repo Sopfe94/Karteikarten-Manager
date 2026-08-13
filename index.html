@@ -1096,7 +1096,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.51";
+var KKM_VERSION="1.2.52";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1405,7 +1405,7 @@ function deckStatusTag(pct){
 function deckPct(deck){
   var cards=deck.cards||[];
   if(cards.length===0)return 0;
-  var learned=cards.filter(function(c){return c.box>0;}).length;
+  var learned=cards.filter(function(c){return c.lvl>0;}).length;
   return Math.round(learned/cards.length*100);
 }
 function formatDashDate(){
@@ -2557,7 +2557,7 @@ function lsSet(col,docId,data){
 }
 function copyDeckNewIds(deck){
   var newDeck=Object.assign({},deck,{id:uid()});
-  newDeck.cards=(deck.cards||[]).map(function(c){return Object.assign({},c,{id:uid(),box:0,nextReview:null});});
+  newDeck.cards=(deck.cards||[]).map(function(c){return Object.assign({},c,{id:uid(),lvl:0,nextReview:null});});
   if(newDeck.folders)(newDeck.folders||[]).map(function(f){return Object.assign({},f,{id:uid()});});
   return newDeck;
 }
@@ -4988,7 +4988,7 @@ function App(p){
                   h('span',{className:'lp-cal-type-badge',style:{background:ti.color+'22',color:ti.color}},ti.label),
                   h('span',{className:'lp-row-sub'},'in '+item.daysUntil+(item.daysUntil===1?' Tag':' Tagen'))))),
             item.decks.slice(0,2).map(function(dk){
-              var dkPct=(dk.cards||[]).length>0?Math.round((dk.cards||[]).filter(function(c){return c.box>0;}).length/(dk.cards||[]).length*100):0;
+              var dkPct=(dk.cards||[]).length>0?Math.round((dk.cards||[]).filter(function(c){return c.lvl>0;}).length/(dk.cards||[]).length*100):0;
               return h('div',{key:dk.id,style:{display:'flex',alignItems:'center',gap:8,background:'rgba(255,255,255,.05)',borderRadius:10,padding:'8px 12px'}},
                 h('span',{style:{fontSize:'17px'}},dk.emoji),
                 h('span',{style:{flex:1,fontSize:13,fontWeight:600,color:'#fff'}},dk.name),
