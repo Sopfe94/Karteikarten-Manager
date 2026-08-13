@@ -913,7 +913,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 /* Profil */
 .lp-profil-head{display:flex;align-items:center;gap:20px}
 .lp-profil-avatar{width:72px;height:72px;border-radius:50%;background:var(--grad-brand-135);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:700;color:#fff;flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,0.08)}
-.lp-profil-name{font-size:20px;font-weight:600;letter-spacing:-0.02em;background:var(--grad-brand);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.lp-profil-name{display:inline-block;font-size:20px;font-weight:600;letter-spacing:-0.02em;background:var(--grad-brand);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .lp-profil-email{font-size:13px;color:#fff;margin-top:4px}
 .lp-profil-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:32px}
 .lp-profil-stat{background:rgba(255,255,255,0.03);border:1px solid rgba(124,58,237,0.18);border-radius:14px;padding:20px;text-align:center;transition:box-shadow .25s}
@@ -1097,7 +1097,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.46";
+var KKM_VERSION="1.2.47";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
