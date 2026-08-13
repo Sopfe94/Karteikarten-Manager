@@ -2054,7 +2054,7 @@ function ProfilView(p){
     h("button",{className:"back-btn",style:{marginBottom:8,marginTop:4},onClick:p.onBack},"← Startseite"),
     h('div',{style:{padding:'12px 4px 40px',display:'flex',flexDirection:'column',gap:32,maxWidth:640}},
       h('div',{className:'lp-profil-head'},
-        h(DsAvatar,{name:name,size:'xl'}),
+        h(DsAvatar,{name:name,size:'xl',src:p.photo}),
         h('div',null,
           h('div',{className:'lp-profil-name'},name),
           h('div',{className:'lp-profil-email'},email))),
@@ -4080,7 +4080,7 @@ function LpSidebar(p){
           h(LpNavIcon,null,it.icon()),it.longLabel);
       })),
     h('button',{className:'lp-sidebar-footer',onClick:function(){p.onNav('profil');}},
-      h(DsAvatar,{name:p.userName,size:'sm'}),
+      h(DsAvatar,{name:p.userName,size:'sm',src:p.photo}),
       h('div',null,
         h('div',{className:'lp-sidebar-user-name'},p.userName),
         h('div',{className:'lp-sidebar-user-streak'},'🔥 '+p.streak+' Tage'))));
@@ -4101,7 +4101,7 @@ function LpBottomNav(p){
 function LpMobileTopbar(p){
   return h('div',{className:'lp-mobile-topbar'},
     h('button',{className:'lp-mobile-topbar-avatar',onClick:function(){p.onNav('profil');}},
-      h(DsAvatar,{name:p.userName,size:'sm'})),
+      h(DsAvatar,{name:p.userName,size:'sm',src:p.photo})),
     h('button',{className:'lp-mobile-topbar-logo',onClick:function(){p.onNav('dashboard');}},
       h('div',{className:'lp-logo-text'},h('span',{className:'lern'},'Lern'),h('span',{className:'puls'},'puls')),
       h('div',{className:'lp-logo-line'}),
@@ -4433,6 +4433,12 @@ function App(p){
   var qcs=useState(null); var qsConfig=qcs[0]; var setQsConfig=qcs[1];
   var tm=useToast(); var toast=tm[0]; var showToast=tm[1];
   var gus=useState(null); var googleUser=gus[0]; var setGoogleUser=gus[1];
+  /* Google-Profilbild: erst aus dem Cache lesen (falls von einer
+     frueheren Session schon geladen), damit wiederkehrende Nutzer es
+     sofort sehen; wird in handleAuthUser aktualisiert sobald der
+     frische Download fertig ist. */
+  var gph=useState(function(){try{return localStorage.getItem('kkm-gphoto');}catch(e){return null;}});
+  var googlePhoto=gph[0]; var setGooglePhoto=gph[1];
   var ums=useState(false); var showUsernameModal=ums[0]; var setShowUsernameModal=ums[1];
   var sus=useState(loadSocialUsername()); var socialUsername=sus[0]; var setSocialUsername=sus[1];
   var lscvs=useState(true); var lsContentVis=lscvs[0]; var setLsContentVis=lscvs[1];
@@ -4490,9 +4496,22 @@ function App(p){
 
   function handleAuthUser(user){
     _syncUser=user;
-    if(user.user_metadata&&user.user_metadata.avatar_url){
-      fetch(user.user_metadata.avatar_url).then(function(r){return r.blob();}).then(function(b){
-        var rd=new FileReader();rd.onload=function(){try{localStorage.setItem('kkm-gphoto',rd.result);}catch(e){}};rd.readAsDataURL(b);
+    var avatarUrl=user.user_metadata&&(user.user_metadata.avatar_url||user.user_metadata.picture);
+    if(avatarUrl){
+      /* Sofort die Live-Google-URL als Foto setzen (ein <img src> laedt
+         sie direkt, davon ist CORS nicht betroffen). Der Fetch+Base64-
+         Umweg darunter ist nur eine Offline-Cache-Optimierung - schlaegt
+         er fehl (z.B. CORS beim Byte-Zugriff per fetch()), bleibt die
+         Live-URL trotzdem aktiv und das Bild wird weiterhin angezeigt,
+         statt komplett zu fehlen. */
+      setGooglePhoto(function(cur){return cur||avatarUrl;});
+      fetch(avatarUrl).then(function(r){return r.blob();}).then(function(b){
+        var rd=new FileReader();
+        rd.onload=function(){
+          try{localStorage.setItem('kkm-gphoto',rd.result);}catch(e){}
+          setGooglePhoto(rd.result);
+        };
+        rd.readAsDataURL(b);
       }).catch(function(){});
     }
     var sb=getSb();
@@ -4923,9 +4942,9 @@ function App(p){
   return h("div",{id:"lp-app-shell"},
     showUsernameModal&&h(UsernamePickerModal,{onDone:function(uname){setSocialUsername(uname);setShowUsernameModal(false);showToast('🎉 Benutzername gespeichert: '+uname);}}),
     showLernEmpf&&lernEmpf.length>0&&_leOverlay,
-    h(LpSidebar,{navId:navId,onNav:switchNav,userName:lpUserName,avatarLetter:lpAvatarLetter,streak:lpStreak,lernSpaceEnabled:lpLernSpaceOn}),
+    h(LpSidebar,{navId:navId,onNav:switchNav,userName:lpUserName,avatarLetter:lpAvatarLetter,streak:lpStreak,lernSpaceEnabled:lpLernSpaceOn,photo:googlePhoto}),
     h("div",{className:"lp-app-content"},
-      h(LpMobileTopbar,{onNav:switchNav,avatarLetter:lpAvatarLetter,userName:lpUserName}),
+      h(LpMobileTopbar,{onNav:switchNav,avatarLetter:lpAvatarLetter,userName:lpUserName,photo:googlePhoto}),
       h("div",{className:"lp-content-scroll",id:"lp-content-scroll"},
         h("div",{className:"main",style:{padding:0}},
           view==="decks"&&!activeDeck&&!qsStep&&deckListMode==="home"&&h("div",null,
@@ -4963,7 +4982,7 @@ function App(p){
           view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck}),
           qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs}),
           view==="editor"&&!qsStep&&h("div",null,h(LpEditorPlaceholder,{onOpenDecks:function(){switchNav('explorer');}}),renderFooter()),
-          view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast}),renderFooter()),
+          view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast}),renderFooter()),
           view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,googleUser:googleUser,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},onGroupDecksForHome:onGroupDecksForHome}),renderFooter()),
           view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}}),renderFooter()),
           view==="updates"&&!qsStep&&h(UpdatesView,{onBack:function(){setView("decks");setDeckListMode("home");},onShowImp:function(){setShowImp(true);},onShowDat:function(){setShowDat(true);}}))),
