@@ -839,9 +839,9 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 .lp-mobile-topbar{min-height:56px;flex-shrink:0;display:flex;align-items:center;gap:12px;padding:12px 16px;padding-top:calc(10px + env(safe-area-inset-top));border-bottom:1px solid rgba(255,255,255,0.06)}
 .lp-mobile-topbar-avatar{background:none;border:none;padding:0;cursor:pointer;flex-shrink:0;display:flex;position:relative}
 .lp-mobile-topbar-logo{display:flex;flex-direction:column;align-items:flex-start;gap:4px;cursor:pointer;background:none;border:none;padding:0}
-.lp-mobile-topbar-logo .lp-logo-text{font-size:20px}
-.lp-mobile-topbar-logo .lp-logo-line{width:27.5px;height:1.25px}
-.lp-mobile-topbar-logo .lp-logo-slogan{font-size:7px}
+.lp-mobile-topbar-logo .lp-logo-text{font-size:23px}
+.lp-mobile-topbar-logo .lp-logo-line{width:32px;height:1.4px}
+.lp-mobile-topbar-logo .lp-logo-slogan{font-size:8px}
 
 .lp-content-scroll{flex:1;overflow-y:auto;padding:24px 16px 96px;-webkit-overflow-scrolling:touch}
 @media(min-width:768px){
@@ -4092,7 +4092,7 @@ function LpBottomNav(p){
 function LpMobileTopbar(p){
   return h('div',{className:'lp-mobile-topbar'},
     h('button',{className:'lp-mobile-topbar-avatar',onClick:function(){p.onNav('profil');}},
-      h(DsAvatar,{name:p.userName,size:'xs'})),
+      h(DsAvatar,{name:p.userName,size:'sm'})),
     h('button',{className:'lp-mobile-topbar-logo',onClick:function(){p.onNav('dashboard');}},
       h('div',{className:'lp-logo-text'},h('span',{className:'lern'},'Lern'),h('span',{className:'puls'},'puls')),
       h('div',{className:'lp-logo-line'}),
@@ -4293,7 +4293,7 @@ function LpSearchField(p){
             h('circle',{cx:8,cy:8,r:5.5}),h('path',{d:'M16 16l-3.8-3.8'}))))));
 }
 
-function App(){
+function App(p){
 
   var _kkOC=parseInt(localStorage.getItem('kkm-open-count')||'0')+1;localStorage.setItem('kkm-open-count',String(_kkOC));
   var slo=useState(!localStorage.getItem('kkm-onboarded'));var showLogin=slo[0];var setShowLogin=slo[1];
@@ -4339,24 +4339,9 @@ function App(){
   var ums=useState(false); var showUsernameModal=ums[0]; var setShowUsernameModal=ums[1];
   var sus=useState(loadSocialUsername()); var socialUsername=sus[0]; var setSocialUsername=sus[1];
   var lscvs=useState(true); var lsContentVis=lscvs[0]; var setLsContentVis=lscvs[1];
-
-  /* Freunde fuer die Startseite bereits beim App-Start laden (parallel
-     zum Splash), nicht erst wenn das Dashboard gerendert wird - sonst
-     erscheint die Sektion erst 5-10s nach dem Erreichen der Startseite. */
-  var dfs=useState({loading:true,friends:[]}); var dashFriends=dfs[0]; var setDashFriends=dfs[1];
-  useEffect(function(){
-    var cancelled=false;
-    var myId=getLsId();
-    if(!myId){setDashFriends({loading:false,friends:[]});return;}
-    lsGet('ls_users',myId).then(function(me){
-      var list=((me&&me.friends)||[]).slice().sort(function(a,b){return (b.since||0)-(a.since||0);}).slice(0,3);
-      if(!list.length){if(!cancelled)setDashFriends({loading:false,friends:[]});return;}
-      Promise.all(list.map(function(f){
-        return lsGet('ls_users',f.id).then(function(prof){return {id:f.id,since:f.since,profile:prof};}).catch(function(){return {id:f.id,since:f.since,profile:null};});
-      })).then(function(results){if(!cancelled)setDashFriends({loading:false,friends:results});});
-    }).catch(function(){if(!cancelled)setDashFriends({loading:false,friends:[]});});
-    return function(){cancelled=true;};
-  },[]);
+  /* Wird jetzt in Boot() geladen (parallel zum Splash) und nur noch
+     durchgereicht, damit der Splash den Ladezustand kennt. */
+  var dashFriends=p.dashFriends||{loading:true,friends:[]};
 
   useEffect(function(){
     var sb=getSb();
@@ -4979,18 +4964,51 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   h(function Boot(){
     var hs=useState(false); var hiding=hs[0]; var setHiding=hs[1];
     var ss=useState(true); var shown=ss[0]; var setShown=ss[1];
-    function skip(){
-      if(hiding)return;
-      setHiding(true);
-      setTimeout(function(){setShown(false);},600);
-    }
+    var mts=useState(false); var minTimeDone=mts[0]; var setMinTimeDone=mts[1];
+
+    /* Freunde-Daten der Startseite bereits hier laden (parallel zum
+       Splash) statt erst wenn das Dashboard gerendert wird. Der Splash
+       wartet unten darauf, damit die Sektion beim Erreichen der
+       Startseite garantiert schon fertig geladen ist. */
+    var dfs=useState({loading:true,friends:[]}); var dashFriends=dfs[0]; var setDashFriends=dfs[1];
     useEffect(function(){
-      setShown(true);setHiding(false);
-      var t1=setTimeout(function(){setHiding(true);},8400);
-      var t2=setTimeout(function(){setShown(false);},9000);
-      return function(){clearTimeout(t1);clearTimeout(t2);};
+      var cancelled=false;
+      var myId=getLsId();
+      if(!myId){setDashFriends({loading:false,friends:[]});return;}
+      lsGet('ls_users',myId).then(function(me){
+        var list=((me&&me.friends)||[]).slice().sort(function(a,b){return (b.since||0)-(a.since||0);}).slice(0,3);
+        if(!list.length){if(!cancelled)setDashFriends({loading:false,friends:[]});return;}
+        Promise.all(list.map(function(f){
+          return lsGet('ls_users',f.id).then(function(prof){return {id:f.id,since:f.since,profile:prof};}).catch(function(){return {id:f.id,since:f.since,profile:null};});
+        })).then(function(results){if(!cancelled)setDashFriends({loading:false,friends:results});});
+      }).catch(function(){if(!cancelled)setDashFriends({loading:false,friends:[]});});
+      return function(){cancelled=true;};
     },[]);
-    return h("div",null,shown&&h(Splash,{out:hiding,onSkip:skip}),h(App,null));
+
+    function finishSplash(){
+      setHiding(function(prevHiding){
+        if(prevHiding)return prevHiding;
+        setTimeout(function(){setShown(false);},600);
+        return true;
+      });
+    }
+    function skip(){finishSplash();}
+    useEffect(function(){
+      setShown(true);setHiding(false);setMinTimeDone(false);
+      /* Mindestlaufzeit, damit die Splash-Animation (Buchstaben,
+         Sweep, Ladebalken) immer ganz durchlaeuft, auch wenn die
+         Freunde-Daten viel schneller da sind. */
+      var t1=setTimeout(function(){setMinTimeDone(true);},8400);
+      /* Sicherheitsnetz: falls das Laden haengt, den Splash trotzdem
+         irgendwann beenden statt den Nutzer auszusperren. */
+      var tMax=setTimeout(finishSplash,15000);
+      return function(){clearTimeout(t1);clearTimeout(tMax);};
+    },[]);
+    useEffect(function(){
+      if(minTimeDone&&!dashFriends.loading)finishSplash();
+    },[minTimeDone,dashFriends.loading]);
+
+    return h("div",null,shown&&h(Splash,{out:hiding,onSkip:skip}),h(App,{dashFriends:dashFriends}));
   },null));
 
 if("serviceWorker" in navigator){
