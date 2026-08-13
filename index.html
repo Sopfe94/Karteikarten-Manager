@@ -4992,7 +4992,11 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         return true;
       });
     }
-    function skip(){finishSplash();}
+    /* Antippen des Splash ueberspringt nur die Mindestlaufzeit der
+       Animation - das Warten auf die Freunde-Daten wird NICHT
+       umgangen. Sonst hebt ein ungeduldiges Antippen genau das
+       Verhalten auf, das hier eingebaut wurde. */
+    function skip(){setMinTimeDone(true);}
     useEffect(function(){
       setShown(true);setHiding(false);setMinTimeDone(false);
       /* Mindestlaufzeit, damit die Splash-Animation (Buchstaben,
