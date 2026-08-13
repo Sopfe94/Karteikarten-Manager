@@ -1153,10 +1153,10 @@ var _syncUser=null; var _syncTimeout=null; var _realtimeChannel=null; var _apply
   // Hintergrund-Sync: Falls Supabase den Username noch nicht kennt, nachholen
   setTimeout(function(){
     try{
-      getSb().from('ls_users').select('username').eq('ls_id',_id).maybeSingle().then(function(res){
+      withTimeout(getSb().from('ls_users').select('username').eq('ls_id',_id).maybeSingle(),8000).then(function(res){
         if(res.data&&res.data.username)return; // Supabase hat schon einen Username → nichts zu tun
         dbg('🔄 Username-Sync: Schreibe',_un,'nach Supabase für',_id);
-        getSb().from('ls_users').upsert({ls_id:_id,username:_un},{onConflict:'ls_id',ignoreDuplicates:false})
+        withTimeout(getSb().from('ls_users').upsert({ls_id:_id,username:_un},{onConflict:'ls_id',ignoreDuplicates:false}),8000)
           .then(function(r){if(r.error)dbg('❌ Username-Sync Fehler:',r.error.message);else dbg('✅ Username-Sync OK');})
           .catch(function(e){dbg('❌ Username-Sync catch:',e);});
       }).catch(function(){});
@@ -2446,10 +2446,21 @@ function getLsId(){
   }
   return id;
 }
+/* Race eine (Supabase-)Promise gegen ein Zeitlimit, damit ein
+   haengender oder pausierter Server nicht 30+ Sekunden blockiert,
+   sondern nach spaetestens `ms` als Fehler durchschlaegt. Bricht die
+   eigentliche Anfrage nicht ab, laesst aber aufrufenden Code nicht
+   haengen. */
+function withTimeout(promiseLike,ms){
+  return Promise.race([
+    Promise.resolve(promiseLike),
+    new Promise(function(_,reject){setTimeout(function(){reject(new Error('Zeitüberschreitung nach '+ms+'ms'));},ms);})
+  ]);
+}
 function lsGet(col,docId){
   if(col==='ls_users'){
     dbg('lsGet ls_users:',docId);
-    return getSb().from('ls_users').select('data').eq('ls_id',docId).limit(1)
+    return withTimeout(getSb().from('ls_users').select('data').eq('ls_id',docId).limit(1),8000)
       .then(function(res){
         if(res.error){dbg('❌ lsGet error:',res.error.message||res.error);throw res.error;}
         var row=(res.data&&res.data.length)?res.data[0]:null;
@@ -2459,7 +2470,7 @@ function lsGet(col,docId){
   }
   if(col==='ls_groups'){
     dbg('lsGet ls_groups:',docId);
-    return getSb().from('ls_groups').select('*').eq('id',docId).limit(1)
+    return withTimeout(getSb().from('ls_groups').select('*').eq('id',docId).limit(1),8000)
       .then(function(res){
         if(res.error){dbg('❌ lsGet groups error:',res.error.message||res.error);throw res.error;}
         var row=(res.data&&res.data.length)?res.data[0]:null;
@@ -4984,7 +4995,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
              ihn beim Rendern selbst nach und der Name "poppt" Sekunden
              spaeter in die schon sichtbare Zeile nach. */
           var profP=lsGet('ls_users',f.id).catch(function(){return null;});
-          var unameP=getSb().from('ls_users').select('username').eq('ls_id',f.id).maybeSingle()
+          var unameP=withTimeout(getSb().from('ls_users').select('username').eq('ls_id',f.id).maybeSingle(),8000)
             .then(function(res){return (res.data&&res.data.username)||null;}).catch(function(){return null;});
           return Promise.all([profP,unameP]).then(function(r){
             if(r[1])_unCache[f.id]=r[1];
