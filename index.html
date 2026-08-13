@@ -865,7 +865,8 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 .lp-dash-greeting{font-size:30px;font-weight:700;letter-spacing:-0.03em;line-height:1.15;margin-bottom:8px;color:#fff}
 .lp-dash-greeting .name{background:var(--grad-brand);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;cursor:pointer;border:none;background-color:transparent}
 .lp-dash-sub{font-size:15px;color:var(--c-pur2);line-height:1.6}
-.lp-goal-card{background:linear-gradient(135deg,rgba(124,58,237,0.14),rgba(6,182,212,0.06));border:1px solid rgba(124,58,237,0.22);border-radius:28px;padding:24px;display:flex;flex-direction:column;gap:20px;box-shadow:0 0 0 1px rgba(255,255,255,0.06),0 0 16px rgba(103,232,249,0.14);margin-top:32px}
+.lp-goal-card{background:linear-gradient(135deg,rgba(124,58,237,0.14),rgba(6,182,212,0.06));border:1px solid rgba(124,58,237,0.22);border-radius:28px;padding:24px;display:flex;flex-direction:column;gap:20px;box-shadow:0 0 0 1px rgba(255,255,255,0.06),0 0 16px rgba(103,232,249,0.14);margin-top:32px;transition:box-shadow 200ms ease}
+.lp-goal-card:hover{box-shadow:0 0 0 1px rgba(167,139,250,0.55),0 0 20px rgba(124,58,237,0.5),0 0 34px rgba(6,182,212,0.35)}
 .lp-goal-card-header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .lp-goal-label{font-family:var(--font-mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--c-pur2);margin-bottom:8px}
 .lp-goal-count{font-size:20px;font-weight:600;color:#fff}
@@ -889,8 +890,19 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 .lp-deck-proghead{display:flex;justify-content:space-between;margin-bottom:8px}
 .lp-deck-proglbl{font-size:11px;font-family:var(--font-mono);letter-spacing:0.1em;color:rgba(255,255,255,0.45);text-transform:uppercase}
 .lp-deck-progval{font-size:11px;font-family:var(--font-mono);color:#7C3AED;font-weight:700}
-.lp-netz-teaser{background:linear-gradient(135deg,rgba(124,58,237,0.12),rgba(6,182,212,0.05));border:1px solid rgba(124,58,237,0.2);border-radius:20px;padding:20px;margin-top:32px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;cursor:pointer;transition:box-shadow .25s}
-.lp-netz-teaser:hover{box-shadow:0 4px 20px rgba(124,58,237,0.25)}
+/* Hover-Glow — exakter Ring aus dem Prototyp (cardGlowStyle), auf alle
+   Karten/Zeilen anwendbar, die den gleichen Hover-Effekt zeigen sollen. */
+.lp-hover-glow{transition:box-shadow 200ms ease;
+  box-shadow:0 0 0 1px rgba(167,139,250,0),0 0 20px rgba(124,58,237,0),0 0 34px rgba(6,182,212,0)}
+.lp-hover-glow:hover{
+  box-shadow:0 0 0 1px rgba(167,139,250,0.55),0 0 20px rgba(124,58,237,0.5),0 0 34px rgba(6,182,212,0.35)}
+
+.lp-dash-friends{display:flex;flex-direction:column;gap:16px;margin-top:32px}
+.lp-dash-friend-row{display:flex;align-items:center;gap:12px;padding:14px;
+  background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);
+  border-radius:14px;cursor:pointer}
+.lp-dash-friend-name{font-size:13px;font-weight:600;color:#fff}
+.lp-dash-friend-sub{font-size:11px;color:rgba(255,255,255,0.3);margin-top:2px}
 
 /* Editor placeholder */
 .lp-editor-ph{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:20px;padding:64px 24px;min-height:60vh}
@@ -3959,7 +3971,8 @@ function DsButton(p){
 /* Card — _ds/components/core/Card.jsx (dark) */
 function DsCard(p){
   var sub='rgba(255,255,255,0.45)';
-  return h('div',{onClick:p.onClick,className:p.className,style:Object.assign({
+  var cls='lp-hover-glow'+(p.className?' '+p.className:'');
+  return h('div',{onClick:p.onClick,className:cls,style:Object.assign({
       background:'#0D0A1A',border:'1px solid rgba(255,255,255,0.07)',
       borderRadius:16,padding:'20px 24px',display:'flex',flexDirection:'column',
       gap:10,cursor:p.onClick?'pointer':'default',
@@ -4104,6 +4117,48 @@ function LpDashboardGreeting(){
           h(DsButton,{variant:'ghost',onClick:function(){setShowModal(false);}},userName?'Abbrechen':'Überspringen'),
           h(DsButton,{variant:'primary',style:{width:'auto',padding:'0 24px',height:40},onClick:handleSave},
             h('span',{className:'lp-btn-glow-label'},'Speichern'))))));
+}
+
+/* Echte Freunde-Liste auf der Startseite (ersetzt den fruehreren
+   "Dein Netzwerk"-Teaser). Nutzt dieselben lsGet/getLsId-Helfer wie
+   LernSpaceView, nur lesend, damit die eigentliche Netzwerk-Ansicht
+   unangetastet bleibt. Zeigt ausschliesslich Felder, die im
+   Datenmodell wirklich existieren (Name, Avatar, "Freund seit") -
+   es gibt aktuell keine Online-Praesenz oder Pro-Freund-Streaks. */
+function DashboardFriends(p){
+  var st=useState({loading:true,friends:[]}); var state=st[0]; var setState=st[1];
+  useEffect(function(){
+    var cancelled=false;
+    var myId=getLsId();
+    if(!myId){setState({loading:false,friends:[]});return;}
+    lsGet('ls_users',myId).then(function(me){
+      var list=((me&&me.friends)||[]).slice().sort(function(a,b){return (b.since||0)-(a.since||0);}).slice(0,3);
+      if(!list.length){if(!cancelled)setState({loading:false,friends:[]});return;}
+      Promise.all(list.map(function(f){
+        return lsGet('ls_users',f.id).then(function(prof){return {id:f.id,since:f.since,profile:prof};}).catch(function(){return {id:f.id,since:f.since,profile:null};});
+      })).then(function(results){if(!cancelled)setState({loading:false,friends:results});});
+    }).catch(function(){if(!cancelled)setState({loading:false,friends:[]});});
+    return function(){cancelled=true;};
+  },[]);
+  if(state.loading)return null;
+  return h('div',{className:'lp-dash-friends'},
+    h('div',{className:'lp-section-title'},'Freunde'),
+    state.friends.length===0
+      ? h('div',{className:'lp-dash-friend-row lp-hover-glow',onClick:function(){p.onNav('netzwerk');}},
+          h('div',{className:'lp-dash-friend-name'},'Noch keine Freunde'),
+          h('div',{style:{flex:1}},h('div',{className:'lp-dash-friend-sub'},'Im Netzwerk Freunde finden und hinzufügen')),
+          h('span',{style:{color:'var(--c-pur2)',fontSize:20}},'→'))
+      : state.friends.map(function(f){
+          var prof=f.profile;
+          return h('div',{key:f.id,className:'lp-dash-friend-row lp-hover-glow',onClick:function(){p.onNav('netzwerk');}},
+            prof
+              ? h('img',{src:(prof.avatar==='photo'&&prof.avatarPhoto)?prof.avatarPhoto:getAvatarSrc(prof.avatar||'av1'),style:{width:36,height:36,borderRadius:'50%',objectFit:'cover',flexShrink:0}})
+              : h(DsAvatar,{size:'sm'}),
+            h('div',{style:{flex:1,minWidth:0}},
+              h('div',{className:'lp-dash-friend-name'},h(UserLabel,{id:f.id})),
+              h('div',{className:'lp-dash-friend-sub'},f.since?('Freund seit '+new Date(f.since).toLocaleDateString('de-DE')):'')),
+            h('span',{style:{color:'rgba(255,255,255,0.3)',fontSize:18}},'→'));
+        }));
 }
 
 function LpEditorPlaceholder(p){
@@ -4544,7 +4599,7 @@ function App(){
     return h(DsCard,{key:(keyPrefix||"")+deck.id,
       tag:tag.label,
       progress:pct,
-      title:deck.emoji+" "+deck.name,
+      title:deck.name,
       subtitle:(deck.cards||[]).length+" Karten"+(dueN>0?" · "+dueN+" fällig":""),
       onClick:function(){setDeckId(deck.id);},
       style:{position:"relative",minHeight:150,paddingRight:48}},
@@ -4805,7 +4860,7 @@ function App(){
                     var pct=deckPct(deck);
                     return h(DsCard,{key:(deck._groupId?'g:':'')+deck.id,
                       tag:deckStatusTag(pct).label,
-                      title:deck.emoji+" "+deck.name,
+                      title:deck.name,
                       subtitle:(deck.cards||[]).length+" Karten",
                       progress:pct,
                       onClick:function(){setDeckId(deck.id);},
@@ -4817,13 +4872,7 @@ function App(){
                     h("div",{style:{fontSize:30}},"✨"),
                     h("div",{style:{fontSize:13,color:"rgba(255,255,255,0.45)"}},"Neuer Stapel"))),
 
-            lpLernSpaceOn&&h("div",{className:"lp-netz-teaser",onClick:function(){switchNav('netzwerk');}},
-              h("div",null,
-                h("div",{style:{fontWeight:600,color:"#fff",marginBottom:4}},"Dein Netzwerk"),
-                h("div",{style:{fontSize:13,color:"rgba(255,255,255,.5)"}},"Lerne gemeinsam mit Freunden, teile Stapel und vergleiche deinen Fortschritt.")),
-              h("span",{style:{color:"var(--c-pur2)",fontSize:20}},"→")),
-
-            renderFooter()),
+            lpLernSpaceOn&&h(DashboardFriends,{onNav:switchNav})),
 
           view==="decks"&&!activeDeck&&!qsStep&&deckListMode==="manage"&&h("div",null,
             h("button",{className:"manage-back",onClick:function(){setDeckListMode("home");}},"← Startseite"),
