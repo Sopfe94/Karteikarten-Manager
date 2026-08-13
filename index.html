@@ -864,11 +864,11 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 .lp-dash-date{font-family:var(--font-mono);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#fff;margin-bottom:12px}
 .lp-dash-greeting{font-size:30px;font-weight:700;letter-spacing:-0.03em;line-height:1.15;margin-bottom:8px;color:#fff}
 .lp-dash-greeting .name{background:var(--grad-brand);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;cursor:pointer;border:none;background-color:transparent}
-.lp-dash-sub{font-size:15px;color:var(--c-pur2);line-height:1.6}
+.lp-dash-sub{font-size:14px;color:var(--color-violet-ghost);line-height:1.6}
 .lp-goal-card{background:linear-gradient(135deg,rgba(124,58,237,0.14),rgba(6,182,212,0.06));border:1px solid rgba(124,58,237,0.22);border-radius:28px;padding:24px;display:flex;flex-direction:column;gap:20px;box-shadow:0 0 0 1px rgba(255,255,255,0.06),0 0 16px rgba(103,232,249,0.14);margin-top:32px;transition:box-shadow 200ms ease}
 .lp-goal-card:hover{box-shadow:0 0 0 1px rgba(167,139,250,0.55),0 0 20px rgba(124,58,237,0.5),0 0 34px rgba(6,182,212,0.35)}
 .lp-goal-card-header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-.lp-goal-label{font-family:var(--font-mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--c-pur2);margin-bottom:8px}
+.lp-goal-label{font-family:var(--font-mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--color-violet-ghost);margin-bottom:6px}
 .lp-goal-count{font-size:20px;font-weight:600;color:#fff}
 .lp-streak-badge{display:flex;align-items:center;gap:8px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.22);border-radius:10px;padding:8px 16px}
 .lp-streak-badge span{font-size:13px;font-weight:600;color:#F59E0B}
@@ -877,7 +877,8 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 .lp-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;margin-top:32px}
 .lp-section-title{font-size:15px;font-weight:600;color:#fff}
 .lp-section-link{font-size:13px;color:var(--c-pur2);background:none;border:none;cursor:pointer;font-family:var(--font-sans);padding:0}
-.lp-deck-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px}
+.lp-deck-grid{display:grid;grid-template-columns:1fr;gap:16px}
+@media(min-width:768px){.lp-deck-grid{grid-template-columns:repeat(3,1fr)}}
 .lp-deck-card{background:#0D0A1A;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:12px;min-height:150px;cursor:pointer;transition:box-shadow 200ms ease}
 .lp-deck-card:hover{box-shadow:0 4px 20px rgba(124,58,237,0.35)}
 .lp-deck-tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;background:rgba(124,58,237,0.2);color:#A78BFA;align-self:flex-start}
@@ -4142,7 +4143,7 @@ function DashboardFriends(p){
   },[]);
   if(state.loading)return null;
   return h('div',{className:'lp-dash-friends'},
-    h('div',{className:'lp-section-title'},'Freunde'),
+    h('div',{className:'lp-section-title'},'Freunde aktiv'),
     state.friends.length===0
       ? h('div',{className:'lp-dash-friend-row lp-hover-glow',onClick:function(){p.onNav('netzwerk');}},
           h('div',{className:'lp-dash-friend-name'},'Noch keine Freunde'),
@@ -4568,8 +4569,9 @@ function App(){
   }
   function finishQs(upd){
     if(upd){
-      var nd=decks.map(function(d){var qd=qsDecks.find(function(x){return x.id===d.id;});if(!qd)return d;return Object.assign({},d,{cards:d.cards.map(function(c){return upd[c.id]||c;})});});
-      var ng=(data.groupDecks||[]).map(function(d){var qd=qsDecks.find(function(x){return x.id===d.id;});if(!qd)return d;return Object.assign({},d,{cards:d.cards.map(function(c){return upd[c.id]||c;})});});
+      var now=new Date().toISOString();
+      var nd=decks.map(function(d){var qd=qsDecks.find(function(x){return x.id===d.id;});if(!qd)return d;return Object.assign({},d,{cards:d.cards.map(function(c){return upd[c.id]||c;}),updatedAt:now});});
+      var ng=(data.groupDecks||[]).map(function(d){var qd=qsDecks.find(function(x){return x.id===d.id;});if(!qd)return d;return Object.assign({},d,{cards:d.cards.map(function(c){return upd[c.id]||c;}),updatedAt:now});});
       patch({decks:nd,groupDecks:ng});
     }
     setQsStep(null);setQsConfig(null);setQsDecks([]);
@@ -4856,7 +4858,9 @@ function App(){
                   h(DsButton,{variant:"primary",size:"md",onClick:function(){setShowNew(true);}},
                     h("span",{className:"lp-btn-glow-label"},"+ Neuer Stapel")))
               : h("div",{className:"lp-deck-grid"},
-                  decks.concat(effectiveGroupDecks).slice(0,6).map(function(deck){
+                  decks.concat(effectiveGroupDecks)
+                    .slice().sort(function(a,b){return new Date(b.updatedAt||b.created||0)-new Date(a.updatedAt||a.created||0);})
+                    .slice(0,3).map(function(deck){
                     var pct=deckPct(deck);
                     return h(DsCard,{key:(deck._groupId?'g:':'')+deck.id,
                       tag:deckStatusTag(pct).label,
@@ -4865,12 +4869,7 @@ function App(){
                       progress:pct,
                       onClick:function(){setDeckId(deck.id);},
                       style:{minHeight:150}});
-                  }),
-                  h(DsCard,{onClick:function(){setShowNew(true);},
-                    style:{minHeight:150,alignItems:"center",justifyContent:"center",
-                      border:"1px dashed rgba(124,58,237,0.4)",background:"rgba(124,58,237,0.05)"}},
-                    h("div",{style:{fontSize:30}},"✨"),
-                    h("div",{style:{fontSize:13,color:"rgba(255,255,255,0.45)"}},"Neuer Stapel"))),
+                  })),
 
             lpLernSpaceOn&&h(DashboardFriends,{onNav:switchNav})),
 
