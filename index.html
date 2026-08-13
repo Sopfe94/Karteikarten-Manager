@@ -1096,7 +1096,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.50";
+var KKM_VERSION="1.2.51";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1334,6 +1334,7 @@ function HamburgerMenu(p){
 
 var USERNAME_KEY = "kkm-username-v1";
 var LEARN_LOG_KEY = "kkm-learn-log-v1";
+var STREAK_RESET_KEY = "kkm-streak-reset-v1";
 var SOCIAL_USERNAME_KEY = "kkm-social-username-v1";
 function loadSocialUsername(){ try{ var n=localStorage.getItem(SOCIAL_USERNAME_KEY); return n&&n.trim()!==""?n.trim():null; }catch(e){return null;} }
 function saveSocialUsername(name){ try{localStorage.setItem(SOCIAL_USERNAME_KEY,name.trim());}catch(e){} }
@@ -1353,6 +1354,12 @@ function recordReview(deckId){
   var now=Date.now();
   if(log.lastTimestamp&&(now-log.lastTimestamp)<30*60*1000) log.totalSeconds+=(now-log.lastTimestamp)/1000;
   log.lastTimestamp=now; log.cardCount+=1;
+  /* Haelt fest, welches Tagesziel beim Lernen an diesem Tag galt - so
+     zaehlt fuer HEUTE immer das gerade aktuelle Ziel (wird bei jeder
+     weiteren Karte neu gestempelt), waehrend bereits vergangene Tage
+     spaeter nicht rueckwirkend durch eine Ziel-Aenderung veraendert
+     werden. */
+  log.goalAtTime=((loadStore().settings||{}).dailyGoal)||30;
   if(log.decks.indexOf(deckId)<0) log.decks.push(deckId);
   logDb[today]=log; saveLogDb(logDb);
 }
@@ -1360,14 +1367,26 @@ function getTodayStats(){ var nav=loadTodayLog(); var log=nav.todayLog; return {
 function getLogDb(){ try{ var all=localStorage.getItem(LEARN_LOG_KEY); return all?JSON.parse(all):{}; }catch(e){ return {}; } }
 function calcStreak(){
   var logDb=getLogDb();
-  var d=new Date();
-  // Wenn heute noch nichts gelernt wurde, zählt der Streak trotzdem noch (bis Mitternacht) – starte bei gestern.
+  var curGoal=((loadStore().settings||{}).dailyGoal)||30;
+  var resetDate=localStorage.getItem(STREAK_RESET_KEY)||null;
   var todayKey=todayStr();
-  if(!logDb[todayKey]||!logDb[todayKey].cardCount) d.setDate(d.getDate()-1);
+  function metGoal(key){
+    var dayLog=logDb[key];
+    if(!dayLog||!dayLog.cardCount) return false;
+    // Heute zaehlt immer gegen das gerade aktuelle Ziel (wurde das Ziel
+    // gerade erst erhoeht, muss man noch bis dahin nachlernen). Vergangene
+    // Tage bleiben beim Ziel stehen, das damals beim Lernen galt.
+    var goal=key===todayKey?curGoal:(dayLog.goalAtTime!==undefined?dayLog.goalAtTime:curGoal);
+    return dayLog.cardCount>=goal;
+  }
+  var d=new Date();
+  // Wenn heute das Ziel noch nicht erreicht wurde, zählt der Streak trotzdem noch (bis Mitternacht) – starte bei gestern.
+  if(!metGoal(todayKey)) d.setDate(d.getDate()-1);
   var streak=0;
   while(true){
     var key=d.toISOString().slice(0,10);
-    if(logDb[key]&&logDb[key].cardCount>0){ streak++; d.setDate(d.getDate()-1); }
+    if(resetDate&&key<=resetDate) break;
+    if(metGoal(key)){ streak++; d.setDate(d.getDate()-1); }
     else break;
   }
   return streak;
@@ -1996,6 +2015,7 @@ function ProfilView(p){
   var qs=useState(false);var showQ=qs[0];var setShowQ=qs[1];
   var accs=useState(false);var accOpen=accs[0];var setAccOpen=accs[1];
   var pros=useState(false);var showPro=pros[0];var setShowPro=pros[1];
+  var plg=useState(null);var pendingLowerGoal=plg[0];var setPendingLowerGoal=plg[1];
   var ALL_ARTEN=['Klausur','Test','Hausaufgabe','Referat','Präsentation','Sonstiges'];
   var pct=Math.round((sets.lernTage-1)/29*100);
   var dailyGoal=sets.dailyGoal||30;
@@ -2012,7 +2032,13 @@ function ProfilView(p){
   }
   function stepGoal(delta){
     var next=Math.max(5,Math.min(100,(dailyGoal||30)+delta));
+    if(next<dailyGoal&&streak>0){ setPendingLowerGoal(next); return; }
     p.onChange(Object.assign({},sets,{dailyGoal:next}));
+  }
+  function confirmLowerGoal(){
+    localStorage.setItem(STREAK_RESET_KEY,todayStr());
+    p.onChange(Object.assign({},sets,{dailyGoal:pendingLowerGoal}));
+    setPendingLowerGoal(null);
   }
 
   if(showPro){
@@ -2134,6 +2160,19 @@ function ProfilView(p){
           'Wenn ja, erscheint auf der Startseite eine Lernempfehlung mit direktem Link zum Stapel.'
         ),
         h(DsButton,{variant:'primary',style:{marginTop:16},onClick:function(){setShowQ(false);}},h('span',{className:'lp-btn-glow-label'},'Verstanden'))
+      )
+    ),
+
+    pendingLowerGoal!==null&&h('div',{className:'settings-overlay',onClick:function(){setPendingLowerGoal(null);}},
+      h('div',{className:'settings-overlay-box',onClick:function(e){e.stopPropagation();}},
+        h('div',{className:'settings-overlay-title'},'Tagesziel senken?'),
+        h('div',{className:'settings-overlay-text'},
+          'Wenn du dein Tagesziel jetzt auf ',h('strong',{style:{color:'#a78bfa'}},pendingLowerGoal+' Karten'),' senkst, wird deine aktuelle Streak-Serie von ',h('strong',{style:{color:'#a78bfa'}},streak+(streak===1?' Tag':' Tagen')),' auf 0 zurückgesetzt.'
+        ),
+        h('div',{style:{display:'flex',gap:12,marginTop:16,justifyContent:'flex-end'}},
+          h('button',{className:'lp-btn-dark',style:{width:'auto',padding:'0 20px',height:44},onClick:function(){setPendingLowerGoal(null);}},'Abbrechen'),
+          h(DsButton,{variant:'primary',style:{width:'auto',padding:'0 20px',height:44},onClick:confirmLowerGoal},h('span',{className:'lp-btn-glow-label'},'Ja, Ziel senken'))
+        )
       )
     )
   );
@@ -4685,6 +4724,7 @@ function App(p){
       try{
         localStorage.removeItem(STORE_KEY);
         localStorage.removeItem(LEARN_LOG_KEY);
+        localStorage.removeItem(STREAK_RESET_KEY);
         localStorage.removeItem(USERNAME_KEY);
         localStorage.removeItem(SOCIAL_USERNAME_KEY);
         localStorage.removeItem('kkm-ls-id');
