@@ -512,9 +512,9 @@ select.fi{-webkit-appearance:none;appearance:none;color-scheme:dark;background-i
 .settings-row{background:var(--c-card);border-radius:14px;padding:16px;margin-bottom:12px;border:1px solid rgba(255,255,255,.07)}
 .settings-row-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .settings-row-label{font-size:15px;font-weight:700;color:#fff}
-.settings-q-btn{width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);color:rgba(255,255,255,.5);font-size:11px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.settings-q-btn{width:22px;height:22px;border-radius:50%;border:1px solid rgba(167,139,250,0.85);background:rgba(255,255,255,.04);color:#fff;font-size:11px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 0 1px rgba(167,139,250,.55),0 0 20px rgba(124,58,237,.5),0 0 34px rgba(6,182,212,.35)}
 .settings-slider-wrap{position:relative;padding:8px 0}
-.settings-slider{width:100%;-webkit-appearance:none;appearance:none;height:6px;border-radius:6px;background:linear-gradient(to right,#7c3aed var(--pct),rgba(255,255,255,.12) var(--pct));outline:none;cursor:pointer}
+.settings-slider{width:100%;-webkit-appearance:none;appearance:none;height:6px;border-radius:6px;background:linear-gradient(to right,#7C3AED 0%,#06B6D4 var(--pct),rgba(255,255,255,.12) var(--pct));outline:none;cursor:pointer}
 .settings-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#a78bfa,#7c3aed);cursor:pointer;box-shadow:0 2px 8px rgba(139,92,246,.5),0 0 0 3px rgba(139,92,246,.2)}
 .settings-slider::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#a78bfa,#7c3aed);cursor:pointer;border:none;box-shadow:0 2px 8px rgba(139,92,246,.5)}
 .settings-slider-val{text-align:center;font-size:24px;font-weight:900;background:linear-gradient(135deg,#a78bfa,#F59E0B);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:4px}
@@ -926,7 +926,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 .lp-switch{position:relative;width:44px;height:26px;border-radius:999px;border:none;cursor:pointer;transition:background .2s;flex-shrink:0}
 .lp-switch-knob{position:absolute;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s;display:block}
 .lp-art-btn{padding:8px 12px;border-radius:10px;border:1px solid rgba(124,58,237,0.25);background:rgba(255,255,255,.04);color:#fff;font-size:13px;font-family:var(--font-sans);cursor:pointer;transition:.15s}
-.lp-art-btn.sel{background:rgba(124,58,237,0.2);border-color:rgba(124,58,237,0.7)}
+.lp-art-btn.sel{background:rgba(124,58,237,0.2);border-color:rgba(124,58,237,0.7);box-shadow:0 0 0 1px rgba(167,139,250,.55),0 0 20px rgba(124,58,237,.5),0 0 34px rgba(6,182,212,.35)}
 .lp-profil-link{display:flex;align-items:center;justify-content:space-between;padding:16px 4px;border-bottom:1px solid rgba(255,255,255,0.06);text-decoration:none;color:inherit;cursor:pointer;background:none;border-left:none;border-right:none;border-top:none;width:100%;text-align:left;font-family:var(--font-sans)}
 .lp-profil-link:last-child{border-bottom:none}
 .lp-profil-link span:first-child{font-size:15px;color:#fff}
@@ -1096,7 +1096,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.61";
+var KKM_VERSION="1.2.62";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
