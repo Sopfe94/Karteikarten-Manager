@@ -378,10 +378,10 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 .dn-r{color:var(--c-ora)}
 .dl{font-size:11px;color:var(--c-dim);text-transform:uppercase;letter-spacing:.07em;font-weight:700}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-  background:linear-gradient(135deg,#7c3aed,#5B21B6);color:#fff;
-  padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;
-  box-shadow:0 4px 20px rgba(0,0,0,.4);z-index:500;white-space:nowrap;
-  border:1px solid var(--c-bor2);pointer-events:none}
+  background:#7C3AED;color:#fff;
+  padding:0 20px;height:40px;display:flex;align-items:center;border-radius:var(--radius-full);font-size:15px;font-weight:600;
+  box-shadow:0 0 14px rgba(124,58,237,0.45), 0 0 6px rgba(6,182,212,0.3);z-index:500;white-space:nowrap;
+  border:1px solid rgba(124,58,237,0.55);pointer-events:none}
 .empty{text-align:center;padding:48px 16px;color:var(--c-dim)}
 .empty-i{font-size:48px;margin-bottom:8px;opacity:.4}
 .empty p{margin-bottom:12px;font-weight:600}
@@ -1096,7 +1096,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.67";
+var KKM_VERSION="1.2.68";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -5193,7 +5193,7 @@ function App(p){
 
   return h("div",{id:"lp-app-shell"},
     showAppLsConsent&&h(LsConsentModal,{onAccept:acceptAppLsConsent,onDecline:declineAppLsConsent,onShowDat:function(){setShowDat(true);}}),
-    showUsernameModal&&h(UsernamePickerModal,{onDone:function(uname){setSocialUsername(uname);setShowUsernameModal(false);showToast('🎉 Benutzername gespeichert: '+uname);}}),
+    showUsernameModal&&h(UsernamePickerModal,{onDone:function(uname){setSocialUsername(uname);setShowUsernameModal(false);showToast('Benutzername gespeichert: '+uname);}}),
     showLernEmpf&&lernEmpf.length>0&&_leOverlay,
     h(LpSidebar,{navId:navId,onNav:switchNav,userName:lpUserName,avatarLetter:lpAvatarLetter,streak:lpStreak,lernSpaceEnabled:lpLernSpaceOn,photo:googlePhoto,presenceVisible:lsConsent&&presenceOn}),
     h("div",{className:"lp-app-content"},
