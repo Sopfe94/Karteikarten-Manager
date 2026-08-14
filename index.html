@@ -1086,7 +1086,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.75";
+var KKM_VERSION="1.2.76";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2065,9 +2065,8 @@ function ProfilView(p){
 
   if(showPro){
     return h('div',null,
-      h("button",{className:"back-btn",style:{marginBottom:8,marginTop:4},onClick:p.onBack},"← Startseite"),
+      h("button",{className:"back-btn",style:{marginBottom:8,marginTop:4},onClick:function(){setShowPro(false);}},"← Zurück"),
       h('div',{style:{padding:'12px 4px 40px',maxWidth:640}},
-        h('button',{onClick:function(){setShowPro(false);},style:{alignSelf:'flex-start',border:'none',background:'none',color:'rgba(255,255,255,.5)',fontSize:13,cursor:'pointer',padding:0,fontFamily:'var(--font-sans)',marginBottom:20}},'← Zurück'),
         h('div',{style:{fontSize:24,fontWeight:700,letterSpacing:'-0.03em',background:'var(--grad-brand)',WebkitBackgroundClip:'text',backgroundClip:'text',WebkitTextFillColor:'transparent',display:'inline-block'}},'Lernpuls Pro'),
         h('div',{style:{fontSize:15,color:'rgba(255,255,255,.5)',marginTop:8,marginBottom:24}},'Alle Werkzeuge im Karteikarten-Editor, unbegrenzte Termine und mehr.'),
         h('div',{style:{display:'flex',flexDirection:'column',gap:4,maxWidth:560,marginBottom:24}},
