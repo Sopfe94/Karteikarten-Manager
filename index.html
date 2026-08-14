@@ -1096,7 +1096,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.52";
+var KKM_VERSION="1.2.53";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1626,7 +1626,7 @@ function StudyView(p){
   var card=queue[idx];
   function ans(knew){ recordReview(p.deck.id); var u=Object.assign({},upd); u[card.id]=advance(card,knew); setUpd(u); setRes({k:res.k+(knew?1:0),m:res.m+(knew?0:1)}); if(idx+1>=queue.length)setDone(true); else{setIdx(idx+1);setFlip(false);} }
   return h("div",null,
-    h("button",{className:"back-btn",onClick:function(){p.onFinish();}},"\u2190 Beenden"),
+    h("button",{className:"back-btn",onClick:function(){p.onFinish(upd);}},"\u2190 Beenden"),
     h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}},
       h("span",{className:"lp-field-label"},p.deck.name),
       h("span",{style:{fontFamily:"var(--font-mono)",fontSize:13,color:"rgba(255,255,255,.3)"}},(idx+1)+" / "+queue.length)),
@@ -1655,7 +1655,7 @@ function MultiStudyView(p){
   var card=queue[idx];
   function ans(knew){ recordReview(card._did||"unknown"); var u=Object.assign({},upd); u[card.id]=advance(card,knew); setUpd(u); setRes({k:res.k+(knew?1:0),m:res.m+(knew?0:1)}); if(idx+1>=queue.length)setDone(true); else{setIdx(idx+1);setFlip(false);} }
   return h("div",null,
-    h("button",{className:"back-btn",onClick:function(){p.onFinish();}},"\u2190 Beenden"),
+    h("button",{className:"back-btn",onClick:function(){p.onFinish(upd);}},"\u2190 Beenden"),
     h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}},
       h("span",{className:"lp-field-label"},card._de+" "+card._dn),
       h("span",{style:{fontFamily:"var(--font-mono)",fontSize:13,color:"rgba(255,255,255,.3)"}},(idx+1)+" / "+queue.length)),
