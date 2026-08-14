@@ -378,10 +378,10 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 .dn-r{color:var(--c-ora)}
 .dl{font-size:11px;color:var(--c-dim);text-transform:uppercase;letter-spacing:.07em;font-weight:700}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-  background:#7C3AED;color:#fff;
+  background:transparent;color:#fff;
   padding:0 20px;height:40px;display:flex;align-items:center;border-radius:var(--radius-full);font-size:15px;font-weight:600;
   box-shadow:0 0 14px rgba(124,58,237,0.45), 0 0 6px rgba(6,182,212,0.3);z-index:500;white-space:nowrap;
-  border:1px solid rgba(124,58,237,0.55);pointer-events:none}
+  border:1px solid rgba(124,58,237,0.55);pointer-events:none;backdrop-filter:blur(8px)}
 .empty{text-align:center;padding:48px 16px;color:var(--c-dim)}
 .empty-i{font-size:48px;margin-bottom:8px;opacity:.4}
 .empty p{margin-bottom:12px;font-weight:600}
@@ -1096,7 +1096,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.68";
+var KKM_VERSION="1.2.69";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3098,7 +3098,7 @@ function LernSpaceView(p){
       return lsSet('ls_users',MY_ID,merged).then(function(){
         savingRef.current=false;setLsData(merged);return merged;
       });
-    }).catch(function(){savingRef.current=false;showToast('\u274C Sync-Fehler');});
+    }).catch(function(){savingRef.current=false;showToast('Sync-Fehler');});
   }
   function saveDataAccept(d,acceptedFromId){
     var local=Object.assign({},lsData,d);setLsData(local);savingRef.current=true;
@@ -3113,7 +3113,7 @@ function LernSpaceView(p){
       return lsSet('ls_users',MY_ID,merged).then(function(){
         savingRef.current=false;setLsData(merged);return merged;
       });
-    }).catch(function(){savingRef.current=false;showToast('\u274C Sync-Fehler');});
+    }).catch(function(){savingRef.current=false;showToast('Sync-Fehler');});
   }
 
   function saveDataRemove(d){
@@ -3131,7 +3131,7 @@ function LernSpaceView(p){
       return lsSet('ls_users',MY_ID,merged).then(function(){
         savingRef.current=false;setLsData(merged);return merged;
       });
-    }).catch(function(){savingRef.current=false;showToast('\u274C Sync-Fehler');});
+    }).catch(function(){savingRef.current=false;showToast('Sync-Fehler');});
   }
 
   function searchInviteHints(val){
@@ -3177,9 +3177,9 @@ function LernSpaceView(p){
         if(!res)return;
         var newSent=[].concat((lsData&&lsData.sentRequests)||[],[{toId:tid,ts:Date.now()}]);
         saveData({sentRequests:newSent});
-        showToast('\uD83D\uDCE8 Anfrage gesendet!');
+        showToast('Anfrage gesendet!');
         setInviteId('');setInviteHints([]);
-      }).catch(function(){showToast('\u274C Fehler beim Senden');});
+      }).catch(function(){showToast('Fehler beim Senden');});
     }
     var uname=raw.startsWith('@')?raw.slice(1):raw;
     getSb().from('ls_users').select('ls_id').eq('username',uname).maybeSingle()
@@ -3212,7 +3212,7 @@ function LernSpaceView(p){
         return lsSet('ls_users',req.fromId,Object.assign({},td,{friends:tf,sentRequests:tSent}));
       }
     }).catch(function(){});
-    showToast('\uD83C\uDF89 Freund hinzugef\u00fcgt!');
+    showToast('Freund hinzugef\u00fcgt!');
   }
 
   function declineRequest(req){
@@ -3239,7 +3239,7 @@ function LernSpaceView(p){
     var newGroups=[].concat(lsData.groups||[],[g]);
     saveData({groups:newGroups});
     setGroupName('');
-    showToast('\uD83C\uDFEB Gruppe erstellt!');
+    showToast('Gruppe erstellt!');
     lsSet('ls_groups',gid,g).catch(function(){});
   }
 
@@ -3265,16 +3265,16 @@ function LernSpaceView(p){
       dbg('invite: starte \u2709 '+tid+' \u2192 Gruppe '+g.id);
       var invite={id:g.id,name:g.name,emoji:g.emoji||'\ud83c\udfeb',fromId:MY_ID,role:inviteRole,ts:Date.now()};
       lsGet('ls_users',tid).then(function(td){
-        if(!td){dbg('invite: Benutzer nicht gefunden: '+tid);showToast('\u274c Benutzer nicht gefunden');return;}
+        if(!td){dbg('invite: Benutzer nicht gefunden: '+tid);showToast('Benutzer nicht gefunden');return;}
         dbg('invite: ls_users gelesen, groupInvites vorher:',(td.groupInvites||[]).length);
         var tInvites=(td.groupInvites||[]).filter(function(x){return x.id!==g.id;}).concat([invite]);
         dbg('invite: schreibe groupInvites f\u00fcr '+tid);
         return lsSet('ls_users',tid,Object.assign({},td,{groupInvites:tInvites}));
       }).then(function(){
         dbg('invite: \u2705 Einladung gesendet an '+tid);
-        showToast('\u2709\ufe0f Einladung gesendet!');
+        showToast('Einladung gesendet!');
         setInviteMemberId('');setInviteRole('user');setMemberHints([]);
-      }).catch(function(e){dbg('invite: \u274c',e&&(e.message||JSON.stringify(e)));showToast('\u274C Fehler beim Einladen');});
+      }).catch(function(e){dbg('invite: \u274c',e&&(e.message||JSON.stringify(e)));showToast('Fehler beim Einladen');});
     }
     var uname=raw.startsWith('@')?raw.slice(1):raw;
     getSb().from('ls_users').select('ls_id').eq('username',uname).maybeSingle()
@@ -3298,8 +3298,8 @@ function LernSpaceView(p){
       }
     }).then(function(){
       dbg('acceptGroupInvite: \u2705 beigetreten');
-      showToast('\u2705 Gruppe beigetreten!');
-    }).catch(function(e){dbg('acceptGroupInvite: \u274c',e&&e.message);showToast('\u274c Fehler beim Beitreten');});
+      showToast('Gruppe beigetreten!');
+    }).catch(function(e){dbg('acceptGroupInvite: \u274c',e&&e.message);showToast('Fehler beim Beitreten');});
   }
 
   function declineGroupInvite(invite){
@@ -3319,7 +3319,7 @@ function LernSpaceView(p){
     var updG=Object.assign({},g,{members:newMembers});
     applyGroupUpdate(updG).then(function(){
       showToast('Rolle aktualisiert');
-    }).catch(function(){showToast('\u274C Fehler');});
+    }).catch(function(){showToast('Fehler');});
   }
 
   function removeMember(targetId){
@@ -3337,7 +3337,7 @@ function LernSpaceView(p){
         var tGroups=(td.groups||[]).filter(function(x){return x.id!==g.id;});
         return lsSet('ls_users',targetId,Object.assign({},td,{groups:tGroups}));
       });
-    }).then(function(){showToast('Mitglied entfernt');}).catch(function(){showToast('\u274C Fehler');});
+    }).then(function(){showToast('Mitglied entfernt');}).catch(function(){showToast('Fehler');});
   }
 
   function deleteOrTransferGroup(){
@@ -3347,7 +3347,7 @@ function LernSpaceView(p){
     if(tid){
       if(!confirm('Gruppe an '+tid+' \u00fcbertragen?'))return;
       var members=normalizeMembers(g.members);
-      if(!members.find(function(m){return m.id===tid;})){showToast('\u274C Kein Mitglied der Gruppe');return;}
+      if(!members.find(function(m){return m.id===tid;})){showToast('Kein Mitglied der Gruppe');return;}
       var newMembers=members.map(function(m){
         if(m.id===tid&&m.role!=='admin')return Object.assign({},m,{role:'admin'});
         if(m.id===MY_ID)return Object.assign({},m,{role:'user'});
@@ -3355,9 +3355,9 @@ function LernSpaceView(p){
       });
       var updG=Object.assign({},g,{members:newMembers,createdBy:tid});
       applyGroupUpdate(updG).then(function(){
-        showToast('\u2705 Gruppe \u00fcbertragen!');
+        showToast('Gruppe \u00fcbertragen!');
         setShowGroupSettings(false);setShowDeleteZone(false);setTransferTarget('');
-      }).catch(function(){showToast('\u274C Fehler');});
+      }).catch(function(){showToast('Fehler');});
     } else {
       if(!confirm('Gruppe "'+g.name+'" wirklich unwiderruflich l\u00f6schen?'))return;
       getSb().from('ls_groups').delete().eq('id',g.id)
@@ -3377,8 +3377,8 @@ function LernSpaceView(p){
         setSelectedGroup(null);
         setShowGroupSettings(false);setShowDeleteZone(false);setTransferTarget('');
         setLsPage('groups');
-        showToast('\uD83D\uDDD1\uFE0F Gruppe gel\u00f6scht');
-      }).catch(function(){showToast('\u274C Fehler beim L\u00f6schen');});
+        showToast('Gruppe gel\u00f6scht');
+      }).catch(function(){showToast('Fehler beim L\u00f6schen');});
     }
   }
 
@@ -3388,15 +3388,15 @@ function LernSpaceView(p){
       var tData=td||defaultData;
       var inc=[].concat(tData.sharedIncoming||[],[{fromId:MY_ID,deck:copy,ts:Date.now()}]);
       return lsSet('ls_users',friendId,Object.assign({},tData,{sharedIncoming:inc}));
-    }).then(function(){showToast('\uD83D\uDCE4 Stapel geteilt!');})
-     .catch(function(){showToast('\u274C Fehler beim Teilen');});
+    }).then(function(){showToast('Stapel geteilt!');})
+     .catch(function(){showToast('Fehler beim Teilen');});
   }
 
   function acceptShared(item){
     p.onAddDeck(item.deck);
     var newInc=(lsData.sharedIncoming||[]).filter(function(x){return x.ts!==item.ts;});
     saveData({sharedIncoming:newInc});
-    showToast('\u2705 Stapel \u00fcbernommen!');
+    showToast('Stapel \u00fcbernommen!');
   }
 
   function declineShared(item){
@@ -3438,7 +3438,7 @@ function LernSpaceView(p){
               style:{background:'#25D366',color:'#fff',height:48,borderRadius:10,textDecoration:'none',fontWeight:600,fontSize:15,display:'flex',alignItems:'center',justifyContent:'center'}},'Bei WhatsApp teilen'),
             h(DsButton,{variant:'ghost',style:{height:48},onClick:function(){
               var id=p.socialUsername||MY_ID;
-              if(navigator.clipboard)navigator.clipboard.writeText(id).then(function(){showToast('📋 '+id+' kopiert!');}).catch(function(){showToast('ID: '+id);});
+              if(navigator.clipboard)navigator.clipboard.writeText(id).then(function(){showToast(''+id+' kopiert!');}).catch(function(){showToast('ID: '+id);});
               else showToast('ID: '+id);
             }},'ID kopieren')))),
       h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}},
@@ -3587,9 +3587,9 @@ function LernSpaceView(p){
       var updDecks=[].concat(groupDecks,[deck]);
       var updG=Object.assign({},g,{groupDecks:updDecks});
       setSelectedGroupDeck(deck);
-      applyGroupUpdate(updG).catch(function(){showToast('\u274C Sync-Fehler');});
+      applyGroupUpdate(updG).catch(function(){showToast('Sync-Fehler');});
       setGroupStackPage('deck-detail');
-      showToast('\uD83D\uDCDA Stapel erstellt!');
+      showToast('Stapel erstellt!');
     }
 
     function saveGroupCard(){
@@ -3599,9 +3599,9 @@ function LernSpaceView(p){
       var updDecks=(g.groupDecks||[]).map(function(d){return d.id===updDeck.id?updDeck:d;});
       var updG=Object.assign({},g,{groupDecks:updDecks});
       setSelectedGroupDeck(updDeck);
-      applyGroupUpdate(updG).catch(function(){showToast('\u274C Sync-Fehler');});
+      applyGroupUpdate(updG).catch(function(){showToast('Sync-Fehler');});
       setNewCardFront('');setNewCardBack('');
-      showToast('\u2705 Karte gespeichert!');
+      showToast('Karte gespeichert!');
       setGroupStackPage('deck-detail');
     }
 
@@ -3612,8 +3612,8 @@ function LernSpaceView(p){
       var updDecks=(g.groupDecks||[]).map(function(d){return d.id===updDeck.id?updDeck:d;});
       var updG=Object.assign({},g,{groupDecks:updDecks});
       setSelectedGroupDeck(updDeck);
-      applyGroupUpdate(updG).catch(function(){showToast('\u274C Sync-Fehler');});
-      showToast('\uD83D\uDDD1\uFE0F Karte gel\u00f6scht');
+      applyGroupUpdate(updG).catch(function(){showToast('Sync-Fehler');});
+      showToast('Karte gel\u00f6scht');
     }
 
     function saveEditGroupCard(){
@@ -3625,9 +3625,9 @@ function LernSpaceView(p){
       var updDecks=(g.groupDecks||[]).map(function(d){return d.id===updDeck.id?updDeck:d;});
       var updG=Object.assign({},g,{groupDecks:updDecks});
       setSelectedGroupDeck(updDeck);
-      applyGroupUpdate(updG).catch(function(){showToast('\u274C Sync-Fehler');});
+      applyGroupUpdate(updG).catch(function(){showToast('Sync-Fehler');});
       setEditGroupCard(null);
-      showToast('\u2705 Karte aktualisiert!');
+      showToast('Karte aktualisiert!');
     }
 
     function finishStudy(upd){
@@ -3796,7 +3796,7 @@ function LernSpaceView(p){
       if(isAdmin){
         var otherAdmins=normalizeMembers(g.members).filter(function(m){return m.id!==MY_ID&&m.role==='admin';});
         if(!otherAdmins.length&&normalizeMembers(g.members).length>1){
-          showToast('\u26A0\uFE0F Als einziger Admin zuerst Gruppe \u00fcbertragen oder l\u00f6schen');return;
+          showToast('Als einziger Admin zuerst Gruppe \u00fcbertragen oder l\u00f6schen');return;
         }
       }
       if(!confirm('Gruppe "'+g.name+'" verlassen?'))return;
@@ -3806,8 +3806,8 @@ function LernSpaceView(p){
         var newGroups=(lsData.groups||[]).filter(function(x){return x.id!==g.id;});
         return saveData({groups:newGroups});
       }).then(function(){
-        setSelectedGroup(null);setLsPage('groups');showToast('\uD83D\uDC4B Gruppe verlassen');
-      }).catch(function(){showToast('\u274C Fehler');});
+        setSelectedGroup(null);setLsPage('groups');showToast('Gruppe verlassen');
+      }).catch(function(){showToast('Fehler');});
     }
 
     function sendMsg(){
@@ -3818,8 +3818,8 @@ function LernSpaceView(p){
       setGroupChats(function(prev){var u=Object.assign({},prev);u[gid]=(prev[gid]||[]).concat([m]);return u;});
       setChatInput('');
       getSb().from('ls_messages').insert({group_id:gid,from_id:MY_ID,text:txt})
-      .then(function(res){if(res.error){dbg('chat send error:',res.error.message);showToast('\u274C Fehler beim Senden');}})
-      .catch(function(){showToast('\u274C Fehler beim Senden');});
+      .then(function(res){if(res.error){dbg('chat send error:',res.error.message);showToast('Fehler beim Senden');}})
+      .catch(function(){showToast('Fehler beim Senden');});
     }
     return h('div',{style:{position:'relative',zIndex:2}},
       h('div',{className:'ls-gd-hero'},
@@ -3926,13 +3926,13 @@ function LernSpaceView(p){
         var upd=Object.assign({},selectedGroup,{avatar:avId,avatarPhoto:photo||null});
         setSelectedGroup(upd);
         var newGroups=(lsData.groups||[]).map(function(g){return g.id===upd.id?upd:g;});
-        saveData({groups:newGroups});setShowGroupAvPicker(false);showToast('\u2728 Avatar gespeichert!');
+        saveData({groups:newGroups});setShowGroupAvPicker(false);showToast('Avatar gespeichert!');
       },
       onSaveEmoji:function(emoji){
         var upd=Object.assign({},selectedGroup,{emoji:emoji,avatar:null,avatarPhoto:null});
         setSelectedGroup(upd);
         var newGroups=(lsData.groups||[]).map(function(g){return g.id===upd.id?upd:g;});
-        saveData({groups:newGroups});setShowGroupAvPicker(false);showToast('\u2728 Emoji gespeichert!');
+        saveData({groups:newGroups});setShowGroupAvPicker(false);showToast('Emoji gespeichert!');
       },
       onClose:function(){setShowGroupAvPicker(false);}
     }),
@@ -4612,7 +4612,7 @@ function App(p){
            wie verlorene Karteikarten aussieht. */
         var prevId=localStorage.getItem('kkm-ls-id');
         if(prevId&&prevId.indexOf('@')>-1){
-          showToast('⚠️ Anmeldung abgelaufen – bitte neu mit Google anmelden');
+          showToast('Anmeldung abgelaufen – bitte neu mit Google anmelden');
         }
       }
     });
@@ -4754,7 +4754,7 @@ function App(p){
             var restored=res.data.app_data;
             saveStore(restored);
             setData(restored);
-            showToast('📥 Karteikarten wiederhergestellt!');
+            showToast('Karteikarten wiederhergestellt!');
             dbg('✅ App-Daten aus Supabase wiederhergestellt');
             setTimeout(function(){_applyingRemote=false;},200);
           }
@@ -4825,7 +4825,7 @@ function App(p){
       var restored=res.data.app_data;
       saveStore(restored);
       setData(restored);
-      showToast('📥 Cloud-Stand geladen!');
+      showToast('Cloud-Stand geladen!');
       setTimeout(function(){_applyingRemote=false;},200);
     }).catch(function(){showToast('Laden fehlgeschlagen.');});
   }
