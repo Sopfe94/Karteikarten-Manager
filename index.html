@@ -1096,7 +1096,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.57";
+var KKM_VERSION="1.2.58";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1144,6 +1144,22 @@ function getSb(){
 }
 
 var _syncUser=null; var _syncTimeout=null; var _realtimeChannel=null; var _applyingRemote=false; var _preloadedLsData=null; var _unCache={};
+/* Gate fuer die Hochzaehl-Animationen auf der Startseite: die
+   Dashboard-Komponente steht schon waehrend des Splashs im DOM (nur
+   optisch verdeckt), daher wuerde ihr IntersectionObserver sonst sofort
+   feuern und die Animation laeuft laengst durch, bevor der Splash
+   ueberhaupt weg ist. Startet erst, wenn App() meldet dass Splash UND
+   (falls noetig) der Netzwerk-Consent-Dialog beide durch sind. */
+var _homeReady=false; var _homeReadyCbs=[];
+function markHomeReady(){
+  if(_homeReady)return;
+  _homeReady=true;
+  _homeReadyCbs.forEach(function(cb){cb();});
+  _homeReadyCbs=[];
+}
+function onHomeReady(cb){
+  if(_homeReady){cb();}else{_homeReadyCbs.push(cb);}
+}
 (function(){
   var _id=localStorage.getItem('kkm-ls-id');
   var _un=localStorage.getItem('kkm-social-username-v1');
@@ -1172,7 +1188,7 @@ function UserLabel(p){
       _unCache[id]=u;setDisp(u);
     }).catch(function(){});
   },[p.id]);
-  return h('span',null,disp?('@'+disp):(p.id||''));
+  return h('span',null,disp||(p.id||''));
 }
 
 function syncAppData(d){
@@ -3143,11 +3159,11 @@ function LernSpaceView(p){
       if(curFriends.find(function(f){return f.id===tid;})){showToast('Bereits befreundet');return;}
       if(curSent.find(function(r){return r.toId===tid;})){showToast('Anfrage bereits gesendet');return;}
       lsGet('ls_users',tid).then(function(td){
-        var tData=td||defaultData;
-        var reqs=[].concat(tData.requests||[]);
+        if(!td){showToast('Nutzer nicht gefunden');return null;}
+        var reqs=[].concat(td.requests||[]);
         if(reqs.find(function(r){return r.fromId===MY_ID;})){showToast('Anfrage bereits gesendet');return null;}
         reqs.push({fromId:MY_ID,ts:Date.now()});
-        return lsSet('ls_users',tid,Object.assign({},tData,{requests:reqs}));
+        return lsSet('ls_users',tid,Object.assign({},td,{requests:reqs}));
       }).then(function(res){
         if(!res)return;
         var newSent=[].concat((lsData&&lsData.sentRequests)||[],[{toId:tid,ts:Date.now()}]);
@@ -3156,15 +3172,11 @@ function LernSpaceView(p){
         setInviteId('');setInviteHints([]);
       }).catch(function(){showToast('\u274C Fehler beim Senden');});
     }
-    if(raw.startsWith('@')){
-      getSb().from('ls_users').select('ls_id').eq('username',raw.slice(1)).maybeSingle()
-      .then(function(res){
-        if(!res.data){showToast('Benutzername nicht gefunden');return;}
-        doSend(res.data.ls_id);
-      }).catch(function(){showToast('\u274C Fehler beim Suchen');});
-    } else {
-      doSend(raw);
-    }
+    var uname=raw.startsWith('@')?raw.slice(1):raw;
+    getSb().from('ls_users').select('ls_id').eq('username',uname).maybeSingle()
+    .then(function(res){
+      doSend(res.data?res.data.ls_id:uname);
+    }).catch(function(){doSend(uname);});
   }
 
   function cancelRequest(toId){
@@ -3182,7 +3194,7 @@ function LernSpaceView(p){
   function acceptRequest(req){
     var newFriends=(lsData.friends||[]).find(function(f){return f.id===req.fromId;})?lsData.friends:[].concat(lsData.friends||[],[{id:req.fromId,since:Date.now()}]);
     var newReqs=(lsData.requests||[]).filter(function(r){return r.fromId!==req.fromId;});
-    var newActs=[{type:'friend',text:(_unCache[req.fromId]?('@'+_unCache[req.fromId]):req.fromId)+' ist jetzt dein Freund',ts:Date.now()}].concat(lsData.activities||[]).slice(0,20);
+    var newActs=[{type:'friend',text:(_unCache[req.fromId]||req.fromId)+' ist jetzt dein Freund',ts:Date.now()}].concat(lsData.activities||[]).slice(0,20);
     saveDataAccept({friends:newFriends,requests:newReqs,activities:newActs},req.fromId);
     lsGet('ls_users',req.fromId).then(function(td){
       if(td){
@@ -3235,7 +3247,7 @@ function LernSpaceView(p){
     var g=selectedGroup;
     if(!g)return;
     if(!isGroupAdmin(g,MY_ID)){showToast('Nur Admins d\u00fcrfen einladen');return;}
-    if(!raw){showToast('ID oder @Benutzername eingeben');return;}
+    if(!raw){showToast('ID oder Benutzername eingeben');return;}
     function doInvite(tid){
       if(tid===MY_ID){showToast('Das bist du selbst');return;}
       var nm=normalizeMembers(g.members);
@@ -3255,15 +3267,11 @@ function LernSpaceView(p){
         setInviteMemberId('');setInviteRole('user');setMemberHints([]);
       }).catch(function(e){dbg('invite: \u274c',e&&(e.message||JSON.stringify(e)));showToast('\u274C Fehler beim Einladen');});
     }
-    if(raw.startsWith('@')){
-      getSb().from('ls_users').select('ls_id').eq('username',raw.slice(1)).maybeSingle()
-      .then(function(res){
-        if(!res.data){showToast('Benutzername nicht gefunden');return;}
-        doInvite(res.data.ls_id);
-      }).catch(function(){showToast('\u274C Fehler beim Suchen');});
-    } else {
-      doInvite(raw);
-    }
+    var uname=raw.startsWith('@')?raw.slice(1):raw;
+    getSb().from('ls_users').select('ls_id').eq('username',uname).maybeSingle()
+    .then(function(res){
+      doInvite(res.data?res.data.ls_id:uname);
+    }).catch(function(){doInvite(uname);});
   }
 
   function acceptGroupInvite(invite){
@@ -3408,19 +3416,19 @@ function LernSpaceView(p){
           h('span',{style:{position:'absolute',right:2,bottom:2,width:14,height:14,borderRadius:'50%',background:'#10B981',border:'2px solid #0F0A1E'}})
         ),
         h('div',{style:{flex:1,minWidth:0}},
-          h('div',{style:{fontSize:17,fontWeight:700,background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}},p.socialUsername?('@'+p.socialUsername):MY_ID),
+          h('div',{style:{fontSize:17,fontWeight:700,background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}},p.socialUsername||MY_ID),
           h('div',{className:'lp-modal-sub',style:{marginTop:4}},'Dein Netzwerk-Profil')),
         h(DsButton,{variant:'primary',style:{width:'auto',padding:'0 20px',height:40},onClick:function(){setShowShareId(true);}},h('span',{className:'lp-btn-glow-label'},'ID teilen'))),
       showShareId&&h('div',{className:'lp-modal-ov',onClick:function(){setShowShareId(false);}},
         h('div',{className:'lp-modal-box',style:{maxWidth:360,position:'relative'},onClick:function(e){e.stopPropagation();}},
           h('button',{className:'lp-modal-close',onClick:function(){setShowShareId(false);}},'×'),
           h('div',{className:'lp-modal-title'},'ID teilen'),
-          h('div',{style:{fontSize:15,fontFamily:'var(--font-mono)',color:'#fff'}},p.socialUsername?('@'+p.socialUsername):MY_ID),
+          h('div',{style:{fontSize:15,fontFamily:'var(--font-mono)',color:'#fff'}},p.socialUsername||MY_ID),
           h('div',{style:{display:'flex',flexDirection:'column',gap:12}},
-            h('a',{href:'https://wa.me/?text='+encodeURIComponent('Meine Lernpuls-ID: '+(p.socialUsername?('@'+p.socialUsername):MY_ID)),target:'_blank',rel:'noopener',
+            h('a',{href:'https://wa.me/?text='+encodeURIComponent('Meine Lernpuls-ID: '+(p.socialUsername||MY_ID)),target:'_blank',rel:'noopener',
               style:{background:'#25D366',color:'#fff',height:48,borderRadius:10,textDecoration:'none',fontWeight:600,fontSize:15,display:'flex',alignItems:'center',justifyContent:'center'}},'Bei WhatsApp teilen'),
             h(DsButton,{variant:'ghost',style:{height:48},onClick:function(){
-              var id=p.socialUsername?('@'+p.socialUsername):MY_ID;
+              var id=p.socialUsername||MY_ID;
               if(navigator.clipboard)navigator.clipboard.writeText(id).then(function(){showToast('📋 '+id+' kopiert!');}).catch(function(){showToast('ID: '+id);});
               else showToast('ID: '+id);
             }},'ID kopieren')))),
@@ -3496,9 +3504,9 @@ function LernSpaceView(p){
           })),
       h('div',{style:{display:'flex',flexDirection:'column',gap:12}},
         h('div',{className:'lp-seclbl'},'Freund einladen'),
-        h('input',{className:'lp-dark-input',placeholder:'@Benutzername oder ID',value:inviteId,onInput:function(e){var v=e.target.value;setInviteId(v);searchInviteHints(v);}}),
+        h('input',{className:'lp-dark-input',placeholder:'Benutzername oder ID',value:inviteId,onInput:function(e){var v=e.target.value;setInviteId(v);searchInviteHints(v);}}),
         inviteHints.length>0&&h('div',{style:{display:'flex',flexWrap:'wrap',gap:8}},
-          inviteHints.slice(0,4).map(function(u){return h('button',{key:u,className:'lp-chip',onClick:function(){setInviteId('@'+u);setInviteHints([]);}},'@'+u);})),
+          inviteHints.slice(0,4).map(function(u){return h('button',{key:u,className:'lp-chip',onClick:function(){setInviteId(u);setInviteHints([]);}},u);})),
         h(DsButton,{variant:'primary',onClick:sendFriendRequest},h('span',{className:'lp-btn-glow-label'},'Anfrage senden'))));
   }
 
@@ -3927,9 +3935,9 @@ function LernSpaceView(p){
         ),
         h('button',{className:'lp-modal-close',onClick:function(){setShowGroupSettings(false);}},'\u00D7'),
         h('div',{className:'lp-seclbl'},'Mitglied einladen'),
-        h('input',{className:'lp-dark-input',placeholder:'@Benutzername',value:inviteMemberId,autoCorrect:'off',autoComplete:'off',autoCapitalize:'none',spellCheck:false,onInput:function(e){var v=e.target.value;setInviteMemberId(v);searchMemberHints(v);}}),
+        h('input',{className:'lp-dark-input',placeholder:'Benutzername',value:inviteMemberId,autoCorrect:'off',autoComplete:'off',autoCapitalize:'none',spellCheck:false,onInput:function(e){var v=e.target.value;setInviteMemberId(v);searchMemberHints(v);}}),
         memberHints.length>0&&h('div',{style:{display:'flex',flexWrap:'wrap',gap:8}},
-          memberHints.slice(0,4).map(function(u){return h('button',{key:u,className:'lp-chip',onClick:function(){setInviteMemberId('@'+u);setMemberHints([]);}},'@'+u);})
+          memberHints.slice(0,4).map(function(u){return h('button',{key:u,className:'lp-chip',onClick:function(){setInviteMemberId(u);setMemberHints([]);}},u);})
         ),
         h('div',{style:{display:'flex',gap:8}},
           h('button',{className:'lp-mode-chip'+(inviteRole==='user'?' active':''),onClick:function(){setInviteRole('user');}},'Mitglied'),
@@ -3966,7 +3974,7 @@ function LernSpaceView(p){
       )
     ),
     showConsent&&h(LsConsentModal,{
-      onAccept:function(){localStorage.setItem(LS_CONSENT_KEY,'1');setShowConsent(false);},
+      onAccept:function(){localStorage.setItem(LS_CONSENT_KEY,'1');window.dispatchEvent(new Event('lp-ls-consent-given'));setShowConsent(false);},
       onDecline:function(){setShowConsent(false);if(p.onBack)p.onBack();},
       onShowDat:p.onShowDat||function(){}
     })
@@ -4200,24 +4208,27 @@ function useVisibleCountUp(target,duration){
   var rafRef=useRef(null);
   useEffect(function(){
     if(!elRef.current||startedRef.current)return;
+    var disposed=false;
+    function begin(){
+      if(startedRef.current||disposed)return;
+      startedRef.current=true;
+      io.disconnect();
+      var start=performance.now();
+      function step(now){
+        var t=Math.min(1,(now-start)/duration);
+        var eased=1-Math.pow(1-t,3);
+        setVal(eased*target);
+        if(t<1)rafRef.current=requestAnimationFrame(step);
+      }
+      rafRef.current=requestAnimationFrame(step);
+    }
     var io=new IntersectionObserver(function(entries){
       entries.forEach(function(e){
-        if(e.isIntersecting&&!startedRef.current){
-          startedRef.current=true;
-          io.disconnect();
-          var start=performance.now();
-          function step(now){
-            var t=Math.min(1,(now-start)/duration);
-            var eased=1-Math.pow(1-t,3);
-            setVal(eased*target);
-            if(t<1)rafRef.current=requestAnimationFrame(step);
-          }
-          rafRef.current=requestAnimationFrame(step);
-        }
+        if(e.isIntersecting&&!startedRef.current)onHomeReady(begin);
       });
     },{threshold:1});
     io.observe(elRef.current);
-    return function(){io.disconnect();if(rafRef.current)cancelAnimationFrame(rafRef.current);};
+    return function(){disposed=true;io.disconnect();if(rafRef.current)cancelAnimationFrame(rafRef.current);};
   },[target,duration]);
   return [elRef,val];
 }
@@ -4232,30 +4243,33 @@ function LpAnimatedGoalCard(p){
   var vs=useState({streak:p.streak>0?1:0,count:0,pct:0}); var vals=vs[0]; var setVals=vs[1];
   useEffect(function(){
     if(!elRef.current||startedRef.current)return;
+    var disposed=false;
+    function begin(){
+      if(startedRef.current||disposed)return;
+      startedRef.current=true;
+      io.disconnect();
+      var duration=1800;
+      var start=performance.now();
+      var streakTarget=p.streak,countTarget=p.todayCount,pctTarget=p.goalPct;
+      function step(now){
+        var t=Math.min(1,(now-start)/duration);
+        var eased=1-Math.pow(1-t,3);
+        setVals({
+          streak:streakTarget>0?Math.max(1,Math.round(eased*streakTarget)):0,
+          count:Math.round(eased*countTarget),
+          pct:eased*pctTarget
+        });
+        if(t<1)rafRef.current=requestAnimationFrame(step);
+      }
+      rafRef.current=requestAnimationFrame(step);
+    }
     var io=new IntersectionObserver(function(entries){
       entries.forEach(function(e){
-        if(e.isIntersecting&&!startedRef.current){
-          startedRef.current=true;
-          io.disconnect();
-          var duration=1800;
-          var start=performance.now();
-          var streakTarget=p.streak,countTarget=p.todayCount,pctTarget=p.goalPct;
-          function step(now){
-            var t=Math.min(1,(now-start)/duration);
-            var eased=1-Math.pow(1-t,3);
-            setVals({
-              streak:streakTarget>0?Math.max(1,Math.round(eased*streakTarget)):0,
-              count:Math.round(eased*countTarget),
-              pct:eased*pctTarget
-            });
-            if(t<1)rafRef.current=requestAnimationFrame(step);
-          }
-          rafRef.current=requestAnimationFrame(step);
-        }
+        if(e.isIntersecting&&!startedRef.current)onHomeReady(begin);
       });
     },{threshold:1});
     io.observe(elRef.current);
-    return function(){io.disconnect();if(rafRef.current)cancelAnimationFrame(rafRef.current);};
+    return function(){disposed=true;io.disconnect();if(rafRef.current)cancelAnimationFrame(rafRef.current);};
   },[p.streak,p.todayCount,p.goalPct]);
   return h("div",{className:"lp-goal-card",ref:elRef},
     h("div",{className:"lp-goal-card-header"},
@@ -4482,6 +4496,34 @@ function App(p){
   var xfs=useState(null); var xpSubject=xfs[0]; var setXpSubject=xfs[1];
   var les=useState([]); var lernEmpf=les[0]; var setLernEmpf=les[1];
   var lss=useState(false); var showLernEmpf=lss[0]; var setShowLernEmpf=lss[1];
+  /* Netzwerk-Consent app-weit: die Online-Praesenz (siehe unten) lief
+     bisher schon beim App-Start, ganz ohne dass der Consent-Dialog je
+     zu sehen war - der existierte nur innerhalb des Netzwerk-Bereichs,
+     den man nicht zwingend je oeffnet. Jetzt wird direkt nach dem
+     Splash gefragt, bevor irgendetwas getrackt oder animiert wird. */
+  var lscs=useState(function(){try{return localStorage.getItem(LS_CONSENT_KEY)==='1';}catch(e){return false;}});
+  var lsConsent=lscs[0]; var setLsConsent=lscs[1];
+  var salcs=useState(false); var showAppLsConsent=salcs[0]; var setShowAppLsConsent=salcs[1];
+  useEffect(function(){
+    function onGiven(){setLsConsent(true);}
+    window.addEventListener('lp-ls-consent-given',onGiven);
+    return function(){window.removeEventListener('lp-ls-consent-given',onGiven);};
+  },[]);
+  useEffect(function(){
+    if(!p.splashHiding)return;
+    var netzwerkAktiv=data.settings&&data.settings.lernSpaceEnabled!==false;
+    if(netzwerkAktiv&&!lsConsent)setShowAppLsConsent(true);else markHomeReady();
+  },[p.splashHiding]);
+  function acceptAppLsConsent(){
+    localStorage.setItem(LS_CONSENT_KEY,'1');
+    setLsConsent(true);
+    setShowAppLsConsent(false);
+    markHomeReady();
+  }
+  function declineAppLsConsent(){
+    setShowAppLsConsent(false);
+    markHomeReady();
+  }
   useEffect(function(){
     if(view!=="decks"||deckListMode!=="home")return;
     var t=setTimeout(function(){
@@ -4588,7 +4630,7 @@ function App(p){
     setPresence(map);
   }
   useEffect(function(){
-    var enabled=data.settings&&data.settings.lernSpaceEnabled!==false;
+    var enabled=data.settings&&data.settings.lernSpaceEnabled!==false&&lsConsent;
     if(!enabled){
       if(_presenceChannel.current){getSb().removeChannel(_presenceChannel.current);_presenceChannel.current=null;setPresence({});}
       return;
@@ -4601,7 +4643,7 @@ function App(p){
       });
     _presenceChannel.current=ch;
     return function(){ getSb().removeChannel(ch); if(_presenceChannel.current===ch)_presenceChannel.current=null; };
-  },[data.settings&&data.settings.lernSpaceEnabled!==false]);
+  },[data.settings&&data.settings.lernSpaceEnabled!==false,lsConsent]);
   /* Lern-Status live nachmelden, sobald eine Lernsitzung beginnt/endet. */
   useEffect(function(){
     var ch=_presenceChannel.current;
@@ -4616,7 +4658,7 @@ function App(p){
      Google-Foto bekannt ist. Nur wenn noch kein eigenes Avatar gewaehlt
      wurde, damit eine bewusste manuelle Wahl nicht ueberschrieben wird. */
   useEffect(function(){
-    if(!googlePhoto)return;
+    if(!googlePhoto||!lsConsent)return;
     var myId=getLsId();
     if(!myId)return;
     lsGet('ls_users',myId).then(function(remote){
@@ -4625,7 +4667,7 @@ function App(p){
       if(hasCustomAvatar)return;
       return lsSet('ls_users',myId,Object.assign({},remote,{avatar:'photo',avatarPhoto:googlePhoto}));
     }).catch(function(){});
-  },[googlePhoto]);
+  },[googlePhoto,lsConsent]);
 
   function handleAuthUser(user){
     _syncUser=user;
@@ -5108,6 +5150,7 @@ function App(p){
   var lpGoalRemaining=Math.max(0,lpDailyGoal-lpTodayCount);
 
   return h("div",{id:"lp-app-shell"},
+    showAppLsConsent&&h(LsConsentModal,{onAccept:acceptAppLsConsent,onDecline:declineAppLsConsent,onShowDat:function(){setShowDat(true);}}),
     showUsernameModal&&h(UsernamePickerModal,{onDone:function(uname){setSocialUsername(uname);setShowUsernameModal(false);showToast('🎉 Benutzername gespeichert: '+uname);}}),
     showLernEmpf&&lernEmpf.length>0&&_leOverlay,
     h(LpSidebar,{navId:navId,onNav:switchNav,userName:lpUserName,avatarLetter:lpAvatarLetter,streak:lpStreak,lernSpaceEnabled:lpLernSpaceOn,photo:googlePhoto}),
@@ -5304,7 +5347,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       if(minTimeDone&&!dashFriends.loading)finishSplash();
     },[minTimeDone,dashFriends.loading]);
 
-    return h("div",null,shown&&h(Splash,{out:hiding,onSkip:skip}),h(App,{dashFriends:dashFriends}));
+    return h("div",null,shown&&h(Splash,{out:hiding,onSkip:skip}),h(App,{dashFriends:dashFriends,splashHiding:hiding}));
   },null));
 
 if("serviceWorker" in navigator){
