@@ -1086,7 +1086,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.78";
+var KKM_VERSION="1.2.79";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1213,6 +1213,23 @@ function acceptDsgvo(){
   if(!myId)return;
   lsGet('ls_users',myId).then(function(remote){
     remote=remote||{};
+    return lsSet('ls_users',myId,Object.assign({},remote,{dsgvoAcceptedAt:new Date().toISOString(),dsgvoAcceptedVersion:DSGVO_VERSION}));
+  }).catch(function(){});
+}
+/* Wer schon vor dieser Funktion zugestimmt hat, hat lokal laengst
+   dsgvoAccepted()===true, aber nie ein dsgvoAcceptedAt in der Cloud
+   bekommen - acceptDsgvo() laeuft ja nur bei einer tatsaechlichen NEUEN
+   Zustimmung (ConsentModal), nicht rueckwirkend. Einmalig nachtragen,
+   ohne ein bereits vorhandenes Datum zu ueberschreiben - das heutige
+   Datum ist hier nur eine bestmoegliche Naeherung, da das echte
+   urspruengliche Zustimmungsdatum nirgends festgehalten wurde. */
+function backfillDsgvoAcceptedIfMissing(){
+  if(!dsgvoAccepted())return;
+  var myId=getLsId();
+  if(!myId)return;
+  lsGet('ls_users',myId).then(function(remote){
+    remote=remote||{};
+    if(remote.dsgvoAcceptedAt)return;
     return lsSet('ls_users',myId,Object.assign({},remote,{dsgvoAcceptedAt:new Date().toISOString(),dsgvoAcceptedVersion:DSGVO_VERSION}));
   }).catch(function(){});
 }
@@ -4526,6 +4543,7 @@ function App(p){
   var xfs=useState(null); var xpSubject=xfs[0]; var setXpSubject=xfs[1];
   var les=useState([]); var lernEmpf=les[0]; var setLernEmpf=les[1];
   var lss=useState(false); var showLernEmpf=lss[0]; var setShowLernEmpf=lss[1];
+  useEffect(function(){ backfillDsgvoAcceptedIfMissing(); },[]);
   /* Netzwerk-Consent app-weit: die Online-Praesenz (siehe unten) lief
      bisher schon beim App-Start, ganz ohne dass der Consent-Dialog je
      zu sehen war - der existierte nur innerhalb des Netzwerk-Bereichs,
