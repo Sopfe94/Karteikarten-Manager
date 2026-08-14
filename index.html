@@ -1096,7 +1096,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.54";
+var KKM_VERSION="1.2.55";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1681,6 +1681,14 @@ function DeckDetail(p){
   var as=useState(false); var showAdd=as[0]; var setShowAdd=as[1];
   var ec=useState(null); var editC=ec[0]; var setEditC=ec[1];
   var sv=useState(false); var study=sv[0]; var setStudy=sv[1];
+  /* Cleanup-Rueckgabe meldet "nicht mehr am Lernen", sobald DeckDetail
+     komplett verlassen wird (z.B. per Bottom-Nav waehrend einer noch
+     laufenden Sitzung) - sonst bliebe der Online-Status faelschlich auf
+     "lernen" haengen. */
+  useEffect(function(){
+    if(p.onStudyingChange)p.onStudyingChange(study);
+    return function(){ if(p.onStudyingChange)p.onStudyingChange(false); };
+  },[study]);
   var sm=useState(false); var showShare=sm[0]; var setShowShare=sm[1];
   var sfn=useState(false); var showNewFolder=sfn[0]; var setShowNewFolder=sfn[1];
   var ef=useState(null); var editFolderItem=ef[0]; var setEditFolderItem=ef[1];
@@ -2084,7 +2092,7 @@ function ProfilView(p){
     h("button",{className:"back-btn",style:{marginBottom:8,marginTop:4},onClick:p.onBack},"← Startseite"),
     h('div',{style:{padding:'12px 4px 40px',display:'flex',flexDirection:'column',gap:32,maxWidth:640}},
       h('div',{className:'lp-profil-head'},
-        h(DsAvatar,{name:name,size:'xl',src:p.photo}),
+        h(DsAvatar,{name:name,size:'xl',src:p.photo,online:true}),
         h('div',null,
           h('div',{className:'lp-profil-name'},name),
           h('div',{className:'lp-profil-email'},email))),
@@ -3396,7 +3404,8 @@ function LernSpaceView(p){
           renderAvatarEl(
             (lsData&&lsData.avatarPhoto)||(!(lsData&&lsData.avatarPhoto)&&!(lsData&&lsData.avatar&&lsData.avatar!=='av1')&&p.googleUser&&p.googleUser.user_metadata&&p.googleUser.user_metadata.avatar_url)?'photo':(lsData&&lsData.avatar),
             (lsData&&lsData.avatarPhoto)||((!(lsData&&lsData.avatarPhoto)&&!(lsData&&lsData.avatar&&lsData.avatar!=='av1'))?(localStorage.getItem('kkm-gphoto')||(p.googleUser&&p.googleUser.user_metadata&&p.googleUser.user_metadata.avatar_url)||null):null),
-            64)
+            64),
+          h('span',{style:{position:'absolute',right:2,bottom:2,width:14,height:14,borderRadius:'50%',background:'#10B981',border:'2px solid #0F0A1E'}})
         ),
         h('div',{style:{flex:1,minWidth:0}},
           h('div',{style:{fontSize:17,fontWeight:700,background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}},p.socialUsername?('@'+p.socialUsername):MY_ID),
@@ -3449,7 +3458,7 @@ function LernSpaceView(p){
           var prof=friendProfiles[req.fromId];
           return h('div',{key:i,className:'lp-row'},
             prof
-              ?h('img',{src:(prof.avatar==='photo'&&prof.avatarPhoto)?prof.avatarPhoto:getAvatarSrc(prof.avatar||'av1'),style:{width:36,height:32,borderRadius:'50%',objectFit:'cover',flexShrink:0}})
+              ?h(DsAvatar,{size:'sm',src:(prof.avatar==='photo'&&prof.avatarPhoto)?prof.avatarPhoto:getAvatarSrc(prof.avatar||'av1'),online:!!(p.presence||{})[req.fromId]})
               :h('div',{className:'lp-avatar-tile',style:{borderRadius:'50%'}},'⏳'),
             h('div',{style:{flex:1,minWidth:0,fontSize:13}},h('b',null,h(UserLabel,{id:req.fromId})),' möchte Freunde werden'),
             h(DsButton,{variant:'primary',style:{width:'auto',padding:'0 16px',height:32},onClick:function(){acceptRequest(req);}},h('span',{className:'lp-btn-glow-label',style:{fontSize:13}},'Annehmen')),
@@ -3472,7 +3481,7 @@ function LernSpaceView(p){
             var fp=friendProfiles[f.id];
             return h('div',{key:i,className:'lp-row'},
               fp
-                ?h('img',{src:(fp.avatar==='photo'&&fp.avatarPhoto)?fp.avatarPhoto:getAvatarSrc(fp.avatar||'av1'),style:{width:36,height:32,borderRadius:'50%',objectFit:'cover',flexShrink:0}})
+                ?h(DsAvatar,{size:'sm',src:(fp.avatar==='photo'&&fp.avatarPhoto)?fp.avatarPhoto:getAvatarSrc(fp.avatar||'av1'),online:!!(p.presence||{})[f.id]})
                 :h('div',{className:'lp-avatar-tile',style:{borderRadius:'50%'}},'👤'),
               h('div',{style:{flex:1,minWidth:0}},
                 h('div',{className:'lp-row-title'},h(UserLabel,{id:f.id})),
@@ -4068,8 +4077,8 @@ function DsAvatar(p){
       display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',
       fontFamily:'var(--font-sans)',fontWeight:700,fontSize:fs,color:'#fff'}},
       p.src?h('img',{src:p.src,alt:name,style:{width:'100%',height:'100%',objectFit:'cover'}}):initials),
-    p.online&&h('span',{style:{position:'absolute',right:0,bottom:0,width:dot,height:dot,
-      borderRadius:'50%',background:'#10B981',border:'2px solid #0F0A1E'}}));
+    p.online!==undefined&&h('span',{style:{position:'absolute',right:0,bottom:0,width:dot,height:dot,
+      borderRadius:'50%',background:p.online?'#10B981':'#EF4444',border:'2px solid #0F0A1E'}}));
 }
 
 /* Progress — _ds/components/core/Progress.jsx */
@@ -4124,7 +4133,7 @@ function LpSidebar(p){
           h(LpNavIcon,null,it.icon()),it.longLabel);
       })),
     h('button',{className:'lp-sidebar-footer',onClick:function(){p.onNav('profil');}},
-      h(DsAvatar,{name:p.userName,size:'sm',src:p.photo}),
+      h(DsAvatar,{name:p.userName,size:'sm',src:p.photo,online:true}),
       h('div',null,
         h('div',{className:'lp-sidebar-user-name'},p.userName),
         h('div',{className:'lp-sidebar-user-streak'},'🔥 '+p.streak+' Tage'))));
@@ -4145,7 +4154,7 @@ function LpBottomNav(p){
 function LpMobileTopbar(p){
   return h('div',{className:'lp-mobile-topbar'},
     h('button',{className:'lp-mobile-topbar-avatar',onClick:function(){p.onNav('profil');}},
-      h(DsAvatar,{name:p.userName,size:'sm',src:p.photo})),
+      h(DsAvatar,{name:p.userName,size:'sm',src:p.photo,online:true})),
     h('button',{className:'lp-mobile-topbar-logo',onClick:function(){p.onNav('dashboard');}},
       h('div',{className:'lp-logo-text'},h('span',{className:'lern'},'Lern'),h('span',{className:'puls'},'puls')),
       h('div',{className:'lp-logo-line'}),
@@ -4283,22 +4292,24 @@ function LpAnimatedProfilStat(p){
 function DashboardFriends(p){
   var state=p.state||{loading:true,friends:[]};
   if(state.loading)return null;
+  var presence=p.presence||{};
+  var online=state.friends.filter(function(f){return !!presence[f.id];});
   return h('div',{className:'lp-dash-friends'},
     h('div',{className:'lp-section-title'},'Freunde aktiv'),
-    state.friends.length===0
+    online.length===0
       ? h('div',{className:'lp-dash-friend-row lp-hover-glow',onClick:function(){p.onNav('netzwerk');}},
-          h('div',{className:'lp-dash-friend-name'},'Noch keine Freunde'),
-          h('div',{style:{flex:1}},h('div',{className:'lp-dash-friend-sub'},'Im Netzwerk Freunde finden und hinzufügen')),
+          h('div',{className:'lp-dash-friend-name'},state.friends.length===0?'Noch keine Freunde':'Gerade ist niemand online'),
+          h('div',{style:{flex:1}},h('div',{className:'lp-dash-friend-sub'},state.friends.length===0?'Im Netzwerk Freunde finden und hinzufügen':'Schau später nochmal vorbei')),
           h('span',{style:{color:'var(--c-pur2)',fontSize:20}},'→'))
-      : state.friends.map(function(f){
+      : online.map(function(f){
           var prof=f.profile;
+          var studying=presence[f.id]==='lernen';
+          var src=prof?((prof.avatar==='photo'&&prof.avatarPhoto)?prof.avatarPhoto:getAvatarSrc(prof.avatar||'av1')):undefined;
           return h('div',{key:f.id,className:'lp-dash-friend-row lp-hover-glow',onClick:function(){p.onNav('netzwerk');}},
-            prof
-              ? h('img',{src:(prof.avatar==='photo'&&prof.avatarPhoto)?prof.avatarPhoto:getAvatarSrc(prof.avatar||'av1'),style:{width:36,height:36,borderRadius:'50%',objectFit:'cover',flexShrink:0}})
-              : h(DsAvatar,{size:'sm'}),
+            h(DsAvatar,{size:'sm',src:src,online:true}),
             h('div',{style:{flex:1,minWidth:0}},
               h('div',{className:'lp-dash-friend-name'},h(UserLabel,{id:f.id})),
-              h('div',{className:'lp-dash-friend-sub'},f.since?('Freund seit '+new Date(f.since).toLocaleDateString('de-DE')):'')),
+              h('div',{className:'lp-dash-friend-sub',style:studying?{color:'#06B6D4'}:null},studying?'Lernt gerade':'Online')),
             h('span',{style:{color:'rgba(255,255,255,0.3)',fontSize:18}},'→'));
         }));
 }
@@ -4558,6 +4569,46 @@ function App(p){
       }
     }).subscribe();
   }
+
+  /* ── Online-Praesenz (Echtzeit) ──────────────────────────────────
+     Ein gemeinsamer Supabase-Realtime-Presence-Kanal, in den sich
+     jeder aktive Nutzer (Gast oder Google) eintraegt. Andere Clients
+     sehen per "sync"-Event sofort, wer online ist und ob gerade
+     gelernt wird - unabhaengig vom Google-Login, da das Netzwerk
+     auch fuer Gaeste verfuegbar ist. */
+  var pres=useState({}); var presence=pres[0]; var setPresence=pres[1];
+  var isv=useState(false); var isStudying=isv[0]; var setIsStudying=isv[1];
+  var _presenceChannel=useRef(null);
+  function applyPresenceState(state){
+    var map={};
+    Object.keys(state).forEach(function(id){
+      var entries=state[id]||[];
+      var studying=entries.some(function(e){return e.status==='lernen';});
+      map[id]=studying?'lernen':'online';
+    });
+    setPresence(map);
+  }
+  useEffect(function(){
+    var enabled=data.settings&&data.settings.lernSpaceEnabled!==false;
+    if(!enabled){
+      if(_presenceChannel.current){getSb().removeChannel(_presenceChannel.current);_presenceChannel.current=null;setPresence({});}
+      return;
+    }
+    var myId=getLsId();
+    var ch=getSb().channel('lp-presence',{config:{presence:{key:myId}}});
+    ch.on('presence',{event:'sync'},function(){applyPresenceState(ch.presenceState());})
+      .subscribe(function(status){
+        if(status==='SUBSCRIBED')ch.track({status:(isStudying||qsStep==='study')?'lernen':'online'});
+      });
+    _presenceChannel.current=ch;
+    return function(){ getSb().removeChannel(ch); if(_presenceChannel.current===ch)_presenceChannel.current=null; };
+  },[data.settings&&data.settings.lernSpaceEnabled!==false]);
+  /* Lern-Status live nachmelden, sobald eine Lernsitzung beginnt/endet. */
+  useEffect(function(){
+    var ch=_presenceChannel.current;
+    if(!ch)return;
+    ch.track({status:(isStudying||qsStep==='study')?'lernen':'online'});
+  },[isStudying,qsStep]);
 
   function handleAuthUser(user){
     _syncUser=user;
@@ -5073,17 +5124,17 @@ function App(p){
                       style:{minHeight:150}});
                   })),
 
-            lpLernSpaceOn&&h(DashboardFriends,{onNav:switchNav,state:dashFriends})),
+            lpLernSpaceOn&&h(DashboardFriends,{onNav:switchNav,state:dashFriends,presence:presence})),
 
           view==="decks"&&!activeDeck&&!qsStep&&deckListMode==="manage"&&h("div",null,
             h("button",{className:"manage-back",onClick:function(){setDeckListMode("home");}},"← Startseite"),
             renderExplorer(),
             renderFooter()),
-          view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck}),
+          view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck,onStudyingChange:setIsStudying}),
           qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs,onProgress:saveQsProgress}),
           view==="editor"&&!qsStep&&h("div",null,h(LpEditorPlaceholder,{onOpenDecks:function(){switchNav('explorer');}}),renderFooter()),
           view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onForceRestore:handleForceRestore,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast}),renderFooter()),
-          view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,googleUser:googleUser,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},onGroupDecksForHome:onGroupDecksForHome}),renderFooter()),
+          view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,googleUser:googleUser,presence:presence,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},onGroupDecksForHome:onGroupDecksForHome}),renderFooter()),
           view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}}),renderFooter()),
           view==="updates"&&!qsStep&&h(UpdatesView,{onBack:function(){setView("decks");setDeckListMode("home");},onShowImp:function(){setShowImp(true);},onShowDat:function(){setShowDat(true);}}))),
       h(LpBottomNav,{navId:navId,onNav:switchNav,lernSpaceEnabled:lpLernSpaceOn})),
@@ -5186,7 +5237,11 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       var myId=getLsId();
       if(!myId){setDashFriends({loading:false,friends:[]});return;}
       lsGet('ls_users',myId).then(function(me){
-        var list=((me&&me.friends)||[]).slice().sort(function(a,b){return (b.since||0)-(a.since||0);}).slice(0,3);
+        /* Alle Freunde vorladen (nicht nur die letzten 3) - die
+           Startseite zeigt jetzt die gerade ONLINEN Freunde, das
+           muss unabhaengig davon sein, wann die Freundschaft
+           geschlossen wurde. */
+        var list=((me&&me.friends)||[]).slice().sort(function(a,b){return (b.since||0)-(a.since||0);}).slice(0,30);
         if(!list.length){if(!cancelled)setDashFriends({loading:false,friends:[]});return;}
         Promise.all(list.map(function(f){
           /* Neben dem Profil (fuer Avatar) auch gleich den Benutzernamen
