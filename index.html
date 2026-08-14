@@ -1096,7 +1096,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.58";
+var KKM_VERSION="1.2.59";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2108,7 +2108,7 @@ function ProfilView(p){
     h("button",{className:"back-btn",style:{marginBottom:8,marginTop:4},onClick:p.onBack},"← Startseite"),
     h('div',{style:{padding:'12px 4px 40px',display:'flex',flexDirection:'column',gap:32,maxWidth:640}},
       h('div',{className:'lp-profil-head'},
-        h(DsAvatar,{name:name,size:'xl',src:p.photo,online:true}),
+        h(DsAvatar,{name:name,size:'xl',src:p.photo,online:p.lsConsent?true:undefined}),
         h('div',null,
           h('div',{className:'lp-profil-name'},name),
           h('div',{className:'lp-profil-email'},email))),
@@ -2152,13 +2152,21 @@ function ProfilView(p){
                 return h('button',{key:art,className:'lp-art-btn'+(sel?' sel':''),onClick:function(){toggleArt(art);}},sel?'✓ '+art:art);
               }))),
 
-          h('div',{className:'lp-settings-row',style:{borderBottom:'none'}},
+          h('div',{className:'lp-settings-row'},
             h('div',null,
               h('div',{style:{fontSize:15,color:'#fff'}},'Netzwerk aktivieren'),
               h('div',{style:{fontSize:13,color:'rgba(255,255,255,.35)',marginTop:4}},'Blendet Netzwerk in der Navigation ein oder aus')),
             h('button',{className:'lp-switch',style:{background:sets.lernSpaceEnabled!==false?'var(--grad-brand)':'rgba(255,255,255,.14)'},
               onClick:function(){p.onChange(Object.assign({},sets,{lernSpaceEnabled:sets.lernSpaceEnabled===false}));}},
               h('span',{className:'lp-switch-knob',style:{left:sets.lernSpaceEnabled!==false?21:3}}))),
+
+          h('div',{className:'lp-settings-row',style:{borderBottom:'none'}},
+            h('div',null,
+              h('div',{style:{fontSize:15,color:'#fff'}},'Online-Status teilen'),
+              h('div',{style:{fontSize:13,color:'rgba(255,255,255,.35)',marginTop:4,maxWidth:260}},'Zeigt Freunden, wenn du online bist oder gerade lernst. Aus = kein Punkt an deinem Profilbild, du erscheinst bei niemandem als online.')),
+            h('button',{className:'lp-switch',style:{background:p.lsConsent?'var(--grad-brand)':'rgba(255,255,255,.14)'},
+              onClick:p.onToggleLsConsent},
+              h('span',{className:'lp-switch-knob',style:{left:p.lsConsent?21:3}}))),
 
           h('div',{style:{display:'flex',gap:12,justifyContent:'center',padding:'20px 4px 4px',flexWrap:'wrap'}},
             p.googleUser
@@ -2851,7 +2859,9 @@ function LsConsentModal(p){
       ),
       h("div",{className:"legal-body",style:{fontSize:"13px",color:"rgba(255,255,255,.72)",lineHeight:1.55,marginBottom:4}},
         h("p",null,"Im Netzwerk werden deine sozialen Daten — darunter dein Profil, Avatar, Freundesliste und Anfragen — auf ",h("strong",{style:{color:"#fff"}},"Supabase (EU)")," gespeichert. Gäste nutzen eine zufällige ID, Google-Nutzer ihre E-Mail-Adresse."),
+        h("p",{style:{marginTop:12}},"Außerdem sehen deine Freunde, wenn du online bist oder gerade lernst (Online-Status)."),
         h("p",{style:{marginTop:12}},"Die Speicherung erfolgt über deine automatisch generierte Lern Space ID, ohne Anmeldung."),
+        h("p",{style:{marginTop:12,color:"rgba(255,255,255,.55)"}},"Du kannst deine Zustimmung jederzeit unter ",h("strong",{style:{color:"#fff"}},"Einstellungen → Online-Status teilen")," widerrufen."),
         h("p",{style:{marginTop:12}},h("span",{style:{color:"#A78BFA",cursor:"pointer",textDecoration:"underline"},onClick:p.onShowDat},"► Datenschutzerklärung lesen (Punkt 13)"))
       ),
       h("div",{className:"lp-modal-actions",style:{gap:12}},
@@ -3413,7 +3423,7 @@ function LernSpaceView(p){
             (lsData&&lsData.avatarPhoto)||(!(lsData&&lsData.avatarPhoto)&&!(lsData&&lsData.avatar&&lsData.avatar!=='av1')&&p.googleUser&&p.googleUser.user_metadata&&p.googleUser.user_metadata.avatar_url)?'photo':(lsData&&lsData.avatar),
             (lsData&&lsData.avatarPhoto)||((!(lsData&&lsData.avatarPhoto)&&!(lsData&&lsData.avatar&&lsData.avatar!=='av1'))?(localStorage.getItem('kkm-gphoto')||(p.googleUser&&p.googleUser.user_metadata&&p.googleUser.user_metadata.avatar_url)||null):null),
             64),
-          h('span',{style:{position:'absolute',right:2,bottom:2,width:14,height:14,borderRadius:'50%',background:'#10B981',border:'2px solid #0F0A1E'}})
+          p.lsConsent&&h('span',{style:{position:'absolute',right:2,bottom:2,width:14,height:14,borderRadius:'50%',background:'#10B981',border:'2px solid #0F0A1E'}})
         ),
         h('div',{style:{flex:1,minWidth:0}},
           h('div',{style:{fontSize:17,fontWeight:700,background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}},p.socialUsername||MY_ID),
@@ -3975,7 +3985,7 @@ function LernSpaceView(p){
     ),
     showConsent&&h(LsConsentModal,{
       onAccept:function(){localStorage.setItem(LS_CONSENT_KEY,'1');window.dispatchEvent(new Event('lp-ls-consent-given'));setShowConsent(false);},
-      onDecline:function(){setShowConsent(false);if(p.onBack)p.onBack();},
+      onDecline:function(){localStorage.setItem(LS_CONSENT_KEY,'0');setShowConsent(false);if(p.onBack)p.onBack();},
       onShowDat:p.onShowDat||function(){}
     })
   );
@@ -4141,7 +4151,7 @@ function LpSidebar(p){
           h(LpNavIcon,null,it.icon()),it.longLabel);
       })),
     h('button',{className:'lp-sidebar-footer',onClick:function(){p.onNav('profil');}},
-      h(DsAvatar,{name:p.userName,size:'sm',src:p.photo,online:true}),
+      h(DsAvatar,{name:p.userName,size:'sm',src:p.photo,online:p.lsConsent?true:undefined}),
       h('div',null,
         h('div',{className:'lp-sidebar-user-name'},p.userName),
         h('div',{className:'lp-sidebar-user-streak'},'🔥 '+p.streak+' Tage'))));
@@ -4162,7 +4172,7 @@ function LpBottomNav(p){
 function LpMobileTopbar(p){
   return h('div',{className:'lp-mobile-topbar'},
     h('button',{className:'lp-mobile-topbar-avatar',onClick:function(){p.onNav('profil');}},
-      h(DsAvatar,{name:p.userName,size:'sm',src:p.photo,online:true})),
+      h(DsAvatar,{name:p.userName,size:'sm',src:p.photo,online:p.lsConsent?true:undefined})),
     h('button',{className:'lp-mobile-topbar-logo',onClick:function(){p.onNav('dashboard');}},
       h('div',{className:'lp-logo-text'},h('span',{className:'lern'},'Lern'),h('span',{className:'puls'},'puls')),
       h('div',{className:'lp-logo-line'}),
@@ -4521,8 +4531,22 @@ function App(p){
     markHomeReady();
   }
   function declineAppLsConsent(){
+    /* Bewusst "0" statt nichts speichern - sonst fragt der Dialog bei
+       jedem App-Start erneut nach. Die Zustimmung laesst sich jederzeit
+       ueber den Schalter in den Einstellungen nachholen. */
+    localStorage.setItem(LS_CONSENT_KEY,'0');
     setShowAppLsConsent(false);
     markHomeReady();
+  }
+  function toggleLsConsent(){
+    if(lsConsent){
+      localStorage.setItem(LS_CONSENT_KEY,'0');
+      setLsConsent(false);
+    } else {
+      localStorage.setItem(LS_CONSENT_KEY,'1');
+      setLsConsent(true);
+      window.dispatchEvent(new Event('lp-ls-consent-given'));
+    }
   }
   useEffect(function(){
     if(view!=="decks"||deckListMode!=="home")return;
@@ -5153,9 +5177,9 @@ function App(p){
     showAppLsConsent&&h(LsConsentModal,{onAccept:acceptAppLsConsent,onDecline:declineAppLsConsent,onShowDat:function(){setShowDat(true);}}),
     showUsernameModal&&h(UsernamePickerModal,{onDone:function(uname){setSocialUsername(uname);setShowUsernameModal(false);showToast('🎉 Benutzername gespeichert: '+uname);}}),
     showLernEmpf&&lernEmpf.length>0&&_leOverlay,
-    h(LpSidebar,{navId:navId,onNav:switchNav,userName:lpUserName,avatarLetter:lpAvatarLetter,streak:lpStreak,lernSpaceEnabled:lpLernSpaceOn,photo:googlePhoto}),
+    h(LpSidebar,{navId:navId,onNav:switchNav,userName:lpUserName,avatarLetter:lpAvatarLetter,streak:lpStreak,lernSpaceEnabled:lpLernSpaceOn,photo:googlePhoto,lsConsent:lsConsent}),
     h("div",{className:"lp-app-content"},
-      h(LpMobileTopbar,{onNav:switchNav,avatarLetter:lpAvatarLetter,userName:lpUserName,photo:googlePhoto}),
+      h(LpMobileTopbar,{onNav:switchNav,avatarLetter:lpAvatarLetter,userName:lpUserName,photo:googlePhoto,lsConsent:lsConsent}),
       h("div",{className:"lp-content-scroll",id:"lp-content-scroll"},
         h("div",{className:"main",style:{padding:0}},
           view==="decks"&&!activeDeck&&!qsStep&&deckListMode==="home"&&h("div",null,
@@ -5193,8 +5217,8 @@ function App(p){
           view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck,onStudyingChange:setIsStudying}),
           qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs,onProgress:saveQsProgress}),
           view==="editor"&&!qsStep&&h("div",null,h(LpEditorPlaceholder,{onOpenDecks:function(){switchNav('explorer');}}),renderFooter()),
-          view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onForceRestore:handleForceRestore,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast}),renderFooter()),
-          view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,googleUser:googleUser,presence:presence,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},onGroupDecksForHome:onGroupDecksForHome}),renderFooter()),
+          view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,lsConsent:lsConsent,onToggleLsConsent:toggleLsConsent,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onForceRestore:handleForceRestore,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast}),renderFooter()),
+          view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,googleUser:googleUser,presence:presence,lsConsent:lsConsent,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},onGroupDecksForHome:onGroupDecksForHome}),renderFooter()),
           view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}}),renderFooter()),
           view==="updates"&&!qsStep&&h(UpdatesView,{onBack:function(){setView("decks");setDeckListMode("home");},onShowImp:function(){setShowImp(true);},onShowDat:function(){setShowDat(true);}}))),
       h(LpBottomNav,{navId:navId,onNav:switchNav,lernSpaceEnabled:lpLernSpaceOn})),
