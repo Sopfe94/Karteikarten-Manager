@@ -1086,7 +1086,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.79";
+var KKM_VERSION="1.2.80";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2573,12 +2573,12 @@ function withTimeout(promiseLike,ms){
 function lsGet(col,docId){
   if(col==='ls_users'){
     dbg('lsGet ls_users:',docId);
-    return withTimeout(getSb().from('ls_users').select('data').eq('ls_id',docId).limit(1),12000)
+    return withTimeout(getSb().from('ls_users').select('netzwerk_data').eq('ls_id',docId).limit(1),12000)
       .then(function(res){
         if(res.error){dbg('❌ lsGet error:',res.error.message||res.error);throw res.error;}
         var row=(res.data&&res.data.length)?res.data[0]:null;
         dbg('✅ lsGet ok. Daten vorhanden:',!!row);
-        return row?row.data:null;
+        return row?row.netzwerk_data:null;
       });
   }
   if(col==='ls_groups'){
@@ -2604,7 +2604,7 @@ function lsSet(col,docId,data){
   if(col==='ls_users'){
     dbg('lsSet ls_users:',docId);
     return getSb().from('ls_users')
-      .upsert({ls_id:docId,data:data,updated_at:new Date().toISOString()},{onConflict:'ls_id'})
+      .upsert({ls_id:docId,netzwerk_data:data,updated_at:new Date().toISOString()},{onConflict:'ls_id'})
       .then(function(res){
         if(res.error){dbg('❌ lsSet users error:',res.error.message||res.error);throw res.error;}
         dbg('✅ lsSet users ok');
@@ -4771,7 +4771,7 @@ function App(p){
       }).catch(function(){});
     }
     var sb=getSb();
-    sb.from('ls_users').select('ls_id,app_data,username,data').eq('authUid',user.id).maybeSingle().then(function(res){
+    sb.from('ls_users').select('ls_id,app_data,username,netzwerk_data').eq('authUid',user.id).maybeSingle().then(function(res){
       if(res.data){
         // Bekannter User — ls_id ggf. wiederherstellen
         var foundId=res.data.ls_id;
@@ -4783,7 +4783,7 @@ function App(p){
           return;
         }
         // Social-Daten vorausladen (für sofortige Anzeige beim LernSpace-Öffnen)
-        if(res.data.data) _preloadedLsData=res.data.data;
+        if(res.data.netzwerk_data) _preloadedLsData=res.data.netzwerk_data;
         // App-Daten wiederherstellen wenn remote neuer
         if(res.data.app_data){
           var remoteTs=res.data.app_data._syncedAt||0;
