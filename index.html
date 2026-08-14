@@ -261,7 +261,7 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
   padding:24px;width:100%;max-width:420px;
   box-shadow:0 24px 64px rgba(0,0,0,.5);
   max-height:calc(100dvh - 80px);overflow-y:auto}
-.modal-title{font-size:20px;font-weight:700;letter-spacing:-.02em;margin-bottom:16px;
+.modal-title{display:inline-block;font-size:20px;font-weight:700;letter-spacing:-.02em;margin-bottom:16px;
   background:var(--grad-brand);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .modal-foot{display:flex;gap:12px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap}
@@ -1086,7 +1086,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.76";
+var KKM_VERSION="1.2.77";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1202,7 +1202,20 @@ var LS_CONSENT_KEY = "kkm-ls-consent";
 var LS_PRESENCE_KEY = "kkm-presence-on";
 var DSGVO_VERSION = "1.1.0";
 function dsgvoAccepted(){ try{return localStorage.getItem(DSGVO_KEY)===DSGVO_VERSION;}catch(e){return false;} }
-function acceptDsgvo(){ try{localStorage.setItem(DSGVO_KEY,DSGVO_VERSION);}catch(e){} }
+function acceptDsgvo(){
+  try{localStorage.setItem(DSGVO_KEY,DSGVO_VERSION);}catch(e){}
+  /* Zustimmungsdatum zusaetzlich in der Cloud festhalten (fuer Gaeste
+     genauso wie fuer Google-Nutzer, da die DSGVO-Zustimmung selbst
+     unabhaengig vom Netzwerk-Feature/Login gilt). Bei einer neuen
+     Datenschutz-Version wird hier einfach ueberschrieben - nur das
+     Datum der aktuell gueltigen Version ist relevant. */
+  var myId=getLsId();
+  if(!myId)return;
+  lsGet('ls_users',myId).then(function(remote){
+    remote=remote||{};
+    return lsSet('ls_users',myId,Object.assign({},remote,{dsgvoAcceptedAt:new Date().toISOString(),dsgvoAcceptedVersion:DSGVO_VERSION}));
+  }).catch(function(){});
+}
 
 
 function uid(){ return Math.random().toString(36).slice(2,10); }
@@ -2300,11 +2313,21 @@ function ImpressumModal(p){
 }
 
 function DatenschutzModal(p){
+  var ats=useState(null);var acceptedAt=ats[0];var setAcceptedAt=ats[1];
+  useEffect(function(){
+    var myId=getLsId();
+    if(!myId)return;
+    lsGet('ls_users',myId).then(function(remote){
+      if(remote&&remote.dsgvoAcceptedAt)setAcceptedAt(remote.dsgvoAcceptedAt);
+    }).catch(function(){});
+  },[]);
   return h("div",{className:"ov",onClick:p.onClose},
     h("div",{className:"modal",style:{maxWidth:"480px"},onClick:function(ev){ev.stopPropagation();}},
       h("div",{className:"modal-title"},"Datenschutzerklärung"),
+      acceptedAt&&h("div",{style:{fontSize:13,color:"rgba(255,255,255,.5)",marginTop:4,marginBottom:20}},
+        "Akzeptiert am: "+new Date(acceptedAt).toLocaleDateString('de-DE')),
       h(DatenschutzContent,null),
-      h("div",{className:"modal-foot"},h("button",{className:"btn btn-g",onClick:p.onClose},"Schließen"))));
+      h("div",{className:"modal-foot"},h(DsButton,{variant:"primary",onClick:p.onClose},h("span",{className:"lp-btn-glow-label"},"Schließen")))));
 }
 
 function UsernamePickerModal(p){
