@@ -1086,7 +1086,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.71";
+var KKM_VERSION="1.2.72";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -4852,7 +4852,7 @@ function App(p){
   function patch(pp){setData(function(prev){return Object.assign({},prev,pp,{_syncedAt:Date.now()});});}
   function switchNav(id){
     setDeckId(null);setQsStep(null);
-    if(id==='dashboard'){setView('decks');setDeckListMode('home');}
+    if(id==='dashboard'){setView('decks');setDeckListMode('home');if(p.onRefreshDashFriends)p.onRefreshDashFriends();}
     else if(id==='explorer'){setView('decks');setDeckListMode('manage');}
     else if(id==='editor'){setView('editor');}
     else if(id==='netzwerk'){setView('lernspace');}
@@ -5310,10 +5310,16 @@ ReactDOM.createRoot(document.getElementById("root")).render(
        wartet unten darauf, damit die Sektion beim Erreichen der
        Startseite garantiert schon fertig geladen ist. */
     var dfs=useState({loading:true,friends:[]}); var dashFriends=dfs[0]; var setDashFriends=dfs[1];
-    useEffect(function(){
+    /* Als benannte Funktion statt anonym im Effekt, damit App() sie bei
+       Bedarf erneut aufrufen kann (z.B. beim Wechsel zur Startseite) -
+       sonst bleibt die Freundesliste hier fuer die ganze Session auf dem
+       Stand des allerersten Ladens eingefroren und neue Freundschaften,
+       die erst waehrend der Sitzung geschlossen wurden, tauchen nie in
+       "Freunde aktiv" auf, selbst wenn der Freund online ist. */
+    function loadDashFriends(){
       var cancelled=false;
       var myId=getLsId();
-      if(!myId){setDashFriends({loading:false,friends:[]});return;}
+      if(!myId){setDashFriends({loading:false,friends:[]});return function(){};}
       lsGet('ls_users',myId).then(function(me){
         /* Alle Freunde vorladen (nicht nur die letzten 3) - die
            Startseite zeigt jetzt die gerade ONLINEN Freunde, das
@@ -5336,7 +5342,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         })).then(function(results){if(!cancelled)setDashFriends({loading:false,friends:results});});
       }).catch(function(){if(!cancelled)setDashFriends({loading:false,friends:[]});});
       return function(){cancelled=true;};
-    },[]);
+    }
+    useEffect(function(){ return loadDashFriends(); },[]);
 
     function finishSplash(){
       setHiding(function(prevHiding){
@@ -5365,7 +5372,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       if(minTimeDone&&!dashFriends.loading)finishSplash();
     },[minTimeDone,dashFriends.loading]);
 
-    return h("div",null,shown&&h(Splash,{out:hiding,onSkip:skip}),h(App,{dashFriends:dashFriends,splashHiding:hiding}));
+    return h("div",null,shown&&h(Splash,{out:hiding,onSkip:skip}),h(App,{dashFriends:dashFriends,splashHiding:hiding,onRefreshDashFriends:loadDashFriends}));
   },null));
 
 if("serviceWorker" in navigator){
