@@ -1096,7 +1096,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.55";
+var KKM_VERSION="1.2.56";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2931,6 +2931,17 @@ function LernSpaceView(p){
     return function(){window.removeEventListener('online',on);window.removeEventListener('offline',off);};
   },[]);
   useEffect(function(){loadData();},[]);
+  /* Google-Profilbild automatisch in die geteilten Netzwerk-Daten
+     uebernehmen, damit Freunde es sehen - das lokale googlePhoto
+     (Sidebar/Header) und das Netzwerk-Avatar (data.avatar/avatarPhoto,
+     das andere Nutzer per lsGet abrufen) waren bisher komplett getrennte
+     Mechanismen. Nur wenn noch kein eigenes Avatar gewaehlt wurde, damit
+     eine bewusste manuelle Wahl nicht ueberschrieben wird. */
+  useEffect(function(){
+    if(!lsData||!p.googlePhoto)return;
+    var hasCustomAvatar=lsData.avatarPhoto||(lsData.avatar&&lsData.avatar!=='av1');
+    if(!hasCustomAvatar)saveData({avatar:'photo',avatarPhoto:p.googlePhoto});
+  },[lsData,p.googlePhoto]);
   useEffect(function(){
     if(!lsData||!p.onGroupDecksForHome)return;
     var result=[];
@@ -4308,9 +4319,8 @@ function DashboardFriends(p){
           return h('div',{key:f.id,className:'lp-dash-friend-row lp-hover-glow',onClick:function(){p.onNav('netzwerk');}},
             h(DsAvatar,{size:'sm',src:src,online:true}),
             h('div',{style:{flex:1,minWidth:0}},
-              h('div',{className:'lp-dash-friend-name'},h(UserLabel,{id:f.id})),
-              h('div',{className:'lp-dash-friend-sub',style:studying?{color:'#06B6D4'}:null},studying?'Lernt gerade':'Online')),
-            h('span',{style:{color:'rgba(255,255,255,0.3)',fontSize:18}},'→'));
+              h('div',{className:'lp-dash-friend-name',style:{background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text',display:'inline-block'}},h(UserLabel,{id:f.id})),
+              h('div',{className:'lp-dash-friend-sub',style:{color:'rgba(255,255,255,0.7)'}},studying?'Lernt gerade':'Online')));
         }));
 }
 
@@ -5134,7 +5144,7 @@ function App(p){
           qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs,onProgress:saveQsProgress}),
           view==="editor"&&!qsStep&&h("div",null,h(LpEditorPlaceholder,{onOpenDecks:function(){switchNav('explorer');}}),renderFooter()),
           view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onForceRestore:handleForceRestore,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast}),renderFooter()),
-          view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,googleUser:googleUser,presence:presence,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},onGroupDecksForHome:onGroupDecksForHome}),renderFooter()),
+          view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,googleUser:googleUser,googlePhoto:googlePhoto,presence:presence,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},onGroupDecksForHome:onGroupDecksForHome}),renderFooter()),
           view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}}),renderFooter()),
           view==="updates"&&!qsStep&&h(UpdatesView,{onBack:function(){setView("decks");setDeckListMode("home");},onShowImp:function(){setShowImp(true);},onShowDat:function(){setShowDat(true);}}))),
       h(LpBottomNav,{navId:navId,onNav:switchNav,lernSpaceEnabled:lpLernSpaceOn})),
