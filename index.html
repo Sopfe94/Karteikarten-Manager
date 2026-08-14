@@ -502,7 +502,7 @@ select.fi{-webkit-appearance:none;appearance:none;color-scheme:dark;background-i
 .settings-row{background:var(--c-card);border-radius:14px;padding:16px;margin-bottom:12px;border:1px solid rgba(255,255,255,.07)}
 .settings-row-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .settings-row-label{font-size:15px;font-weight:700;color:#fff}
-.settings-q-btn{width:22px;height:22px;border-radius:50%;border:1px solid rgba(167,139,250,0.85);background:rgba(255,255,255,.04);color:#fff;font-size:11px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 0 1px rgba(167,139,250,.55),0 0 20px rgba(124,58,237,.5),0 0 34px rgba(6,182,212,.35)}
+.settings-q-btn{width:22px;height:22px;border-radius:50%;border:0.5px solid rgba(167,139,250,0.85);background:rgba(255,255,255,.04);color:#fff;font-size:11px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 0 0.5px rgba(167,139,250,.55),0 0 20px rgba(124,58,237,.5),0 0 34px rgba(6,182,212,.35)}
 .settings-slider-wrap{position:relative;padding:8px 0}
 .settings-slider{width:100%;-webkit-appearance:none;appearance:none;height:6px;border-radius:6px;background:linear-gradient(to right,#7C3AED 0%,#06B6D4 var(--pct),rgba(255,255,255,.12) var(--pct));outline:none;cursor:pointer}
 .settings-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#a78bfa,#7c3aed);cursor:pointer;box-shadow:0 2px 8px rgba(139,92,246,.5),0 0 0 3px rgba(139,92,246,.2)}
@@ -912,11 +912,11 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 .lp-settings-toggle-hdr{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;padding:8px 4px;cursor:pointer;margin-top:32px}
 .lp-settings-toggle-hdr span{font-family:var(--font-mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#fff}
 .lp-settings-row{display:flex;align-items:center;justify-content:space-between;padding:16px 4px;border-bottom:1px solid rgba(255,255,255,0.06);gap:12px}
-.lp-stepper-btn{width:28px;height:28px;border-radius:50%;border:1px solid rgba(167,139,250,0.85);background:rgba(255,255,255,.04);color:#fff;font-size:17px;line-height:1;cursor:pointer;box-shadow:0 0 0 1px rgba(167,139,250,.55),0 0 20px rgba(124,58,237,.5),0 0 34px rgba(6,182,212,.35);flex-shrink:0}
+.lp-stepper-btn{width:28px;height:28px;border-radius:50%;border:0.5px solid rgba(167,139,250,0.85);background:rgba(255,255,255,.04);color:#fff;font-size:17px;line-height:1;cursor:pointer;box-shadow:0 0 0 0.5px rgba(167,139,250,.55),0 0 20px rgba(124,58,237,.5),0 0 34px rgba(6,182,212,.35);flex-shrink:0}
 .lp-switch{position:relative;width:44px;height:26px;border-radius:999px;border:none;cursor:pointer;transition:background .2s;flex-shrink:0}
 .lp-switch-knob{position:absolute;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s;display:block}
 .lp-art-btn{padding:8px 12px;border-radius:10px;border:1px solid rgba(124,58,237,0.25);background:rgba(255,255,255,.04);color:#fff;font-size:13px;font-family:var(--font-sans);cursor:pointer;transition:.15s}
-.lp-art-btn.sel{background:rgba(124,58,237,0.2);border-color:rgba(124,58,237,0.7);box-shadow:0 0 0 1px rgba(167,139,250,.55),0 0 20px rgba(124,58,237,.5),0 0 34px rgba(6,182,212,.35)}
+.lp-art-btn.sel{background:rgba(124,58,237,0.2);border-width:0.5px;border-color:rgba(124,58,237,0.7);box-shadow:0 0 0 0.5px rgba(167,139,250,.55),0 0 20px rgba(124,58,237,.5),0 0 34px rgba(6,182,212,.35)}
 .lp-profil-link{display:flex;align-items:center;justify-content:space-between;padding:16px 4px;border-bottom:1px solid rgba(255,255,255,0.06);text-decoration:none;color:inherit;cursor:pointer;background:none;border-left:none;border-right:none;border-top:none;width:100%;text-align:left;font-family:var(--font-sans)}
 .lp-profil-link:last-child{border-bottom:none}
 .lp-profil-link span:first-child{font-size:15px;color:#fff}
@@ -1086,7 +1086,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.74";
+var KKM_VERSION="1.2.75";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2034,6 +2034,7 @@ function KalenderView(p){
 function ProfilView(p){
   var sets=p.settings||{lernTage:7,lernArten:['Klausur','Test'],dailyGoal:30};
   var qs=useState(false);var showQ=qs[0];var setShowQ=qs[1];
+  var cqs=useState(false);var showCloudQ=cqs[0];var setShowCloudQ=cqs[1];
   var accs=useState(false);var accOpen=accs[0];var setAccOpen=accs[1];
   var pros=useState(false);var showPro=pros[0];var setShowPro=pros[1];
   var plg=useState(null);var pendingLowerGoal=plg[0];var setPendingLowerGoal=plg[1];
@@ -2159,8 +2160,9 @@ function ProfilView(p){
               p.googleUser
                 ? h(DsButton,{variant:'primary',onClick:p.onGoogleLogout},h('span',{className:'lp-btn-glow-label'},'Abmelden'))
                 : h(DsButton,{variant:'primary',onClick:p.onGoogleLogin},h('span',{className:'lp-btn-glow-label'},'Mit Google verbinden'))),
-            p.googleUser&&h('div',{style:{display:'flex',justifyContent:'center'}},
-              h(DsButton,{variant:'primary',onClick:p.onForceRestore},h('span',{className:'lp-btn-glow-label'},'Von Cloud neu laden')))))),
+            p.googleUser&&h('div',{style:{display:'flex',justifyContent:'center',alignItems:'center',gap:10}},
+              h(DsButton,{variant:'primary',onClick:p.onForceRestore},h('span',{className:'lp-btn-glow-label'},'Von Cloud neu laden')),
+              h('button',{className:'settings-q-btn',onClick:function(){setShowCloudQ(true);}},'?'))))),
 
       h('div',{style:{display:'flex',flexDirection:'column',gap:4}},
         h('button',{className:'lp-profil-link',onClick:function(){setShowPro(true);}},
@@ -2183,6 +2185,16 @@ function ProfilView(p){
           'Wenn ja, erscheint auf der Startseite eine Lernempfehlung mit direktem Link zum Stapel.'
         ),
         h(DsButton,{variant:'primary',style:{marginTop:16},onClick:function(){setShowQ(false);}},h('span',{className:'lp-btn-glow-label'},'Verstanden'))
+      )
+    ),
+
+    showCloudQ&&h('div',{className:'settings-overlay',onClick:function(){setShowCloudQ(false);}},
+      h('div',{className:'settings-overlay-box',onClick:function(e){e.stopPropagation();}},
+        h('div',{className:'settings-overlay-title'},'Wofür ist "Von Cloud neu laden"?'),
+        h('div',{className:'settings-overlay-text'},
+          'Deine Karteikarten, Ordner und dein Lernstand werden bei Google-Login automatisch mit der Cloud synchronisiert. Sollten sich Daten auf diesem Gerät mal nicht synchronisieren (z.B. nach einem Geräte- oder Netzwerkwechsel), holt dieser Button den zuletzt gespeicherten Stand direkt aus der Cloud und ersetzt damit die Daten auf diesem Gerät.'
+        ),
+        h(DsButton,{variant:'primary',style:{marginTop:16},onClick:function(){setShowCloudQ(false);}},h('span',{className:'lp-btn-glow-label'},'Verstanden'))
       )
     ),
 
