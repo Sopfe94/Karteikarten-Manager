@@ -1096,7 +1096,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.65";
+var KKM_VERSION="1.2.66";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2166,7 +2166,7 @@ function ProfilView(p){
               h('span',{className:'lp-switch-knob',style:{left:p.presenceOn?21:3}}))),
 
           h('div',{style:{display:'flex',flexDirection:'column',gap:12,padding:'20px 4px 4px'}},
-            h('div',{style:{display:'flex',justifyContent:'space-between',gap:12}},
+            h('div',{style:{display:'flex',gap:8}},
               h('button',{className:'lp-art-btn',style:{borderColor:'rgba(239,68,68,0.4)'},onClick:p.onDeleteAccount},
                 h('span',{style:{color:'#EF4444'}},'Konto löschen')),
               p.googleUser
