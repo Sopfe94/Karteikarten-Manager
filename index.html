@@ -1096,7 +1096,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.63";
+var KKM_VERSION="1.2.64";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2124,7 +2124,7 @@ function ProfilView(p){
 
       h('div',{style:{display:'flex',flexDirection:'column',gap:4}},
         h('button',{className:'lp-settings-toggle-hdr',onClick:function(){setAccOpen(!accOpen);}},
-          h('span',null,'Einstellungen'),
+          h('span',{style:{display:'inline-block',fontSize:22,fontWeight:600,letterSpacing:'-0.02em',background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text',fontFamily:'var(--font-sans)',textTransform:'none'}},'Einstellungen'),
           h('svg',{width:20,height:20,viewBox:'0 0 22 22',fill:'none',stroke:'#fff',strokeWidth:2.4,strokeLinecap:'round',strokeLinejoin:'round',style:{transition:'transform .2s',transform:accOpen?'rotate(180deg)':'rotate(0deg)'}},h('path',{d:'M5 8l6 6 6-6'}))),
 
         accOpen&&h('div',{style:{display:'flex',flexDirection:'column',gap:4}},
@@ -2139,7 +2139,7 @@ function ProfilView(p){
             h('span',{style:{fontSize:15,maxWidth:240,lineHeight:1.4,color:'#fff'}},'Bei nicht gewusster Karteikarte die passende Textstelle zum erneuten Lesen vorschlagen ',h('span',{style:{fontFamily:'var(--font-mono)',fontSize:11,color:'rgba(255,255,255,.4)'}},'(kommt mit Unterlagen)')),
             h('div',{className:'lp-switch',style:{background:'rgba(255,255,255,.12)',cursor:'default'}},h('span',{className:'lp-switch-knob',style:{left:3}}))),
 
-          h('div',{style:{display:'inline-block',fontSize:22,fontWeight:600,letterSpacing:'-0.02em',background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text',margin:'16px 0 4px'}},'Lernempfehlung'),
+          h('div',{style:{display:'inline-block',alignSelf:'flex-start',fontSize:22,fontWeight:600,letterSpacing:'-0.02em',background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text',margin:'16px 0 4px'}},'Lernempfehlung'),
           h('div',{className:'lp-settings-row',style:{flexDirection:'column',alignItems:'stretch',gap:12}},
             h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between'}},
               h('div',{style:{fontSize:24,fontWeight:700,color:'#fff'}},sets.lernTage,' ',h('span',{style:{fontSize:13,fontWeight:400,color:'rgba(255,255,255,.65)'}},'Tage vor dem Termin')),
