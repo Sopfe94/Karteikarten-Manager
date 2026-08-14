@@ -1096,7 +1096,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.59";
+var KKM_VERSION="1.2.60";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1205,6 +1205,11 @@ function syncAppData(d){
 
 var DSGVO_KEY = "kkm-dsgvo";
 var LS_CONSENT_KEY = "kkm-ls-consent";
+/* Getrennt von LS_CONSENT_KEY: die allgemeine Netzwerk-Zustimmung
+   (Profil/Avatar/Freundesliste inkl. Foto-Abgleich) bleibt aktiv, auch
+   wenn der Online-Status-Schalter in den Einstellungen ausgeschaltet
+   wird - der betrifft ausschliesslich die Praesenz-Anzeige. */
+var LS_PRESENCE_KEY = "kkm-presence-on";
 var DSGVO_VERSION = "1.1.0";
 function dsgvoAccepted(){ try{return localStorage.getItem(DSGVO_KEY)===DSGVO_VERSION;}catch(e){return false;} }
 function acceptDsgvo(){ try{localStorage.setItem(DSGVO_KEY,DSGVO_VERSION);}catch(e){} }
@@ -2108,7 +2113,7 @@ function ProfilView(p){
     h("button",{className:"back-btn",style:{marginBottom:8,marginTop:4},onClick:p.onBack},"← Startseite"),
     h('div',{style:{padding:'12px 4px 40px',display:'flex',flexDirection:'column',gap:32,maxWidth:640}},
       h('div',{className:'lp-profil-head'},
-        h(DsAvatar,{name:name,size:'xl',src:p.photo,online:p.lsConsent?true:undefined}),
+        h(DsAvatar,{name:name,size:'xl',src:p.photo,online:p.presenceVisible?true:undefined}),
         h('div',null,
           h('div',{className:'lp-profil-name'},name),
           h('div',{className:'lp-profil-email'},email))),
@@ -2164,9 +2169,9 @@ function ProfilView(p){
             h('div',null,
               h('div',{style:{fontSize:15,color:'#fff'}},'Online-Status teilen'),
               h('div',{style:{fontSize:13,color:'rgba(255,255,255,.35)',marginTop:4,maxWidth:260}},'Zeigt Freunden, wenn du online bist oder gerade lernst. Aus = kein Punkt an deinem Profilbild, du erscheinst bei niemandem als online.')),
-            h('button',{className:'lp-switch',style:{background:p.lsConsent?'var(--grad-brand)':'rgba(255,255,255,.14)'},
-              onClick:p.onToggleLsConsent},
-              h('span',{className:'lp-switch-knob',style:{left:p.lsConsent?21:3}}))),
+            h('button',{className:'lp-switch',style:{background:p.presenceOn?'var(--grad-brand)':'rgba(255,255,255,.14)'},
+              onClick:p.onTogglePresence},
+              h('span',{className:'lp-switch-knob',style:{left:p.presenceOn?21:3}}))),
 
           h('div',{style:{display:'flex',gap:12,justifyContent:'center',padding:'20px 4px 4px',flexWrap:'wrap'}},
             p.googleUser
@@ -3423,7 +3428,7 @@ function LernSpaceView(p){
             (lsData&&lsData.avatarPhoto)||(!(lsData&&lsData.avatarPhoto)&&!(lsData&&lsData.avatar&&lsData.avatar!=='av1')&&p.googleUser&&p.googleUser.user_metadata&&p.googleUser.user_metadata.avatar_url)?'photo':(lsData&&lsData.avatar),
             (lsData&&lsData.avatarPhoto)||((!(lsData&&lsData.avatarPhoto)&&!(lsData&&lsData.avatar&&lsData.avatar!=='av1'))?(localStorage.getItem('kkm-gphoto')||(p.googleUser&&p.googleUser.user_metadata&&p.googleUser.user_metadata.avatar_url)||null):null),
             64),
-          p.lsConsent&&h('span',{style:{position:'absolute',right:2,bottom:2,width:14,height:14,borderRadius:'50%',background:'#10B981',border:'2px solid #0F0A1E'}})
+          p.presenceVisible&&h('span',{style:{position:'absolute',right:2,bottom:2,width:14,height:14,borderRadius:'50%',background:'#10B981',border:'2px solid #0F0A1E'}})
         ),
         h('div',{style:{flex:1,minWidth:0}},
           h('div',{style:{fontSize:17,fontWeight:700,background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}},p.socialUsername||MY_ID),
@@ -4151,7 +4156,7 @@ function LpSidebar(p){
           h(LpNavIcon,null,it.icon()),it.longLabel);
       })),
     h('button',{className:'lp-sidebar-footer',onClick:function(){p.onNav('profil');}},
-      h(DsAvatar,{name:p.userName,size:'sm',src:p.photo,online:p.lsConsent?true:undefined}),
+      h(DsAvatar,{name:p.userName,size:'sm',src:p.photo,online:p.presenceVisible?true:undefined}),
       h('div',null,
         h('div',{className:'lp-sidebar-user-name'},p.userName),
         h('div',{className:'lp-sidebar-user-streak'},'🔥 '+p.streak+' Tage'))));
@@ -4172,7 +4177,7 @@ function LpBottomNav(p){
 function LpMobileTopbar(p){
   return h('div',{className:'lp-mobile-topbar'},
     h('button',{className:'lp-mobile-topbar-avatar',onClick:function(){p.onNav('profil');}},
-      h(DsAvatar,{name:p.userName,size:'sm',src:p.photo,online:p.lsConsent?true:undefined})),
+      h(DsAvatar,{name:p.userName,size:'sm',src:p.photo,online:p.presenceVisible?true:undefined})),
     h('button',{className:'lp-mobile-topbar-logo',onClick:function(){p.onNav('dashboard');}},
       h('div',{className:'lp-logo-text'},h('span',{className:'lern'},'Lern'),h('span',{className:'puls'},'puls')),
       h('div',{className:'lp-logo-line'}),
@@ -4538,15 +4543,17 @@ function App(p){
     setShowAppLsConsent(false);
     markHomeReady();
   }
-  function toggleLsConsent(){
-    if(lsConsent){
-      localStorage.setItem(LS_CONSENT_KEY,'0');
-      setLsConsent(false);
-    } else {
-      localStorage.setItem(LS_CONSENT_KEY,'1');
-      setLsConsent(true);
-      window.dispatchEvent(new Event('lp-ls-consent-given'));
-    }
+  /* Eigener Schalter nur fuer die Online-Status-Anzeige (Praesenz) -
+     getrennt von lsConsent, damit der Foto-Abgleich und die uebrigen
+     Netzwerk-Daten unberuehrt bleiben, wenn nur die Praesenz
+     ausgeschaltet wird. Fehlt der Wert (noch nie umgeschaltet), gilt
+     er als an, sobald die allgemeine Netzwerk-Zustimmung erteilt ist. */
+  var pron=useState(function(){try{var v=localStorage.getItem(LS_PRESENCE_KEY);return v===null?true:v==='1';}catch(e){return true;}});
+  var presenceOn=pron[0]; var setPresenceOn=pron[1];
+  function togglePresence(){
+    var next=!presenceOn;
+    localStorage.setItem(LS_PRESENCE_KEY,next?'1':'0');
+    setPresenceOn(next);
   }
   useEffect(function(){
     if(view!=="decks"||deckListMode!=="home")return;
@@ -4654,7 +4661,7 @@ function App(p){
     setPresence(map);
   }
   useEffect(function(){
-    var enabled=data.settings&&data.settings.lernSpaceEnabled!==false&&lsConsent;
+    var enabled=data.settings&&data.settings.lernSpaceEnabled!==false&&lsConsent&&presenceOn;
     if(!enabled){
       if(_presenceChannel.current){getSb().removeChannel(_presenceChannel.current);_presenceChannel.current=null;setPresence({});}
       return;
@@ -4667,7 +4674,7 @@ function App(p){
       });
     _presenceChannel.current=ch;
     return function(){ getSb().removeChannel(ch); if(_presenceChannel.current===ch)_presenceChannel.current=null; };
-  },[data.settings&&data.settings.lernSpaceEnabled!==false,lsConsent]);
+  },[data.settings&&data.settings.lernSpaceEnabled!==false,lsConsent,presenceOn]);
   /* Lern-Status live nachmelden, sobald eine Lernsitzung beginnt/endet. */
   useEffect(function(){
     var ch=_presenceChannel.current;
@@ -5177,9 +5184,9 @@ function App(p){
     showAppLsConsent&&h(LsConsentModal,{onAccept:acceptAppLsConsent,onDecline:declineAppLsConsent,onShowDat:function(){setShowDat(true);}}),
     showUsernameModal&&h(UsernamePickerModal,{onDone:function(uname){setSocialUsername(uname);setShowUsernameModal(false);showToast('🎉 Benutzername gespeichert: '+uname);}}),
     showLernEmpf&&lernEmpf.length>0&&_leOverlay,
-    h(LpSidebar,{navId:navId,onNav:switchNav,userName:lpUserName,avatarLetter:lpAvatarLetter,streak:lpStreak,lernSpaceEnabled:lpLernSpaceOn,photo:googlePhoto,lsConsent:lsConsent}),
+    h(LpSidebar,{navId:navId,onNav:switchNav,userName:lpUserName,avatarLetter:lpAvatarLetter,streak:lpStreak,lernSpaceEnabled:lpLernSpaceOn,photo:googlePhoto,presenceVisible:lsConsent&&presenceOn}),
     h("div",{className:"lp-app-content"},
-      h(LpMobileTopbar,{onNav:switchNav,avatarLetter:lpAvatarLetter,userName:lpUserName,photo:googlePhoto,lsConsent:lsConsent}),
+      h(LpMobileTopbar,{onNav:switchNav,avatarLetter:lpAvatarLetter,userName:lpUserName,photo:googlePhoto,presenceVisible:lsConsent&&presenceOn}),
       h("div",{className:"lp-content-scroll",id:"lp-content-scroll"},
         h("div",{className:"main",style:{padding:0}},
           view==="decks"&&!activeDeck&&!qsStep&&deckListMode==="home"&&h("div",null,
@@ -5217,8 +5224,8 @@ function App(p){
           view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck,onStudyingChange:setIsStudying}),
           qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs,onProgress:saveQsProgress}),
           view==="editor"&&!qsStep&&h("div",null,h(LpEditorPlaceholder,{onOpenDecks:function(){switchNav('explorer');}}),renderFooter()),
-          view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,lsConsent:lsConsent,onToggleLsConsent:toggleLsConsent,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onForceRestore:handleForceRestore,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast}),renderFooter()),
-          view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,googleUser:googleUser,presence:presence,lsConsent:lsConsent,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},onGroupDecksForHome:onGroupDecksForHome}),renderFooter()),
+          view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,presenceVisible:lsConsent&&presenceOn,presenceOn:presenceOn,onTogglePresence:togglePresence,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onForceRestore:handleForceRestore,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast}),renderFooter()),
+          view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,googleUser:googleUser,presence:presence,presenceVisible:lsConsent&&presenceOn,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},onGroupDecksForHome:onGroupDecksForHome}),renderFooter()),
           view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}}),renderFooter()),
           view==="updates"&&!qsStep&&h(UpdatesView,{onBack:function(){setView("decks");setDeckListMode("home");},onShowImp:function(){setShowImp(true);},onShowDat:function(){setShowDat(true);}}))),
       h(LpBottomNav,{navId:navId,onNav:switchNav,lernSpaceEnabled:lpLernSpaceOn})),
