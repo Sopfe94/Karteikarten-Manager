@@ -1096,7 +1096,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.60";
+var KKM_VERSION="1.2.61";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3481,7 +3481,7 @@ function LernSpaceView(p){
           var prof=friendProfiles[req.fromId];
           return h('div',{key:i,className:'lp-row'},
             prof
-              ?h(DsAvatar,{size:'sm',src:(prof.avatar==='photo'&&prof.avatarPhoto)?prof.avatarPhoto:getAvatarSrc(prof.avatar||'av1'),online:!!(p.presence||{})[req.fromId]})
+              ?h(DsAvatar,{size:'sm',src:(prof.avatar==='photo'&&prof.avatarPhoto)?prof.avatarPhoto:getAvatarSrc(prof.avatar||'av1'),online:prof.presenceOn===false?undefined:!!(p.presence||{})[req.fromId]})
               :h('div',{className:'lp-avatar-tile',style:{borderRadius:'50%'}},'⏳'),
             h('div',{style:{flex:1,minWidth:0,fontSize:13}},h('b',null,h(UserLabel,{id:req.fromId})),' möchte Freunde werden'),
             h(DsButton,{variant:'primary',style:{width:'auto',padding:'0 16px',height:32},onClick:function(){acceptRequest(req);}},h('span',{className:'lp-btn-glow-label',style:{fontSize:13}},'Annehmen')),
@@ -3504,7 +3504,7 @@ function LernSpaceView(p){
             var fp=friendProfiles[f.id];
             return h('div',{key:i,className:'lp-row'},
               fp
-                ?h(DsAvatar,{size:'sm',src:(fp.avatar==='photo'&&fp.avatarPhoto)?fp.avatarPhoto:getAvatarSrc(fp.avatar||'av1'),online:!!(p.presence||{})[f.id]})
+                ?h(DsAvatar,{size:'sm',src:(fp.avatar==='photo'&&fp.avatarPhoto)?fp.avatarPhoto:getAvatarSrc(fp.avatar||'av1'),online:fp.presenceOn===false?undefined:!!(p.presence||{})[f.id]})
                 :h('div',{className:'lp-avatar-tile',style:{borderRadius:'50%'}},'👤'),
               h('div',{style:{flex:1,minWidth:0}},
                 h('div',{className:'lp-row-title'},h(UserLabel,{id:f.id})),
@@ -4555,6 +4555,23 @@ function App(p){
     localStorage.setItem(LS_PRESENCE_KEY,next?'1':'0');
     setPresenceOn(next);
   }
+  /* Ausgeschaltete Praesenz auch fuer Freunde sichtbar machen: ohne
+     diesen Marker in den geteilten Daten wissen andere Clients nur,
+     dass wir gerade nicht im Praesenz-Kanal stehen - das sieht bei
+     ihnen wie ein ganz normaler roter "Offline"-Punkt aus statt "gar
+     kein Tracking". Erst mit dem Marker koennen Freunde-Tab/Anfragen
+     bei uns komplett auf den Punkt verzichten. */
+  useEffect(function(){
+    if(!lsConsent)return;
+    var myId=getLsId();
+    if(!myId)return;
+    var visible=!!presenceOn;
+    lsGet('ls_users',myId).then(function(remote){
+      remote=remote||{};
+      if(remote.presenceOn===visible)return;
+      return lsSet('ls_users',myId,Object.assign({},remote,{presenceOn:visible}));
+    }).catch(function(){});
+  },[lsConsent,presenceOn]);
   useEffect(function(){
     if(view!=="decks"||deckListMode!=="home")return;
     var t=setTimeout(function(){
