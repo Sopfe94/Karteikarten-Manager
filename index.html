@@ -1086,7 +1086,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.77";
+var KKM_VERSION="1.2.78";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -5416,11 +5416,23 @@ if("serviceWorker" in navigator){
      "App schliessen und neu oeffnen" reicht dafuer oft NICHT, wenn iOS/
      Android die App nur aus dem Hintergrund holt statt den WebView wirklich
      neu zu laden. controllerchange feuert exakt dann, wenn ein neuer Worker
-     die Kontrolle uebernimmt - das ist der zuverlaessige Moment fuer einen
-     echten Reload, statt auf den naechsten "load" zu warten. */
+     die Kontrolle uebernimmt.
+     ABER: mitten in einer offenen Interaktion (z.B. gerade ein Modal offen,
+     Text eingetippt) reisst ein sofortiger location.reload() den Nutzer
+     unangekuendigt raus - das sieht wie ein zufaelliger Absturz/Neustart
+     aus. Reload deshalb nur ausloesen, wenn die Seite gerade NICHT sichtbar
+     ist (App im Hintergrund/App-Switcher) - dort stoert es niemanden, und
+     beim naechsten Zurueckkehren ist die neue Version schon geladen. */
   var swReloaded=false;
-  navigator.serviceWorker.addEventListener("controllerchange",function(){
+  var pendingSwReload=false;
+  function doSwReload(){
     if(swReloaded)return; swReloaded=true; location.reload();
+  }
+  navigator.serviceWorker.addEventListener("controllerchange",function(){
+    if(document.visibilityState==="hidden")doSwReload();else pendingSwReload=true;
+  });
+  document.addEventListener("visibilitychange",function(){
+    if(document.visibilityState==="hidden"&&pendingSwReload)doSwReload();
   });
   window.addEventListener("load",function(){
     navigator.serviceWorker.register("./sw.js").then(function(reg){
