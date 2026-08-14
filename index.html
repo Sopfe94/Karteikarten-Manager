@@ -1096,7 +1096,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.62";
+var KKM_VERSION="1.2.63";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2139,7 +2139,7 @@ function ProfilView(p){
             h('span',{style:{fontSize:15,maxWidth:240,lineHeight:1.4,color:'#fff'}},'Bei nicht gewusster Karteikarte die passende Textstelle zum erneuten Lesen vorschlagen ',h('span',{style:{fontFamily:'var(--font-mono)',fontSize:11,color:'rgba(255,255,255,.4)'}},'(kommt mit Unterlagen)')),
             h('div',{className:'lp-switch',style:{background:'rgba(255,255,255,.12)',cursor:'default'}},h('span',{className:'lp-switch-knob',style:{left:3}}))),
 
-          h('div',{style:{fontFamily:'var(--font-mono)',fontSize:11,letterSpacing:'0.16em',textTransform:'uppercase',fontWeight:700,color:'#fff',margin:'16px 0 4px'}},'Lernempfehlung'),
+          h('div',{style:{display:'inline-block',fontSize:22,fontWeight:600,letterSpacing:'-0.02em',background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text',margin:'16px 0 4px'}},'Lernempfehlung'),
           h('div',{className:'lp-settings-row',style:{flexDirection:'column',alignItems:'stretch',gap:12}},
             h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between'}},
               h('div',{style:{fontSize:24,fontWeight:700,color:'#fff'}},sets.lernTage,' ',h('span',{style:{fontSize:13,fontWeight:400,color:'rgba(255,255,255,.65)'}},'Tage vor dem Termin')),
@@ -2157,17 +2157,9 @@ function ProfilView(p){
                 return h('button',{key:art,className:'lp-art-btn'+(sel?' sel':''),onClick:function(){toggleArt(art);}},sel?'✓ '+art:art);
               }))),
 
-          h('div',{className:'lp-settings-row'},
-            h('div',null,
-              h('div',{style:{fontSize:15,color:'#fff'}},'Netzwerk aktivieren'),
-              h('div',{style:{fontSize:13,color:'rgba(255,255,255,.35)',marginTop:4}},'Blendet Netzwerk in der Navigation ein oder aus')),
-            h('button',{className:'lp-switch',style:{background:sets.lernSpaceEnabled!==false?'var(--grad-brand)':'rgba(255,255,255,.14)'},
-              onClick:function(){p.onChange(Object.assign({},sets,{lernSpaceEnabled:sets.lernSpaceEnabled===false}));}},
-              h('span',{className:'lp-switch-knob',style:{left:sets.lernSpaceEnabled!==false?21:3}}))),
-
           h('div',{className:'lp-settings-row',style:{borderBottom:'none'}},
             h('div',null,
-              h('div',{style:{fontSize:15,color:'#fff'}},'Online-Status teilen'),
+              h('div',{style:{display:'inline-block',fontSize:22,fontWeight:600,letterSpacing:'-0.02em',background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}},'Online-Status teilen'),
               h('div',{style:{fontSize:13,color:'rgba(255,255,255,.35)',marginTop:4,maxWidth:260}},'Zeigt Freunden, wenn du online bist oder gerade lernst. Aus = kein Punkt an deinem Profilbild, du erscheinst bei niemandem als online.')),
             h('button',{className:'lp-switch',style:{background:p.presenceOn?'var(--grad-brand)':'rgba(255,255,255,.14)'},
               onClick:p.onTogglePresence},
