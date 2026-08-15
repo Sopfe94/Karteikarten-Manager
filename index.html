@@ -1086,7 +1086,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.80";
+var KKM_VERSION="1.2.81";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1204,20 +1204,22 @@ var DSGVO_VERSION = "1.1.0";
 function dsgvoAccepted(){ try{return localStorage.getItem(DSGVO_KEY)===DSGVO_VERSION;}catch(e){return false;} }
 function acceptDsgvo(){
   try{localStorage.setItem(DSGVO_KEY,DSGVO_VERSION);}catch(e){}
-  /* Zustimmungsdatum zusaetzlich in der Cloud festhalten (fuer Gaeste
-     genauso wie fuer Google-Nutzer, da die DSGVO-Zustimmung selbst
-     unabhaengig vom Netzwerk-Feature/Login gilt). Bei einer neuen
-     Datenschutz-Version wird hier einfach ueberschrieben - nur das
-     Datum der aktuell gueltigen Version ist relevant. */
+  /* Zustimmungsdatum liegt in eigenen Spalten (nicht im netzwerk_data
+     JSON-Blob!). Grund: netzwerk_data wird von mehreren Effekten
+     (Freunde-Sync, Praesenz, Foto-Abgleich) per read-merge-write
+     komplett neu geschrieben - ein gleichzeitiger Schreibvorgang mit
+     einem etwas aelteren Datenstand konnte das Zustimmungsdatum dabei
+     wieder ueberschreiben/verlieren (Bug: Datum sprang taeglich auf
+     "heute"). Eigene Spalten werden per upsert isoliert geschrieben und
+     kollidieren nicht mit den netzwerk_data-Schreibvorgaengen. */
   var myId=getLsId();
   if(!myId)return;
-  lsGet('ls_users',myId).then(function(remote){
-    remote=remote||{};
-    return lsSet('ls_users',myId,Object.assign({},remote,{dsgvoAcceptedAt:new Date().toISOString(),dsgvoAcceptedVersion:DSGVO_VERSION}));
-  }).catch(function(){});
+  getSb().from('ls_users').upsert({ls_id:myId,dsgvo_accepted_at:new Date().toISOString(),dsgvo_accepted_version:DSGVO_VERSION},{onConflict:'ls_id'})
+    .then(function(res){if(res.error)dbg('❌ acceptDsgvo error:',res.error.message||res.error);})
+    .catch(function(){});
 }
 /* Wer schon vor dieser Funktion zugestimmt hat, hat lokal laengst
-   dsgvoAccepted()===true, aber nie ein dsgvoAcceptedAt in der Cloud
+   dsgvoAccepted()===true, aber nie ein dsgvo_accepted_at in der Cloud
    bekommen - acceptDsgvo() laeuft ja nur bei einer tatsaechlichen NEUEN
    Zustimmung (ConsentModal), nicht rueckwirkend. Einmalig nachtragen,
    ohne ein bereits vorhandenes Datum zu ueberschreiben - das heutige
@@ -1227,10 +1229,11 @@ function backfillDsgvoAcceptedIfMissing(){
   if(!dsgvoAccepted())return;
   var myId=getLsId();
   if(!myId)return;
-  lsGet('ls_users',myId).then(function(remote){
-    remote=remote||{};
-    if(remote.dsgvoAcceptedAt)return;
-    return lsSet('ls_users',myId,Object.assign({},remote,{dsgvoAcceptedAt:new Date().toISOString(),dsgvoAcceptedVersion:DSGVO_VERSION}));
+  withTimeout(getSb().from('ls_users').select('dsgvo_accepted_at').eq('ls_id',myId).limit(1),12000).then(function(res){
+    if(res.error)return;
+    var row=(res.data&&res.data.length)?res.data[0]:null;
+    if(row&&row.dsgvo_accepted_at)return;
+    return getSb().from('ls_users').upsert({ls_id:myId,dsgvo_accepted_at:new Date().toISOString(),dsgvo_accepted_version:DSGVO_VERSION},{onConflict:'ls_id'});
   }).catch(function(){});
 }
 
@@ -2334,8 +2337,9 @@ function DatenschutzModal(p){
   useEffect(function(){
     var myId=getLsId();
     if(!myId)return;
-    lsGet('ls_users',myId).then(function(remote){
-      if(remote&&remote.dsgvoAcceptedAt)setAcceptedAt(remote.dsgvoAcceptedAt);
+    withTimeout(getSb().from('ls_users').select('dsgvo_accepted_at').eq('ls_id',myId).limit(1),12000).then(function(res){
+      var row=(res.data&&res.data.length)?res.data[0]:null;
+      if(row&&row.dsgvo_accepted_at)setAcceptedAt(row.dsgvo_accepted_at);
     }).catch(function(){});
   },[]);
   return h("div",{className:"ov",onClick:p.onClose},
