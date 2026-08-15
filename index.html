@@ -1088,7 +1088,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.91";
+var KKM_VERSION="1.2.92";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1419,10 +1419,13 @@ function calcStreak(){
   function metGoal(key){
     var dayLog=logDb[key];
     if(!dayLog||!dayLog.cardCount) return false;
-    // Heute zaehlt immer gegen das gerade aktuelle Ziel (wurde das Ziel
-    // gerade erst erhoeht, muss man noch bis dahin nachlernen). Vergangene
-    // Tage bleiben beim Ziel stehen, das damals beim Lernen galt.
-    var goal=key===todayKey?curGoal:(dayLog.goalAtTime!==undefined?dayLog.goalAtTime:curGoal);
+    // Jeder Tag bleibt beim Ziel stehen, das beim letzten Lernen an DIESEM
+    // Tag tatsaechlich galt (goalAtTime wird bei jeder Karte neu gestempelt).
+    // Das gilt auch fuer heute: setzt man das Ziel nach dem Lernen hoch,
+    // bleibt der bereits geschaffte Tag gueltig - die hoehere Zahl greift
+    // erst fuer Karten, die man DANACH noch lernt (stempelt goalAtTime neu)
+    // bzw. spaetestens ab morgen.
+    var goal=dayLog.goalAtTime!==undefined?dayLog.goalAtTime:curGoal;
     return dayLog.cardCount>=goal;
   }
   var d=new Date();
