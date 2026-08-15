@@ -1087,7 +1087,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.84";
+var KKM_VERSION="1.2.85";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2088,6 +2088,7 @@ function ProfilView(p){
   }
   function stepGoal(delta){
     var next=Math.max(5,Math.min(100,(dailyGoal||30)+delta));
+    dbg('stepGoal: dailyGoal='+dailyGoal+' next='+next+' streak='+streak+' -> '+(next<dailyGoal&&streak>0?'Warnung':'direkt aendern'));
     if(next<dailyGoal&&streak>0){ setPendingLowerGoal(next); return; }
     p.onChange(Object.assign({},sets,{dailyGoal:next}));
   }
