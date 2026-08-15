@@ -514,7 +514,8 @@ select.fi{-webkit-appearance:none;appearance:none;color-scheme:dark;background-i
 .settings-art-btn.sel{background:rgba(139,92,246,.2);border-color:rgba(139,92,246,.6);color:#c4b5fd}
 .settings-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:24px}
 .settings-overlay-box{background:#1a1535;border-radius:20px;padding:24px;max-width:340px;width:100%;border:1px solid rgba(139,92,246,.3)}
-.settings-overlay-title{font-size:17px;font-weight:900;color:#fff;margin-bottom:12px}
+.settings-overlay-title{display:inline-block;font-size:17px;font-weight:900;margin-bottom:12px;
+  background:var(--grad-brand);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .settings-overlay-text{font-size:13px;color:rgba(255,255,255,.65);line-height:1.65}
 
 .lernempf-overlay{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .3s ease}
@@ -1086,7 +1087,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.81";
+var KKM_VERSION="1.2.82";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2210,7 +2211,7 @@ function ProfilView(p){
         h('div',{className:'settings-overlay-text'},
           'Wenn du im Kalender einen Termin (z.B. eine Klausur) einträgst und dem Termin ein Fach zuordnest, prüft die App beim Öffnen automatisch:',
           h('br',null),h('br',null),
-          '• Gibt es in den nächsten ',h('strong',{style:{color:'#a78bfa'}},sets.lernTage+' Tagen'),' einen passenden Termin?',
+          '• Gibt es in den nächsten ',h('strong',{style:{background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}},sets.lernTage+' Tagen'),' einen passenden Termin?',
           h('br',null),
           '• Hat dieses Fach Lernstapel?',
           h('br',null),h('br',null),
