@@ -1088,7 +1088,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.86";
+var KKM_VERSION="1.2.87";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -5445,19 +5445,38 @@ if("serviceWorker" in navigator){
      ABER: mitten in einer offenen Interaktion (z.B. gerade ein Modal offen,
      Text eingetippt) reisst ein sofortiger location.reload() den Nutzer
      unangekuendigt raus - das sieht wie ein zufaelliger Absturz/Neustart
-     aus. Reload deshalb nur ausloesen, wenn die Seite gerade NICHT sichtbar
-     ist (App im Hintergrund/App-Switcher) - dort stoert es niemanden, und
-     beim naechsten Zurueckkehren ist die neue Version schon geladen. */
+     aus. Reload deshalb nur ausloesen, wenn die Seite GERADE (wieder)
+     sichtbar wird (App wird aus dem Hintergrund/App-Switcher geholt) -
+     das ist der Moment, in dem ein Neuladen ohnehin wie ein normaler
+     App-Start wirkt. WICHTIG: nicht waehrend die Seite versteckt/im
+     Hintergrund ist ausloesen - iOS pausiert/friert die WebView beim
+     Backgrounding oft an, dann kann location.reload() haengenbleiben
+     oder gar nicht erst ausgefuehrt werden (genau das war der Grund,
+     warum neue Versionen trotz mehrfachem Schliessen/Neuoeffnen nicht
+     ankamen).
+     SONDERFALL "App komplett geschlossen und frisch neu geoeffnet": die
+     neue Seite laedt zunaechst noch ueber den ALTEN Worker (der neue
+     braucht einen Moment zum Installieren/Aktivieren), controllerchange
+     feuert dann kurz nach dem Start - aber die Seite ist in dem Moment
+     schon wieder sichtbar, also haette der obige "erst beim naechsten
+     Zurueckkehren"-Fall noch eine ZWEITE Schliessen/Oeffnen-Runde
+     gebraucht. Feuert controllerchange innerhalb der ersten paar
+     Sekunden nach dem Laden (noch vor jeder echten Interaktion,
+     typischerweise waehrend des Splashscreens), reicht ein sofortiger
+     Reload also aus - stoert niemanden mitten in der Nutzung. */
+  var pageLoadedAt=Date.now();
   var swReloaded=false;
   var pendingSwReload=false;
   function doSwReload(){
     if(swReloaded)return; swReloaded=true; location.reload();
   }
   navigator.serviceWorker.addEventListener("controllerchange",function(){
-    if(document.visibilityState==="hidden")doSwReload();else pendingSwReload=true;
+    pendingSwReload=true;
+    var justLaunched=(Date.now()-pageLoadedAt)<4000;
+    if(justLaunched&&document.visibilityState==="visible")doSwReload();
   });
   document.addEventListener("visibilitychange",function(){
-    if(document.visibilityState==="hidden"&&pendingSwReload)doSwReload();
+    if(document.visibilityState==="visible"&&pendingSwReload)doSwReload();
   });
   window.addEventListener("load",function(){
     navigator.serviceWorker.register("./sw.js").then(function(reg){
