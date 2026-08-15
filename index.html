@@ -1088,7 +1088,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.2.89";
+var KKM_VERSION="1.2.90";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2252,8 +2252,8 @@ function ProfilView(p){
           'Wenn du dein Tagesziel jetzt auf ',h('strong',{style:{background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}},pendingLowerGoal+' Karten'),' senkst, wird deine aktuelle Streak-Serie von ',h('strong',{style:{background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}},streak+(streak===1?' Tag':' Tagen')),' auf 0 zurückgesetzt.'
         ),
         h('div',{style:{display:'flex',gap:12,marginTop:16,justifyContent:'flex-end'}},
-          h('button',{className:'lp-btn-dark',style:{width:'auto',padding:'0 20px',height:44},onClick:function(){setPendingLowerGoal(null);}},'Abbrechen'),
-          h(DsButton,{variant:'primary',style:{width:'auto',padding:'0 20px',height:44},onClick:confirmLowerGoal},h('span',{className:'lp-btn-glow-label'},'Ja, Ziel senken'))
+          h(DsButton,{variant:'ghost',style:{width:'auto',padding:'0 20px',height:44},onClick:function(){setPendingLowerGoal(null);}},'Abbrechen'),
+          h(DsButton,{variant:'danger',style:{width:'auto',padding:'0 20px',height:44},onClick:confirmLowerGoal},'Ja, Ziel senken')
         )
       )
     )
