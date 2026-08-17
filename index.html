@@ -1131,7 +1131,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.2";
+var KKM_VERSION="1.4.3";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2103,6 +2103,7 @@ function LpCardEditor(p){
   }
   function setAlign(a){ if(selected)updateElement(selected,{align:a}); }
   function setFontFamily(fam){ if(selected)updateElement(selected,{fontFamily:fam}); }
+  function setFontSize(size){ if(selected)updateElement(selected,{fontSize:parseInt(size,10)}); }
   function toggleBulletList(){
     if(!isPro||!selected)return;
     var el=curEls.find(function(x){return x.id===selected;});
@@ -2294,18 +2295,26 @@ function LpCardEditor(p){
           h("option",{value:"Courier New"},"Courier New"),
           !isPro&&h("option",{value:"",disabled:true},"PRO für mehr Schriften"))),
       h("div",{style:{display:"flex",alignItems:"center",gap:8}},
+        h("span",{className:"lp-editor-fmt-label"},"GRÖSSE"),
+        h("select",{className:"lp-editor-select",value:selectedEl?selectedEl.fontSize||16:16,onChange:function(e){setFontSize(e.target.value);}},
+          [12,14,16,18,20,24,28,32,36,42,48].map(function(s){return h("option",{key:s,value:s},s+"px");}))),
+      h("div",{style:{display:"flex",alignItems:"center",gap:8}},
         h("span",{className:"lp-editor-fmt-label"},"FARBE"),
         h("input",{type:"color",className:"lp-editor-color-input",value:selectedEl?selectedEl.color||"#ffffff":"#ffffff",onChange:function(e){setTextColor(e.target.value);}})),
+      h("div",{className:"lp-editor-divider"}),
       h("div",{style:{display:"flex",gap:4}},
         h("button",{className:"lp-editor-toolbar-btn"+(selectedEl&&selectedEl.bold?" sel":""),onClick:function(){toggleProp("bold");},type:"button",title:"Fett"},"B"),
         h("button",{className:"lp-editor-toolbar-btn"+(selectedEl&&selectedEl.underline?" sel":""),onClick:function(){toggleProp("underline");},type:"button",title:"Unterstrichen"},"U"),
         h("button",{className:"lp-editor-toolbar-btn"+(selectedEl&&selectedEl.italic?" sel":""),onClick:function(){toggleProp("italic");},type:"button",title:"Kursiv"},"I")),
+      h("div",{className:"lp-editor-divider"}),
       h("div",{style:{display:"flex",gap:4}},
         h("button",{className:"lp-editor-toolbar-btn"+(selectedEl&&selectedEl.align==="left"?" sel":""),onClick:function(){setAlign("left");},type:"button",title:"Links"},alignIcon.left),
         h("button",{className:"lp-editor-toolbar-btn"+(!selectedEl||selectedEl.align==="center"?" sel":""),onClick:function(){setAlign("center");},type:"button",title:"Zentriert"},alignIcon.center),
         h("button",{className:"lp-editor-toolbar-btn"+(selectedEl&&selectedEl.align==="right"?" sel":""),onClick:function(){setAlign("right");},type:"button",title:"Rechts"},alignIcon.right)),
+      h("div",{className:"lp-editor-divider"}),
       h("div",{className:"lp-editor-pro-lock",style:proLock},
         h("button",{className:"lp-editor-toolbar-btn"+(selectedEl&&selectedEl.bullet?" sel":""),onClick:toggleBulletList,type:"button",title:"Aufzählung"},"☰")),
+      h("div",{className:"lp-editor-divider"}),
       h("div",{className:"lp-editor-pro-lock",style:Object.assign({display:"flex",alignItems:"center",gap:6},proLock)},
         h("span",{className:"lp-editor-fmt-label"},"MARKIEREN"),
         h("button",{className:"lp-editor-toolbar-btn",onClick:function(){setHighlightColor(null);},type:"button",title:"Kein Markieren"},"✕"),
