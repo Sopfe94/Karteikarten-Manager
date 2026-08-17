@@ -1131,7 +1131,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.3.8";
+var KKM_VERSION="1.3.9";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1906,6 +1906,7 @@ function LpCardEditor(p){
   var sdp=useState(false); var showDeckPicker=sdp[0]; var setShowDeckPicker=sdp[1];
   var psr=useState(null); var pendingSaveResult=psr[0]; var setPendingSaveResult=psr[1];
   var pdid=useState(p.deckPicker&&p.deckPicker.length?p.deckPicker[0].id:null); var pickedDeckId=pdid[0]; var setPickedDeckId=pdid[1];
+  var pfid=useState(null); var pickedFolderId=pfid[0]; var setPickedFolderId=pfid[1];
   var undoStack=useRef([]); var redoStack=useRef([]);
   var dragRef=useRef(null); var resizeRef=useRef(null);
   var surfaceRef=useRef(null);
@@ -2224,7 +2225,7 @@ function LpCardEditor(p){
   function confirmDeckPickerSave(){
     if(!pendingSaveResult)return;
     clearDraft();
-    p.onSave(Object.assign({deckId:pickedDeckId},pendingSaveResult));
+    p.onSave(Object.assign({deckId:pickedDeckId,folderId:pickedFolderId||null},pendingSaveResult));
     setShowDeckPicker(false);
     setPendingSaveResult(null);
   }
@@ -2335,8 +2336,16 @@ function LpCardEditor(p){
       h("div",{className:"lp-modal-box",onClick:function(ev){ev.stopPropagation();}},
         h("div",{className:"lp-modal-title"},"In welchen Stapel speichern?"),
         h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Stapel"),
-          h("select",{className:"lp-dark-input",value:pickedDeckId||"",onChange:function(e){setPickedDeckId(e.target.value);}},
+          h("select",{className:"lp-dark-input",value:pickedDeckId||"",onChange:function(e){setPickedDeckId(e.target.value);setPickedFolderId(null);}},
             (p.deckPicker||[]).map(function(d){return h("option",{key:d.id,value:d.id},d.emoji+" "+d.name);}))),
+        (function(){
+          var pd=(p.deckPicker||[]).find(function(d){return d.id===pickedDeckId;});
+          var pdFolders=(pd&&pd.folders)||[];
+          return pdFolders.length>0&&h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Ordner (optional)"),
+            h("select",{className:"lp-dark-input",value:pickedFolderId||"",onChange:function(e){setPickedFolderId(e.target.value||null);}},
+              h("option",{value:""},"Kein Ordner"),
+              pdFolders.map(function(fo){return h("option",{key:fo.id,value:fo.id},fo.emoji+" "+fo.name);})));
+        })(),
         h("div",{className:"lp-modal-actions"},
           h(DsButton,{variant:"ghost",onClick:function(){setShowDeckPicker(false);}},"Abbrechen"),
           h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:confirmDeckPickerSave},h("span",{className:"lp-btn-glow-label"},"Speichern"))))),
@@ -5455,6 +5464,7 @@ function App(p){
   var qcs=useState(null); var qsConfig=qcs[0]; var setQsConfig=qcs[1];
   var tm=useToast(); var toast=tm[0]; var showToast=tm[1];
   useEffect(function(){_syncSetData=setData;_syncShowToast=showToast;},[setData,showToast]);
+  var erk=useState(0); var editorResetKey=erk[0]; var setEditorResetKey=erk[1];
   var gus=useState(null); var googleUser=gus[0]; var setGoogleUser=gus[1];
   /* Google-Profilbild: erst aus dem Cache lesen (falls von einer
      frueheren Session schon geladen), damit wiederkehrende Nutzer es
@@ -5764,8 +5774,9 @@ function App(p){
   function saveCardFromEditorEntry(result){
     var deck=decks.find(function(d){return d.id===result.deckId;});
     if(!deck)return;
-    updateDeck(Object.assign({},deck,{cards:deck.cards.concat([Object.assign({id:uid(),folderId:null,lvl:0,nextReview:todayStr()},{front:result.front,back:result.back,frontElements:result.frontElements,backElements:result.backElements})])}));
-    setView('decks'); setDeckId(deck.id); setDeckListMode('manage');
+    updateDeck(Object.assign({},deck,{cards:deck.cards.concat([Object.assign({id:uid(),folderId:result.folderId||null,lvl:0,nextReview:todayStr()},{front:result.front,back:result.back,frontElements:result.frontElements,backElements:result.backElements})])}));
+    showToast('Karte gespeichert!');
+    setEditorResetKey(function(k){return k+1;});
   }
   function handleDeleteAccount(){ setShowDeleteConfirm(true); }
   function confirmDeleteAccount(){
@@ -6117,7 +6128,7 @@ function App(p){
             renderExplorer()),
           view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck,onStudyingChange:setIsStudying}),
           qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs,onProgress:saveQsProgress}),
-          view==="editor"&&!qsStep&&h(LpCardEditor,{initialFrontElements:[],initialBackElements:[],deckPicker:decks,showToast:showToast,onCancel:function(){switchNav('explorer');},onSave:saveCardFromEditorEntry}),
+          view==="editor"&&!qsStep&&h(LpCardEditor,{key:"editor-"+editorResetKey,initialFrontElements:[],initialBackElements:[],deckPicker:decks,showToast:showToast,onCancel:function(){switchNav('explorer');},onSave:saveCardFromEditorEntry}),
           view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,presenceVisible:lsConsent&&presenceOn,presenceOn:presenceOn,onTogglePresence:togglePresence,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onForceRestore:handleForceRestore,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast})),
           view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,googleUser:googleUser,presence:presence,presenceVisible:lsConsent&&presenceOn,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},onGroupDecksForHome:onGroupDecksForHome})),
           view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}})),
