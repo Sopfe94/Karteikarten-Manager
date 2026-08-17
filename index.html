@@ -1131,7 +1131,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.3.1";
+var KKM_VERSION="1.3.2";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1736,6 +1736,42 @@ function LpCardEditor(p){
   var fieldNodesRef=useRef({});
   var savedSelRef=useRef(null);
   var dirtyRef=useRef(false);
+  var recoveredDraftRef=useRef(null);
+  /* Ohne mitgegebenen Inhalt (frischer Einstieg ueber den Menuepunkt, oder
+     Hand-off mit leeren Feldern) UND vorhandenem Cache-Eintrag kann nur
+     ein liegen gebliebener Entwurf von einem Absturz/Reload stammen -
+     normalerweise wird der Cache ja bei jedem Verlassen/Speichern
+     geleert. In dem Fall Wiederherstellen anbieten statt ihn stumm zu
+     ignorieren. Bei einer bestehenden Karte (echter initialer Inhalt)
+     nie anbieten, da ein alter Entwurf dann zu einer ganz anderen Karte
+     gehoeren koennte. */
+  var rp=useState(function(){
+    var hasSeed=(p.initialFrontElements&&p.initialFrontElements.length)||(p.initialBackElements&&p.initialBackElements.length);
+    if(hasSeed)return false;
+    try{
+      var raw=localStorage.getItem("kkm-editor-draft");
+      if(!raw)return false;
+      var parsed=JSON.parse(raw);
+      var hasContent=parsed&&((parsed.front&&parsed.front.length)||(parsed.back&&parsed.back.length));
+      if(!hasContent)return false;
+      recoveredDraftRef.current=parsed;
+      return true;
+    }catch(e){return false;}
+  });
+  var showRestorePrompt=rp[0]; var setShowRestorePrompt=rp[1];
+  function restoreDraft(){
+    var d=recoveredDraftRef.current;
+    if(d){
+      setFrontEls(d.front||[]);
+      setBackEls(d.back||[]);
+      dirtyRef.current=true;
+    }
+    setShowRestorePrompt(false);
+  }
+  function discardDraft(){
+    clearDraft();
+    setShowRestorePrompt(false);
+  }
 
   var curEls=side==="front"?frontEls:backEls;
   function setCurEls(next){ if(side==="front")setFrontEls(next); else setBackEls(next); }
@@ -2109,7 +2145,18 @@ function LpCardEditor(p){
             (p.deckPicker||[]).map(function(d){return h("option",{key:d.id,value:d.id},d.emoji+" "+d.name);}))),
         h("div",{className:"lp-modal-actions"},
           h(DsButton,{variant:"ghost",onClick:function(){setShowDeckPicker(false);}},"Abbrechen"),
-          h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:confirmDeckPickerSave},h("span",{className:"lp-btn-glow-label"},"Speichern"))))));
+          h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:confirmDeckPickerSave},h("span",{className:"lp-btn-glow-label"},"Speichern"))))),
+
+    showRestorePrompt&&h("div",{className:"lp-modal-ov"},
+      h("div",{className:"lp-modal-box",onClick:function(ev){ev.stopPropagation();}},
+        h("div",{className:"lp-modal-title"},"Ungespeicherten Entwurf gefunden"),
+        h("p",{style:{fontSize:14,color:"rgba(255,255,255,.65)",lineHeight:1.5}},
+          "Es sieht so aus, als wäre der Editor letztes Mal unerwartet geschlossen worden (z.B. durch einen Absturz). "+
+          (recoveredDraftRef.current&&recoveredDraftRef.current.ts?("Entwurf vom "+new Date(recoveredDraftRef.current.ts).toLocaleString("de-DE")+". "):"")+
+          "Möchtest du damit weitermachen?"),
+        h("div",{className:"lp-modal-actions"},
+          h(DsButton,{variant:"ghost",onClick:discardDraft},"Verwerfen"),
+          h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:restoreDraft},h("span",{className:"lp-btn-glow-label"},"Wiederherstellen"))))));
 }
 
 function ImportModal(p){
@@ -5487,9 +5534,12 @@ function App(p){
     /* Ungespeicherte Karte im Editor (egal ob ueber diesen Menuepunkt oder
        aus einem Stapel heraus geoeffnet) nicht stillschweigend verwerfen -
        beide Einstiege schreiben in denselben Draft-Key, switchNav ist die
-       zentrale Stelle, ueber die Sidebar/Bottom-Nav/Mobile-Topbar laufen. */
+       zentrale Stelle, ueber die Sidebar/Bottom-Nav/Mobile-Topbar laufen.
+       Navigiert man GENAU auf den Editor zu, nicht warnen - ein evtl.
+       liegen gebliebener Entwurf wird dort stattdessen zum Wiederherstellen
+       angeboten, statt hier schon vorschnell verworfen zu werden. */
     try{
-      if(localStorage.getItem('kkm-editor-draft')){
+      if(id!=='editor'&&localStorage.getItem('kkm-editor-draft')){
         if(!confirm('Du hast eine ungespeicherte Karte im Editor. Trotzdem verlassen? Sie wird verworfen.'))return;
         localStorage.removeItem('kkm-editor-draft');
       }
