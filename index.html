@@ -1131,7 +1131,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.3.5";
+var KKM_VERSION="1.3.6";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1179,6 +1179,7 @@ function getSb(){
 }
 
 var _syncUser=null; var _syncTimeout=null; var _realtimeChannel=null; var _applyingRemote=false; var _preloadedLsData=null; var _unCache={};
+var _syncSetData=null; var _syncShowToast=null;
 /* Gate fuer die Hochzaehl-Animationen auf der Startseite: die
    Dashboard-Komponente steht schon waehrend des Splashs im DOM (nur
    optisch verdeckt), daher wuerde ihr IntersectionObserver sonst sofort
@@ -1232,9 +1233,27 @@ function syncAppData(d){
   if(!myId)return;
   clearTimeout(_syncTimeout);
   _syncTimeout=setTimeout(function(){
-    var payload=Object.assign({},d,{_syncedAt:Date.now()});
-    getSb().from('ls_users').upsert({ls_id:myId,app_data:payload,updated_at:new Date().toISOString()},{onConflict:'ls_id',ignoreDuplicates:false})
-    .then(function(r){if(!r.error)dbg('✅ App-Sync OK');else dbg('❌ App-Sync Fehler:',r.error.message);});
+    var knownTs=d._syncedAt||0;
+    getSb().from('ls_users').select('app_data').eq('ls_id',myId).maybeSingle().then(function(res){
+      var remote=res.data&&res.data.app_data;
+      var remoteTs=(remote&&remote._syncedAt)||0;
+      if(remoteTs>knownTs){
+        /* Ein anderes Geraet hat seit dem letzten bekannten Stand bereits
+           neuere Daten hochgeladen - NICHT blind ueberschreiben (das war
+           der Bug: eine veraltete lokale Kopie konnte so die Karte eines
+           anderen Geraets stillschweigend loeschen). Stattdessen den
+           neueren Cloud-Stand uebernehmen und sichtbar informieren. */
+        _applyingRemote=true;
+        saveStore(remote);
+        if(_syncSetData)_syncSetData(remote);
+        if(_syncShowToast)_syncShowToast('Ein anderes Gerät hatte neuere Änderungen – dein Stand wurde aktualisiert.');
+        dbg('🔄 App-Sync: Cloud war neuer, lokal uebernommen statt ueberschrieben');
+        setTimeout(function(){_applyingRemote=false;},200);
+        return;
+      }
+      getSb().from('ls_users').upsert({ls_id:myId,app_data:d,updated_at:new Date().toISOString()},{onConflict:'ls_id',ignoreDuplicates:false})
+      .then(function(r){if(!r.error)dbg('✅ App-Sync OK');else dbg('❌ App-Sync Fehler:',r.error.message);});
+    }).catch(function(e){dbg('❌ App-Sync Vergleich fehlgeschlagen:',e);});
   },2000);
 }
 
@@ -5268,6 +5287,7 @@ function App(p){
   var qds=useState([]); var qsDecks=qds[0]; var setQsDecks=qds[1];
   var qcs=useState(null); var qsConfig=qcs[0]; var setQsConfig=qcs[1];
   var tm=useToast(); var toast=tm[0]; var showToast=tm[1];
+  useEffect(function(){_syncSetData=setData;_syncShowToast=showToast;},[setData,showToast]);
   var gus=useState(null); var googleUser=gus[0]; var setGoogleUser=gus[1];
   /* Google-Profilbild: erst aus dem Cache lesen (falls von einer
      frueheren Session schon geladen), damit wiederkehrende Nutzer es
