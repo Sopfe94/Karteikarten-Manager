@@ -1131,7 +1131,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.3.0";
+var KKM_VERSION="1.3.1";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1727,17 +1727,36 @@ function LpCardEditor(p){
   var mm=useState(false); var moveMode=mm[0]; var setMoveMode=mm[1];
   var hc=useState("#FBBF24"); var highlightColorHex=hc[0]; var setHighlightColorHex=hc[1];
   var ho=useState(0.35); var highlightOpacity=ho[0]; var setHighlightOpacity=ho[1];
+  var sdp=useState(false); var showDeckPicker=sdp[0]; var setShowDeckPicker=sdp[1];
+  var psr=useState(null); var pendingSaveResult=psr[0]; var setPendingSaveResult=psr[1];
+  var pdid=useState(p.deckPicker&&p.deckPicker.length?p.deckPicker[0].id:null); var pickedDeckId=pdid[0]; var setPickedDeckId=pdid[1];
   var undoStack=useRef([]); var redoStack=useRef([]);
   var dragRef=useRef(null); var resizeRef=useRef(null);
   var surfaceRef=useRef(null);
   var fieldNodesRef=useRef({});
   var savedSelRef=useRef(null);
+  var dirtyRef=useRef(false);
 
   var curEls=side==="front"?frontEls:backEls;
   function setCurEls(next){ if(side==="front")setFrontEls(next); else setBackEls(next); }
 
+  /* Einzelner Zwischenspeicher-Platz im localStorage - es kann immer nur
+     eine Karte gleichzeitig im Editor bearbeitet werden, deshalb genuegt
+     ein fester Key statt einer Liste. Dient als Grundlage fuer die
+     Verlassen-Warnung (App-weit in switchNav geprueft) und macht den
+     Editor nebenbei robust gegen App-Abstuerze waehrend der Bearbeitung. */
+  useEffect(function(){
+    if(!dirtyRef.current)return;
+    try{localStorage.setItem("kkm-editor-draft",JSON.stringify({front:frontEls,back:backEls,ts:Date.now()}));}catch(e){}
+  },[frontEls,backEls]);
+  function clearDraft(){
+    try{localStorage.removeItem("kkm-editor-draft");}catch(e){}
+    dirtyRef.current=false;
+  }
+
   function snapshot(){ return JSON.stringify({front:frontEls,back:backEls}); }
   function pushHistory(){
+    dirtyRef.current=true;
     undoStack.current.push(snapshot());
     if(undoStack.current.length>50)undoStack.current.shift();
     redoStack.current=[];
@@ -1922,6 +1941,11 @@ function LpCardEditor(p){
       setSelected(null);
     },150);
   }
+  function handleBack(){
+    if(dirtyRef.current&&!confirm("Ungespeicherte Karte verwerfen? Deine Änderungen gehen verloren."))return;
+    clearDraft();
+    if(p.onCancel)p.onCancel();
+  }
   function registerNode(id,node){
     if(node)fieldNodesRef.current[id]=node;
     else delete fieldNodesRef.current[id];
@@ -1960,7 +1984,25 @@ function LpCardEditor(p){
       if(p.showToast)p.showToast("Rückseite braucht mindestens Text oder ein Bild");
       return;
     }
-    p.onSave({front:frontText,back:backText,frontElements:ffront,backElements:fback});
+    var result={front:frontText,back:backText,frontElements:ffront,backElements:fback};
+    if(p.deckPicker){
+      if(!p.deckPicker.length){
+        if(p.showToast)p.showToast("Erstelle zuerst einen Stapel, um Karten zu speichern.");
+        return;
+      }
+      setPendingSaveResult(result);
+      setShowDeckPicker(true);
+      return;
+    }
+    clearDraft();
+    p.onSave(result);
+  }
+  function confirmDeckPickerSave(){
+    if(!pendingSaveResult)return;
+    clearDraft();
+    p.onSave(Object.assign({deckId:pickedDeckId},pendingSaveResult));
+    setShowDeckPicker(false);
+    setPendingSaveResult(null);
   }
 
   var selectedEl=curEls.find(function(x){return x.id===selected;});
@@ -1986,6 +2028,8 @@ function LpCardEditor(p){
 
   return h("div",{className:"lp-editor-view"},
     h("div",{className:"lp-editor-toolbar-1"},
+      h("button",{className:"lp-editor-toolbar-btn",onClick:handleBack,type:"button",title:"Zurück"},"←"),
+      h("div",{className:"lp-editor-divider"}),
       h("button",{className:"lp-editor-toolbar-btn",onClick:undoEditor,type:"button",title:"Rückgängig"},"↶"),
       h("button",{className:"lp-editor-toolbar-btn",onClick:redoEditor,type:"button",title:"Wiederholen"},"↷"),
       h("div",{className:"lp-editor-divider"}),
@@ -2055,7 +2099,17 @@ function LpCardEditor(p){
         })),
       h("button",{className:"lp-editor-flip-btn",onClick:flipCardEditor,type:"button"},"⟲ Karte umdrehen")),
 
-    h("div",{className:"lp-editor-actions-row lp-editor-actions-bottom"},actionsRowChildren()));
+    h("div",{className:"lp-editor-actions-row lp-editor-actions-bottom"},actionsRowChildren()),
+
+    showDeckPicker&&h("div",{className:"lp-modal-ov",onClick:function(){setShowDeckPicker(false);}},
+      h("div",{className:"lp-modal-box",onClick:function(ev){ev.stopPropagation();}},
+        h("div",{className:"lp-modal-title"},"In welchen Stapel speichern?"),
+        h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Stapel"),
+          h("select",{className:"lp-dark-input",value:pickedDeckId||"",onChange:function(e){setPickedDeckId(e.target.value);}},
+            (p.deckPicker||[]).map(function(d){return h("option",{key:d.id,value:d.id},d.emoji+" "+d.name);}))),
+        h("div",{className:"lp-modal-actions"},
+          h(DsButton,{variant:"ghost",onClick:function(){setShowDeckPicker(false);}},"Abbrechen"),
+          h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:confirmDeckPickerSave},h("span",{className:"lp-btn-glow-label"},"Speichern"))))));
 }
 
 function ImportModal(p){
@@ -5430,14 +5484,30 @@ function App(p){
 
   function patch(pp){setData(function(prev){return Object.assign({},prev,pp,{_syncedAt:Date.now()});});}
   function switchNav(id){
+    /* Ungespeicherte Karte im Editor (egal ob ueber diesen Menuepunkt oder
+       aus einem Stapel heraus geoeffnet) nicht stillschweigend verwerfen -
+       beide Einstiege schreiben in denselben Draft-Key, switchNav ist die
+       zentrale Stelle, ueber die Sidebar/Bottom-Nav/Mobile-Topbar laufen. */
+    try{
+      if(localStorage.getItem('kkm-editor-draft')){
+        if(!confirm('Du hast eine ungespeicherte Karte im Editor. Trotzdem verlassen? Sie wird verworfen.'))return;
+        localStorage.removeItem('kkm-editor-draft');
+      }
+    }catch(e){}
     setDeckId(null);setQsStep(null);
     if(id==='dashboard'){setView('decks');setDeckListMode('home');if(p.onRefreshDashFriends)p.onRefreshDashFriends();}
     else if(id==='explorer'){setView('decks');setDeckListMode('manage');}
-    else if(id==='editor'){setView('decks');setDeckListMode('manage');}
+    else if(id==='editor'){setView('editor');}
     else if(id==='netzwerk'){setView('lernspace');}
     else if(id==='kalender'){setView('kalender');}
     else if(id==='profil'){setView('einstellungen');}
     var sc=document.getElementById('lp-content-scroll'); if(sc)sc.scrollTop=0;
+  }
+  function saveCardFromEditorEntry(result){
+    var deck=decks.find(function(d){return d.id===result.deckId;});
+    if(!deck)return;
+    updateDeck(Object.assign({},deck,{cards:deck.cards.concat([Object.assign({id:uid(),folderId:null,lvl:0,nextReview:todayStr()},{front:result.front,back:result.back,frontElements:result.frontElements,backElements:result.backElements})])}));
+    setView('decks'); setDeckId(deck.id); setDeckListMode('manage');
   }
   function handleDeleteAccount(){ setShowDeleteConfirm(true); }
   function confirmDeleteAccount(){
@@ -5732,7 +5802,8 @@ function App(p){
     ):null;
 
   if(showLogin)return h(LoginScreen,{onDone:function(){setShowLogin(false);},onGuestDone:function(){setShowLogin(false);if(!localStorage.getItem('kkm-social-username-v1'))setShowUsernameModal(true);},onDataLoaded:function(d){setData(d);},onGoogleLogin:handleGoogleLogin});
-  var navId = view==="lernspace" ? "netzwerk"
+  var navId = view==="editor" ? "editor"
+    : view==="lernspace" ? "netzwerk"
     : view==="kalender" ? "kalender"
     : view==="einstellungen" ? "profil"
     : view==="decks" ? ((deckListMode==="manage"||activeDeck) ? "explorer" : "dashboard")
@@ -5788,6 +5859,7 @@ function App(p){
             renderExplorer()),
           view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck,onStudyingChange:setIsStudying}),
           qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs,onProgress:saveQsProgress}),
+          view==="editor"&&!qsStep&&h(LpCardEditor,{initialFrontElements:[],initialBackElements:[],deckPicker:decks,showToast:showToast,onCancel:function(){switchNav('explorer');},onSave:saveCardFromEditorEntry}),
           view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,presenceVisible:lsConsent&&presenceOn,presenceOn:presenceOn,onTogglePresence:togglePresence,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onForceRestore:handleForceRestore,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast})),
           view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,googleUser:googleUser,presence:presence,presenceVisible:lsConsent&&presenceOn,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},onGroupDecksForHome:onGroupDecksForHome})),
           view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}})),
