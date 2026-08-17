@@ -1131,7 +1131,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.1";
+var KKM_VERSION="1.4.2";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6386,6 +6386,43 @@ if("serviceWorker" in navigator){
         if(document.visibilityState==="visible")reg.update().catch(function(){});
       });
     }).catch(function(){});
+  });
+
+  /* Zusaetzliche, vom SW-Lifecycle UNABHAENGIGE Versionspruefung:
+     controllerchange/skipWaiting/clients.claim verlassen sich darauf, dass
+     der Browser den SW-Lifecycle korrekt durchlaeuft - bei als Homescreen-
+     Icon installierten PWAs unter iOS/WebKit ist genau das nachweislich
+     unzuverlaessig (der neue Worker installiert/aktiviert manchmal nicht
+     oder controllerchange feuert nie), wodurch Nutzer trotz obigem
+     Mechanismus dauerhaft auf einer alten Version haengen bleiben koennen,
+     ohne dass irgendein Fehler sichtbar wird. Dieser Check umgeht das
+     komplett: sw.js wird direkt und ungecached vom Netz gelesen (network-
+     only, siehe sw.js fetch-Handler), die darin enthaltene CACHE-Version
+     mit dem zuletzt bekannten Stand verglichen - weicht sie ab, werden SW
+     und Caches hart entfernt und die Seite neu geladen, statt auf den
+     (moeglicherweise nie kommenden) nativen Lifecycle zu warten. */
+  function checkForNewVersionIndependent(){
+    if(swReloaded)return;
+    fetch("./sw.js",{cache:"no-store"}).then(function(r){return r.text();}).then(function(txt){
+      if(swReloaded)return;
+      var m=txt.match(/const CACHE = '([^']+)'/);
+      if(!m)return;
+      var latest=m[1];
+      var known=localStorage.getItem("kkm-known-sw-cache");
+      if(!known){ localStorage.setItem("kkm-known-sw-cache",latest); return; }
+      if(known!==latest){
+        swReloaded=true;
+        localStorage.setItem("kkm-known-sw-cache",latest);
+        Promise.all([
+          navigator.serviceWorker.getRegistrations().then(function(regs){return Promise.all(regs.map(function(r){return r.unregister();}));}),
+          (typeof caches!=="undefined")?caches.keys().then(function(keys){return Promise.all(keys.map(function(k){return caches.delete(k);}));}):Promise.resolve()
+        ]).then(function(){location.reload();}).catch(function(){location.reload();});
+      }
+    }).catch(function(){});
+  }
+  window.addEventListener("load",checkForNewVersionIndependent);
+  document.addEventListener("visibilitychange",function(){
+    if(document.visibilityState==="visible")checkForNewVersionIndependent();
   });
 }
 </script>
