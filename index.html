@@ -1131,7 +1131,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.3.4";
+var KKM_VERSION="1.3.5";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1692,8 +1692,10 @@ function LpEditorElement(pp){
   if(el.type==="image"){
     if(!el.src)return null;
     var br=el.shape==="circle"?"50%":el.shape==="rounded"?"16px":"0";
+    var sz=el.width||120;
     return h("div",{className:cls,style:wrapStyle,onPointerDown:pp.onDragStart},
-      h("img",{ref:ref,src:el.src,draggable:false,className:"lp-editor-img",style:{width:(el.width||120)+"px",height:"auto",borderRadius:br}}),
+      h("div",{style:{width:sz+"px",height:sz+"px",overflow:"hidden",borderRadius:br}},
+        h("img",{ref:ref,src:el.src,draggable:false,className:"lp-editor-img",style:{width:"100%",height:"100%",objectFit:"cover",display:"block"}})),
       pp.selected&&h("div",{className:"lp-editor-resize-handle",onPointerDown:pp.onResizeStart}));
   }
 
@@ -1724,7 +1726,8 @@ function LpEditorElement(pp){
 }
 
 function LpCardEditor(p){
-  var isPro=false;
+  var PRO_TEST_ACCESS_UNTIL=new Date("2026-08-24T23:59:59").getTime(); // Befristeter 1-Wochen-Testzugang - danach wieder gesperrt bis echtes Pro-Abo-System kommt
+  var isPro=Date.now()<PRO_TEST_ACCESS_UNTIL;
   var fe=useState(p.initialFrontElements||[]); var frontEls=fe[0]; var setFrontEls=fe[1];
   var be=useState(p.initialBackElements||[]); var backEls=be[0]; var setBackEls=be[1];
   var sd=useState("front"); var side=sd[0]; var setSide=sd[1];
@@ -2090,9 +2093,9 @@ function LpCardEditor(p){
 
     isImageSelected&&h("div",{className:"lp-editor-toolbar-3"},
       h("span",{className:"lp-editor-fmt-label"},"BILDFORM"),
-      h("button",{className:"lp-editor-shape-btn rect"+(selectedEl.shape==="rect"?" sel":""),onClick:function(){setShape("rect");},type:"button",title:"Eckig"}),
       h("div",{className:"lp-editor-pro-lock",style:proLock},
         h("div",{style:{display:"flex",alignItems:"center",gap:8}},
+          h("button",{className:"lp-editor-shape-btn rect"+(selectedEl.shape==="rect"?" sel":""),onClick:function(){setShape("rect");},type:"button",title:"Eckig"}),
           h("button",{className:"lp-editor-shape-btn rounded"+(selectedEl.shape==="rounded"?" sel":""),onClick:function(){setShape("rounded");},type:"button",title:"Abgerundet"}),
           h("button",{className:"lp-editor-shape-btn circle"+(selectedEl.shape==="circle"?" sel":""),onClick:function(){setShape("circle");},type:"button",title:"Rund"}),
           h("div",{className:"lp-editor-divider"}),
@@ -2234,8 +2237,10 @@ function LpCardFaceElement(pp){
       return h("img",{src:el.src,style:{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0}});
     }
     var br=el.shape==="circle"?"50%":el.shape==="rounded"?"16px":"0";
+    var sz=el.width||120;
     return h("div",{style:{position:"absolute",left:el.x+"%",top:el.y+"%",transform:"translate(-50%,-50%)",zIndex:1,maxWidth:"92%"}},
-      h("img",{src:el.src,style:{width:(el.width||120)+"px",height:"auto",borderRadius:br}}));
+      h("div",{style:{width:sz+"px",height:sz+"px",overflow:"hidden",borderRadius:br}},
+        h("img",{src:el.src,style:{width:"100%",height:"100%",objectFit:"cover",display:"block"}})));
   }
   var textStyle={
     width:(el.width||180)+"px",
