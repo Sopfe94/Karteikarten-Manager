@@ -1041,7 +1041,7 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
 .lp-mode-chip.active{border-color:rgba(124,58,237,0.55);background:rgba(124,58,237,0.14);color:#fff;box-shadow:0 0 12px rgba(124,58,237,0.3)}
 /* Study mode flip card */
 .lp-study-scene{perspective:1000px;width:100%;max-width:440px;margin:0 auto;cursor:pointer;border-radius:20px;border:1px solid rgba(124,58,237,0.55);box-shadow:0 0 14px rgba(124,58,237,0.45),0 0 6px rgba(6,182,212,0.3)}
-.lp-study-inner{width:100%;height:260px;position:relative;transform-style:preserve-3d;transition:transform .55s cubic-bezier(.25,.46,.45,.94)}
+.lp-study-inner{width:100%;aspect-ratio:3/2;position:relative;transform-style:preserve-3d;transition:transform .55s cubic-bezier(.25,.46,.45,.94)}
 .lp-study-inner.flipped{transform:rotateY(180deg)}
 .lp-study-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:#150C2B;border-radius:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;overflow:hidden}
 .lp-study-face-back{transform:rotateY(180deg);background:#1A0F3C}
@@ -1131,7 +1131,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.0";
+var KKM_VERSION="1.4.1";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2421,6 +2421,33 @@ function ShareModal(p){
       h("div",{className:"lp-modal-actions"},h(DsButton,{variant:"ghost",onClick:p.onClose},"Schlie\u00dfen"))));
 }
 
+/* Feste Referenzgroesse fuer die Kartenanzeige ausserhalb des Editors -
+   entspricht dem Editor-Canvas-Seitenverhaeltnis (480x320, 3:2). Element-
+   Positionen (%) sind bereits geraeteunabhaengig, Element-Groessen (px)
+   aber nicht - LpCardScaledLayer rendert Elemente immer in dieser festen
+   Referenzgroesse und skaliert das Ganze per CSS-Transform gleichmaessig
+   auf die tatsaechliche Containergroesse, damit sich nichts gegeneinander
+   verschiebt (nur Gesamtgroesse aendert sich zwischen Geraeten). */
+var LP_CARD_REF_W=480, LP_CARD_REF_H=320;
+function LpCardScaledLayer(p){
+  var ss=useState(1); var scale=ss[0]; var setScale=ss[1];
+  useEffect(function(){
+    var el=p.containerRef&&p.containerRef.current;
+    if(!el)return;
+    function update(){
+      var w=el.getBoundingClientRect().width;
+      if(w>0)setScale(w/LP_CARD_REF_W);
+    }
+    update();
+    var ro=(typeof ResizeObserver!=="undefined")?new ResizeObserver(update):null;
+    if(ro){ro.observe(el);}else{window.addEventListener("resize",update);}
+    return function(){
+      if(ro)ro.disconnect();else window.removeEventListener("resize",update);
+    };
+  },[p.containerRef]);
+  return h("div",{style:{position:"absolute",top:0,left:0,width:LP_CARD_REF_W+"px",height:LP_CARD_REF_H+"px",transform:"scale("+scale+")",transformOrigin:"top left"}},p.children);
+}
+
 /* Nicht-editierbare Darstellung eines Editor-Elements (Lernmodus/Vorschau) -
    gleiche Positions-/Formatierungslogik wie LpEditorElement, nur ohne
    Drag/Resize/contentEditable. */
@@ -2460,7 +2487,8 @@ function LpCardFace(pp){
   if(pp.elements&&pp.elements.length){
     return h("div",{className:pp.className},
       h("div",{style:{position:"absolute",inset:0}},
-        pp.elements.map(function(el,i){return h(LpCardFaceElement,{key:el.id||i,el:el});})),
+        h(LpCardScaledLayer,{containerRef:pp.containerRef},
+          pp.elements.map(function(el,i){return h(LpCardFaceElement,{key:el.id||i,el:el});}))),
       pp.showHint&&h("span",{className:"lp-study-hint"},"Tippen zum Umdrehen"));
   }
   function faceSize(t){return t.length>200?"0.92rem":t.length>120?"1.05rem":t.length>60?"1.2rem":"1.4rem";}
@@ -2470,10 +2498,11 @@ function LpCardFace(pp){
 }
 function LpFlipCard(p){
   // p: flipped, onFlip, front, back, frontElements, backElements
-  return h("div",{className:"lp-study-scene",onClick:p.onFlip},
+  var sceneRef=useRef(null);
+  return h("div",{className:"lp-study-scene",onClick:p.onFlip,ref:sceneRef},
     h("div",{className:"lp-study-inner"+(p.flipped?" flipped":"")},
-      h(LpCardFace,{className:"lp-study-face",elements:p.frontElements,fallbackText:p.front,showHint:true}),
-      h(LpCardFace,{className:"lp-study-face lp-study-face-back",elements:p.backElements,fallbackText:p.back,showHint:false})));
+      h(LpCardFace,{className:"lp-study-face",elements:p.frontElements,fallbackText:p.front,showHint:true,containerRef:sceneRef}),
+      h(LpCardFace,{className:"lp-study-face lp-study-face-back",elements:p.backElements,fallbackText:p.back,showHint:false,containerRef:sceneRef})));
 }
 function LpStudyDone(p){
   // p: title, sub, correct, wrong, onExit, exitLabel, onRestart
