@@ -1131,7 +1131,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.3.9";
+var KKM_VERSION="1.4.0";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -5465,6 +5465,7 @@ function App(p){
   var tm=useToast(); var toast=tm[0]; var showToast=tm[1];
   useEffect(function(){_syncSetData=setData;_syncShowToast=showToast;},[setData,showToast]);
   var erk=useState(0); var editorResetKey=erk[0]; var setEditorResetKey=erk[1];
+  var sess=useState(false); var showSessionExpired=sess[0]; var setShowSessionExpired=sess[1];
   var gus=useState(null); var googleUser=gus[0]; var setGoogleUser=gus[1];
   /* Google-Profilbild: erst aus dem Cache lesen (falls von einer
      frueheren Session schon geladen), damit wiederkehrende Nutzer es
@@ -5497,7 +5498,7 @@ function App(p){
            wie verlorene Karteikarten aussieht. */
         var prevId=localStorage.getItem('kkm-ls-id');
         if(prevId&&prevId.indexOf('@')>-1){
-          showToast('Anmeldung abgelaufen – bitte neu mit Google anmelden');
+          setShowSessionExpired(true);
         }
       }
     });
@@ -6149,6 +6150,14 @@ function App(p){
     qsStep==="mode"&&h(StudyModeModal,{decks:qsDecks,onStart:function(cfg){setQsConfig(cfg);setQsStep("study");},onNext:function(){setQsStep("order");},onBack:function(){setQsStep("select");},onClose:function(){setQsStep(null);}}),
     qsStep==="order"&&h(DeckOrderModal,{decks:qsDecks,onStart:function(cfg){setQsConfig(cfg);setQsStep("study");},onBack:function(){setQsStep("mode");},onClose:function(){setQsStep(null);}}),
     showUpdOverlay&&pendingUpd&&h(UpdateOverlay,{update:pendingUpd,onClose:function(){setShowUpdOverlay(false);}}),
+    showSessionExpired&&h("div",{className:"lp-modal-ov"},
+      h("div",{className:"lp-modal-box",onClick:function(e){e.stopPropagation();}},
+        h("div",{className:"lp-modal-title"},"Anmeldung abgelaufen"),
+        h("p",{style:{fontSize:14,color:"rgba(255,255,255,.65)",lineHeight:1.5}},
+          "Deine Google-Anmeldung ist abgelaufen. Ohne erneute Anmeldung werden neue Karteikarten nicht mit der Cloud synchronisiert und können auf anderen Geräten verloren gehen."),
+        h("div",{className:"lp-modal-actions"},
+          h(DsButton,{variant:"ghost",onClick:function(){setShowSessionExpired(false);}},"Als Gast fortfahren"),
+          h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:function(){setShowSessionExpired(false);handleGoogleLogin();}},h("span",{className:"lp-btn-glow-label"},"Jetzt anmelden"))))),
     h(Toast,{msg:toast}));
 }
 
