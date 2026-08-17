@@ -1131,7 +1131,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.3.6";
+var KKM_VERSION="1.3.7";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1711,9 +1711,9 @@ function LpEditorElement(pp){
   if(el.type==="image"){
     if(!el.src)return null;
     var br=el.shape==="circle"?"50%":el.shape==="rounded"?"16px":"0";
-    var sz=el.width||120;
+    var fw=el.width||120; var fh=el.height||fw;
     return h("div",{className:cls,style:wrapStyle,onPointerDown:pp.onDragStart},
-      h("div",{style:{width:sz+"px",height:sz+"px",overflow:"hidden",borderRadius:br}},
+      h("div",{style:{width:fw+"px",height:fh+"px",overflow:"hidden",borderRadius:br}},
         h("img",{ref:ref,src:el.src,draggable:false,className:"lp-editor-img",style:{width:"100%",height:"100%",objectFit:"cover",display:"block"}})),
       pp.selected&&h("div",{className:"lp-editor-resize-handle",onPointerDown:pp.onResizeStart}));
   }
@@ -1742,6 +1742,142 @@ function LpEditorElement(pp){
       onFocus:pp.onSelect
     }),
     pp.selected&&h("div",{className:"lp-editor-resize-handle",onPointerDown:pp.onResizeStart}));
+}
+
+/* Freie Schnittmaske zum Bild-Zuschneiden: zeigt das aktuelle el.src in
+   voller Ansicht, eine ziehbare/groessenveraenderbare Maske druebergelegt.
+   Bestaetigen schneidet per Canvas alles ausserhalb der Maske dauerhaft
+   vom Bild ab (arbeitet immer auf dem aktuell gespeicherten Bild - kein
+   Zugriff auf ein "Original" vor frueheren Zuschnitten). */
+function LpCropMaskModal(p){
+  var el=p.el;
+  var ss=useState(el.shape||"rect"); var shape=ss[0]; var setShapeState=ss[1];
+  var ms=useState(null); var mask=ms[0]; var setMask=ms[1];
+  var imgRef=useRef(null);
+  var dragRef=useRef(null);
+  var resizeRef=useRef(null);
+  var initedRef=useRef(false);
+
+  function clampMask(m){
+    var img=imgRef.current;
+    var maxW=img?img.clientWidth:9999, maxH=img?img.clientHeight:9999;
+    var w,h;
+    if(shape==="circle"){
+      var maxSide=Math.min(maxW,maxH);
+      w=h=Math.max(30,Math.min(m.w,maxSide));
+    }else{
+      w=Math.max(30,Math.min(m.w,maxW));
+      h=Math.max(30,Math.min(m.h,maxH));
+    }
+    var x=Math.max(0,Math.min(m.x,maxW-w));
+    var y=Math.max(0,Math.min(m.y,maxH-h));
+    return {x:x,y:y,w:w,h:h};
+  }
+
+  function initMask(){
+    var img=imgRef.current;
+    if(!img)return;
+    var w=img.clientWidth, h=img.clientHeight;
+    if(!w||!h)return;
+    var mw,mh;
+    if(shape==="circle"){
+      var side=Math.min(w,h)*0.7;
+      mw=side; mh=side;
+    }else{
+      mw=w*0.7; mh=h*0.7;
+    }
+    setMask(clampMask({x:(w-mw)/2,y:(h-mh)/2,w:mw,h:mh}));
+    initedRef.current=true;
+  }
+  useEffect(function(){
+    var img=imgRef.current;
+    if(img&&img.complete)initMask();
+  },[]);
+  function onImgLoad(){ if(!initedRef.current)initMask(); }
+
+  function onMaskDragStart(e){
+    e.stopPropagation(); e.preventDefault();
+    if(!mask)return;
+    dragRef.current={startX:e.clientX,startY:e.clientY,startMaskX:mask.x,startMaskY:mask.y};
+  }
+  function onResizeStart(e){
+    e.stopPropagation(); e.preventDefault();
+    if(!mask)return;
+    resizeRef.current={startX:e.clientX,startY:e.clientY,startW:mask.w,startH:mask.h};
+  }
+  useEffect(function(){
+    function onMove(e){
+      if(dragRef.current){
+        var d=dragRef.current;
+        var nx=d.startMaskX+(e.clientX-d.startX);
+        var ny=d.startMaskY+(e.clientY-d.startY);
+        setMask(function(cur){ return cur?clampMask(Object.assign({},cur,{x:nx,y:ny})):cur; });
+      }
+      if(resizeRef.current){
+        var r=resizeRef.current;
+        var dx=e.clientX-r.startX, dy=e.clientY-r.startY;
+        var nw,nh;
+        if(shape==="circle"){ nw=r.startW+dx; nh=r.startH+dx; }
+        else{ nw=r.startW+dx; nh=r.startH+dy; }
+        setMask(function(cur){ return cur?clampMask(Object.assign({},cur,{w:nw,h:nh})):cur; });
+      }
+    }
+    function onUp(){ dragRef.current=null; resizeRef.current=null; }
+    window.addEventListener("pointermove",onMove);
+    window.addEventListener("pointerup",onUp);
+    window.addEventListener("pointercancel",onUp);
+    return function(){
+      window.removeEventListener("pointermove",onMove);
+      window.removeEventListener("pointerup",onUp);
+      window.removeEventListener("pointercancel",onUp);
+    };
+  },[shape]);
+
+  function switchShape(s){
+    setShapeState(s);
+    if(s==="circle"&&mask){
+      var side=Math.min(mask.w,mask.h);
+      var cx=mask.x+mask.w/2, cy=mask.y+mask.h/2;
+      setMask(clampMask({x:cx-side/2,y:cy-side/2,w:side,h:side}));
+    }
+  }
+
+  function confirmCrop(){
+    var img=imgRef.current;
+    if(!img||!mask)return;
+    var scaleX=img.naturalWidth/img.clientWidth;
+    var scaleY=img.naturalHeight/img.clientHeight;
+    var sx=mask.x*scaleX, sy=mask.y*scaleY, sw=mask.w*scaleX, sh=mask.h*scaleY;
+    var canvas=document.createElement("canvas");
+    canvas.width=Math.max(1,Math.round(sw));
+    canvas.height=Math.max(1,Math.round(sh));
+    var ctx=canvas.getContext("2d");
+    ctx.drawImage(img,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
+    var dataUrl=canvas.toDataURL("image/jpeg",0.85);
+    var curW=el.width||120;
+    var curH=shape==="circle"?curW:Math.round(curW*(mask.h/mask.w));
+    p.onConfirm({src:dataUrl,width:curW,height:curH,shape:shape});
+  }
+
+  var br=shape==="circle"?"50%":shape==="rounded"?"16px":"0";
+
+  return h("div",{className:"lp-modal-ov",onClick:p.onCancel},
+    h("div",{className:"lp-modal-box wide",onClick:function(e){e.stopPropagation();}},
+      h("div",{className:"lp-modal-title"},"Bild freistellen"),
+      h("div",{style:{position:"relative",display:"inline-block",maxWidth:"100%",touchAction:"none"}},
+        h("img",{ref:imgRef,src:el.src,onLoad:onImgLoad,draggable:false,style:{display:"block",maxWidth:"100%",maxHeight:"60vh",userSelect:"none"}}),
+        mask&&h("div",{
+          onPointerDown:onMaskDragStart,
+          style:{position:"absolute",left:mask.x+"px",top:mask.y+"px",width:mask.w+"px",height:mask.h+"px",
+            borderRadius:br,border:"2px solid #7C3AED",boxShadow:"0 0 0 9999px rgba(0,0,0,.6)",cursor:"move",boxSizing:"border-box",touchAction:"none"}},
+          h("div",{className:"lp-editor-resize-handle",onPointerDown:onResizeStart}))),
+      h("div",{style:{display:"flex",alignItems:"center",gap:8}},
+        h("button",{className:"lp-editor-shape-btn rect"+(shape==="rect"?" sel":""),onClick:function(){switchShape("rect");},type:"button",title:"Eckig"}),
+        h("button",{className:"lp-editor-shape-btn rounded"+(shape==="rounded"?" sel":""),onClick:function(){switchShape("rounded");},type:"button",title:"Abgerundet"}),
+        h("button",{className:"lp-editor-shape-btn circle"+(shape==="circle"?" sel":""),onClick:function(){switchShape("circle");},type:"button",title:"Rund"})),
+      h("div",{className:"lp-modal-actions"},
+        h(DsButton,{variant:"ghost",onClick:p.onCancel},"Abbrechen"),
+        h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:confirmCrop},h("span",{className:"lp-btn-glow-label"},"✓ Zuschneiden")))));
 }
 
 function LpCardEditor(p){
@@ -1786,6 +1922,7 @@ function LpCardEditor(p){
     }catch(e){return false;}
   });
   var showRestorePrompt=rp[0]; var setShowRestorePrompt=rp[1];
+  var cms=useState(null); var cropMaskEl=cms[0]; var setCropMaskEl=cms[1];
   function restoreDraft(){
     var d=recoveredDraftRef.current;
     if(d){
@@ -2117,6 +2254,7 @@ function LpCardEditor(p){
           h("button",{className:"lp-editor-shape-btn rect"+(selectedEl.shape==="rect"?" sel":""),onClick:function(){setShape("rect");},type:"button",title:"Eckig"}),
           h("button",{className:"lp-editor-shape-btn rounded"+(selectedEl.shape==="rounded"?" sel":""),onClick:function(){setShape("rounded");},type:"button",title:"Abgerundet"}),
           h("button",{className:"lp-editor-shape-btn circle"+(selectedEl.shape==="circle"?" sel":""),onClick:function(){setShape("circle");},type:"button",title:"Rund"}),
+          h("button",{className:"lp-editor-toolbar-btn",onClick:function(){setCropMaskEl(selected);},type:"button",title:"Freistellen"},"✂️"),
           h("div",{className:"lp-editor-divider"}),
           h("button",{className:"lp-editor-toolbar-btn",onClick:toggleBackground,type:"button"},selectedEl.background?"Nach vorne holen":"In den Hintergrund"),
           h("span",{className:"lp-editor-pro-badge"},"PRO")))),
@@ -2189,7 +2327,13 @@ function LpCardEditor(p){
           "Möchtest du damit weitermachen?"),
         h("div",{className:"lp-modal-actions"},
           h(DsButton,{variant:"ghost",onClick:discardDraft},"Verwerfen"),
-          h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:restoreDraft},h("span",{className:"lp-btn-glow-label"},"Wiederherstellen"))))));
+          h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:restoreDraft},h("span",{className:"lp-btn-glow-label"},"Wiederherstellen"))))),
+
+    cropMaskEl&&h(LpCropMaskModal,{
+      el:curEls.find(function(x){return x.id===cropMaskEl;}),
+      onConfirm:function(patch){pushHistory();updateElement(cropMaskEl,patch);setCropMaskEl(null);},
+      onCancel:function(){setCropMaskEl(null);}
+    }));
 }
 
 function ImportModal(p){
@@ -2256,9 +2400,9 @@ function LpCardFaceElement(pp){
       return h("img",{src:el.src,style:{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0}});
     }
     var br=el.shape==="circle"?"50%":el.shape==="rounded"?"16px":"0";
-    var sz=el.width||120;
+    var fw=el.width||120; var fh=el.height||fw;
     return h("div",{style:{position:"absolute",left:el.x+"%",top:el.y+"%",transform:"translate(-50%,-50%)",zIndex:1,maxWidth:"92%"}},
-      h("div",{style:{width:sz+"px",height:sz+"px",overflow:"hidden",borderRadius:br}},
+      h("div",{style:{width:fw+"px",height:fh+"px",overflow:"hidden",borderRadius:br}},
         h("img",{src:el.src,style:{width:"100%",height:"100%",objectFit:"cover",display:"block"}})));
   }
   var textStyle={
