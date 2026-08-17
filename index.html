@@ -1131,7 +1131,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.3.7";
+var KKM_VERSION="1.3.8";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1800,10 +1800,12 @@ function LpCropMaskModal(p){
     if(!mask)return;
     dragRef.current={startX:e.clientX,startY:e.clientY,startMaskX:mask.x,startMaskY:mask.y};
   }
-  function onResizeStart(e){
-    e.stopPropagation(); e.preventDefault();
-    if(!mask)return;
-    resizeRef.current={startX:e.clientX,startY:e.clientY,startW:mask.w,startH:mask.h};
+  function onResizeStart(signX,signY){
+    return function(e){
+      e.stopPropagation(); e.preventDefault();
+      if(!mask)return;
+      resizeRef.current={startX:e.clientX,startY:e.clientY,startW:mask.w,startH:mask.h,startMaskX:mask.x,startMaskY:mask.y,signX:signX,signY:signY};
+    };
   }
   useEffect(function(){
     function onMove(e){
@@ -1817,9 +1819,17 @@ function LpCropMaskModal(p){
         var r=resizeRef.current;
         var dx=e.clientX-r.startX, dy=e.clientY-r.startY;
         var nw,nh;
-        if(shape==="circle"){ nw=r.startW+dx; nh=r.startH+dx; }
-        else{ nw=r.startW+dx; nh=r.startH+dy; }
-        setMask(function(cur){ return cur?clampMask(Object.assign({},cur,{w:nw,h:nh})):cur; });
+        if(shape==="circle"){
+          var d2=(r.signX*dx+r.signY*dy)/2;
+          nw=r.startW+d2; nh=r.startH+d2;
+        }else{
+          nw=r.startW+r.signX*dx; nh=r.startH+r.signY*dy;
+        }
+        /* Gegenueberliegende Ecke bleibt fix: nur wenn diese Ecke die
+           linke/obere Kante ist (sign<0), wandert x/y mit der neuen Groesse mit. */
+        var nx=r.signX<0?r.startMaskX+(r.startW-nw):r.startMaskX;
+        var ny=r.signY<0?r.startMaskY+(r.startH-nh):r.startMaskY;
+        setMask(function(cur){ return cur?clampMask({x:nx,y:ny,w:nw,h:nh}):cur; });
       }
     }
     function onUp(){ dragRef.current=null; resizeRef.current=null; }
@@ -1870,7 +1880,10 @@ function LpCropMaskModal(p){
           onPointerDown:onMaskDragStart,
           style:{position:"absolute",left:mask.x+"px",top:mask.y+"px",width:mask.w+"px",height:mask.h+"px",
             borderRadius:br,border:"2px solid #7C3AED",boxShadow:"0 0 0 9999px rgba(0,0,0,.6)",cursor:"move",boxSizing:"border-box",touchAction:"none"}},
-          h("div",{className:"lp-editor-resize-handle",onPointerDown:onResizeStart}))),
+          h("div",{className:"lp-editor-resize-handle",onPointerDown:onResizeStart(-1,-1),style:{left:"-6px",top:"-6px",right:"auto",bottom:"auto",cursor:"nwse-resize"}}),
+          h("div",{className:"lp-editor-resize-handle",onPointerDown:onResizeStart(1,-1),style:{right:"-6px",top:"-6px",left:"auto",bottom:"auto",cursor:"nesw-resize"}}),
+          h("div",{className:"lp-editor-resize-handle",onPointerDown:onResizeStart(-1,1),style:{left:"-6px",bottom:"-6px",right:"auto",top:"auto",cursor:"nesw-resize"}}),
+          h("div",{className:"lp-editor-resize-handle",onPointerDown:onResizeStart(1,1),style:{right:"-6px",bottom:"-6px",left:"auto",top:"auto",cursor:"nwse-resize"}}))),
       h("div",{style:{display:"flex",alignItems:"center",gap:8}},
         h("button",{className:"lp-editor-shape-btn rect"+(shape==="rect"?" sel":""),onClick:function(){switchShape("rect");},type:"button",title:"Eckig"}),
         h("button",{className:"lp-editor-shape-btn rounded"+(shape==="rounded"?" sel":""),onClick:function(){switchShape("rounded");},type:"button",title:"Abgerundet"}),
@@ -2036,7 +2049,7 @@ function LpCardEditor(p){
       var el=curEls.find(function(x){return x.id===id;});
       if(!el)return;
       pushHistory();
-      resizeRef.current={id:id,type:el.type,startX:e.clientX,startY:e.clientY,startW:el.width||(el.type==="text"?180:120),startH:el.type==="text"?(el.height||100):null};
+      resizeRef.current={id:id,type:el.type,startX:e.clientX,startY:e.clientY,startW:el.width||(el.type==="text"?180:120),startH:el.type==="text"?(el.height||100):(el.height||el.width||120)};
     };
   }
   useEffect(function(){
@@ -2050,7 +2063,12 @@ function LpCardEditor(p){
           var hgt=Math.max(30,Math.min(1200,r.startH+dy));
           updateElement(r.id,{width:w,height:hgt},true);
         }else{
-          updateElement(r.id,{width:w},true);
+          /* Bilder: Seitenverhaeltnis nach einem Zuschnitt sperren - nur
+             noch Groesse, keine Verzerrung mehr moeglich. Alte quadratische
+             Bilder (ratio=1) verhalten sich dadurch weiterhin unveraendert. */
+          var ratio=r.startH/r.startW;
+          var hgt2=Math.max(30,Math.round(w*ratio));
+          updateElement(r.id,{width:w,height:hgt2},true);
         }
         return;
       }
@@ -2254,7 +2272,12 @@ function LpCardEditor(p){
           h("button",{className:"lp-editor-shape-btn rect"+(selectedEl.shape==="rect"?" sel":""),onClick:function(){setShape("rect");},type:"button",title:"Eckig"}),
           h("button",{className:"lp-editor-shape-btn rounded"+(selectedEl.shape==="rounded"?" sel":""),onClick:function(){setShape("rounded");},type:"button",title:"Abgerundet"}),
           h("button",{className:"lp-editor-shape-btn circle"+(selectedEl.shape==="circle"?" sel":""),onClick:function(){setShape("circle");},type:"button",title:"Rund"}),
-          h("button",{className:"lp-editor-toolbar-btn",onClick:function(){setCropMaskEl(selected);},type:"button",title:"Freistellen"},"✂️"),
+          h("button",{className:"lp-editor-toolbar-btn",onClick:function(){setCropMaskEl(selected);},type:"button",title:"Freistellen"},
+            h("svg",{width:16,height:16,viewBox:"0 0 16 16",fill:"none"},
+              h("circle",{cx:3.5,cy:3.5,r:2,stroke:"currentColor",strokeWidth:1.4}),
+              h("circle",{cx:3.5,cy:12.5,r:2,stroke:"currentColor",strokeWidth:1.4}),
+              h("line",{x1:5,y1:5,x2:14,y2:14,stroke:"currentColor",strokeWidth:1.4,strokeLinecap:"round"}),
+              h("line",{x1:5,y1:11,x2:14,y2:2,stroke:"currentColor",strokeWidth:1.4,strokeLinecap:"round"}))),
           h("div",{className:"lp-editor-divider"}),
           h("button",{className:"lp-editor-toolbar-btn",onClick:toggleBackground,type:"button"},selectedEl.background?"Nach vorne holen":"In den Hintergrund"),
           h("span",{className:"lp-editor-pro-badge"},"PRO")))),
