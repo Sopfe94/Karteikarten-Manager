@@ -1134,7 +1134,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.15";
+var KKM_VERSION="1.4.16";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1680,6 +1680,18 @@ function hexToRgbaEditor(hex,alpha){
   var r=parseInt(h2.substring(0,2),16),g=parseInt(h2.substring(2,4),16),b=parseInt(h2.substring(4,6),16);
   return "rgba("+r+","+g+","+b+","+alpha+")";
 }
+function colorValueToHex(val){
+  if(!val)return null;
+  var s=String(val).trim();
+  if(s.charAt(0)==="#"){
+    if(s.length===4){s="#"+s[1]+s[1]+s[2]+s[2]+s[3]+s[3];}
+    return s.toLowerCase();
+  }
+  var m=s.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  if(!m)return null;
+  function h2(n){var x=parseInt(n,10).toString(16);return x.length<2?"0"+x:x;}
+  return "#"+h2(m[1])+h2(m[2])+h2(m[3]);
+}
 function makeSeedTextEl(text){
   return {id:"el"+Date.now()+Math.random().toString(36).slice(2,6),type:"text",x:50,y:50,width:180,height:100,fontFamily:"Arial",fontSize:16,color:"#ffffff",bold:false,underline:false,italic:false,highlight:null,align:"center",bullet:false,text:text||""};
 }
@@ -2140,6 +2152,15 @@ function LpCardEditor(p){
           savedSelRef.current=null;
         }
       }
+      /* Farbanzeige (FARBE-Swatch) an die tatsaechliche Farbe an der
+         aktuellen Cursor-/Markierungsposition angleichen - z.B. wenn man
+         in bereits gefaerbten Text hineinklickt, statt nur beim expliziten
+         Farbwaehlen ueber das Swatch selbst. */
+      try{
+        var live=document.queryCommandValue("foreColor");
+        var liveHex=colorValueToHex(live);
+        if(liveHex)setLastPickedColor({id:id,hex:liveHex});
+      }catch(err){}
     };
   }
   function setTextColor(hex){
