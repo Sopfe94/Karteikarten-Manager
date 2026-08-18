@@ -1134,7 +1134,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.17";
+var KKM_VERSION="1.4.18";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1909,8 +1909,7 @@ function LpCropMaskModal(p){
 }
 
 function LpCardEditor(p){
-  var PRO_TEST_ACCESS_UNTIL=new Date("2026-08-24T23:59:59").getTime(); // Befristeter 1-Wochen-Testzugang - danach wieder gesperrt bis echtes Pro-Abo-System kommt
-  var isPro=Date.now()<PRO_TEST_ACCESS_UNTIL;
+  var isPro=!!p.isPro; // kommt aus der pro_user-Tabelle in Supabase (App-Komponente)
   var fe=useState(p.initialFrontElements||[]); var frontEls=fe[0]; var setFrontEls=fe[1];
   var be=useState(p.initialBackElements||[]); var backEls=be[0]; var setBackEls=be[1];
   var sd=useState("front"); var side=sd[0]; var setSide=sd[1];
@@ -2757,6 +2756,7 @@ function DeckDetail(p){
     initialFrontElements:editorSeed.frontElements||[],
     initialBackElements:editorSeed.backElements||[],
     showToast:showToast,
+    isPro:p.isPro,
     onCancel:function(){setEditorSeed(null);},
     onSave:saveCardFromEditor
   });
@@ -5628,6 +5628,29 @@ function App(p){
      durchgereicht, damit der Splash den Ladezustand kennt. */
   var dashFriends=p.dashFriends||{loading:true,friends:[]};
 
+  /* PRO-Status: kommt aus der eigenstaendigen pro_user-Tabelle in
+     Supabase (id/ls_id/username/pro_user), manuell oder spaeter
+     automatisch vom Buchungssystem gesetzt. Gilt fuer Gaeste genauso
+     wie fuer Google-Nutzer, da beide eine ls_id haben - bei jeder
+     Neu-Registrierung legt ein DB-Trigger dort automatisch eine Zeile
+     an. Ein eigener Realtime-Kanal haelt den Status live aktuell,
+     falls das Haekchen waehrend einer laufenden Sitzung gesetzt/
+     entfernt wird - ohne Neuladen der App. */
+  var pus=useState(false); var proUser=pus[0]; var setProUser=pus[1];
+  useEffect(function(){
+    var myId=getLsId();
+    if(!myId)return;
+    getSb().from('pro_user').select('pro_user').eq('ls_id',myId).maybeSingle().then(function(res){
+      if(res&&res.data)setProUser(!!res.data.pro_user);
+    }).catch(function(){});
+    var ch=getSb().channel('kkm-pro-'+myId)
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'pro_user',filter:'ls_id=eq.'+myId},function(payload){
+        if(!payload.new||typeof payload.new.pro_user!=='boolean')return;
+        setProUser(payload.new.pro_user);
+      }).subscribe();
+    return function(){ getSb().removeChannel(ch); };
+  },[googleUser]);
+
   useEffect(function(){
     var sb=getSb();
     sb.auth.getSession().then(function(res){
@@ -6278,9 +6301,9 @@ function App(p){
           view==="decks"&&!activeDeck&&!qsStep&&deckListMode==="manage"&&h("div",null,
             h("button",{className:"manage-back",onClick:function(){setDeckListMode("home");}},"← Startseite"),
             renderExplorer()),
-          view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck,onStudyingChange:setIsStudying}),
+          view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,isPro:proUser,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck,onStudyingChange:setIsStudying}),
           qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs,onProgress:saveQsProgress}),
-          view==="editor"&&!qsStep&&h(LpCardEditor,{key:"editor-"+editorResetKey,initialFrontElements:[],initialBackElements:[],deckPicker:decks,showToast:showToast,onCancel:function(){switchNav('explorer');},onSave:saveCardFromEditorEntry}),
+          view==="editor"&&!qsStep&&h(LpCardEditor,{key:"editor-"+editorResetKey,initialFrontElements:[],initialBackElements:[],deckPicker:decks,showToast:showToast,isPro:proUser,onCancel:function(){switchNav('explorer');},onSave:saveCardFromEditorEntry}),
           view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,presenceVisible:lsConsent&&presenceOn,presenceOn:presenceOn,onTogglePresence:togglePresence,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onForceRestore:handleForceRestore,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast})),
           view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,googleUser:googleUser,presence:presence,presenceVisible:lsConsent&&presenceOn,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},onGroupDecksForHome:onGroupDecksForHome})),
           view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}})),
