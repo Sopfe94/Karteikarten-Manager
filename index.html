@@ -1134,7 +1134,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.10";
+var KKM_VERSION="1.4.11";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2142,6 +2142,10 @@ function LpCardEditor(p){
         document.execCommand("styleWithCSS",false,true);
         document.execCommand("foreColor",false,hex);
       }catch(err){}
+      var liveSel=window.getSelection();
+      if(liveSel&&liveSel.rangeCount>0&&!liveSel.isCollapsed){
+        savedSelRef.current={id:selected,range:liveSel.getRangeAt(0).cloneRange()};
+      }
       updateElement(selected,{text:node.innerText,html:node.innerHTML},true);
       return;
     }
