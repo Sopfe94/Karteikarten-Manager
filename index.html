@@ -1133,7 +1133,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.6";
+var KKM_VERSION="1.4.7";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1704,7 +1704,7 @@ function LpEditorElement(pp){
 
   if(el.type==="image"&&el.background){
     if(!el.src)return null;
-    return h("img",{ref:ref,src:el.src,draggable:false,className:"lp-editor-img",style:{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0},onPointerDown:pp.onDragStart});
+    return h("img",{ref:ref,src:el.src,draggable:false,className:"lp-editor-img",style:{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0,transform:"rotate("+(el.rotation||0)+"deg)"},onPointerDown:pp.onDragStart});
   }
 
   var wrapStyle={left:el.x+"%",top:el.y+"%",zIndex:1};
@@ -2494,7 +2494,7 @@ function LpCardFaceElement(pp){
   if(el.type==="image"){
     if(!el.src)return null;
     if(el.background){
-      return h("img",{src:el.src,style:{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0}});
+      return h("img",{src:el.src,style:{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0,transform:"rotate("+(el.rotation||0)+"deg)"}});
     }
     var br=el.shape==="circle"?"50%":el.shape==="rounded"?"16px":"0";
     var fw=el.width||120; var fh=el.height||fw;
