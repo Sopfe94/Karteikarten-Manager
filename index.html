@@ -1134,7 +1134,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.14";
+var KKM_VERSION="1.4.15";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1909,6 +1909,7 @@ function LpCardEditor(p){
   var mm=useState(false); var moveMode=mm[0]; var setMoveMode=mm[1];
   var hc=useState("#FBBF24"); var highlightColorHex=hc[0]; var setHighlightColorHex=hc[1];
   var ho=useState(0.35); var highlightOpacity=ho[0]; var setHighlightOpacity=ho[1];
+  var lc=useState(null); var lastPickedColor=lc[0]; var setLastPickedColor=lc[1];
   var sdp=useState(false); var showDeckPicker=sdp[0]; var setShowDeckPicker=sdp[1];
   var psr=useState(null); var pendingSaveResult=psr[0]; var setPendingSaveResult=psr[1];
   var pdid=useState(p.deckPicker&&p.deckPicker.length?p.deckPicker[0].id:null); var pickedDeckId=pdid[0]; var setPickedDeckId=pdid[1];
@@ -2143,6 +2144,7 @@ function LpCardEditor(p){
   }
   function setTextColor(hex){
     if(!selected)return;
+    setLastPickedColor({id:selected,hex:hex});
     var saved=savedSelRef.current;
     var node=fieldNodesRef.current[selected];
     if(saved&&saved.id===selected&&node){
@@ -2386,7 +2388,7 @@ function LpCardEditor(p){
           [12,14,16,18,20,24,28,32,36,42,48].map(function(s){return h("option",{key:s,value:s},s+"px");}))),
       h("div",{style:{display:"flex",alignItems:"center",gap:8}},
         h("span",{className:"lp-editor-fmt-label"},"FARBE"),
-        h("input",{type:"color",className:"lp-editor-color-input",value:selectedEl?selectedEl.color||"#ffffff":"#ffffff",onChange:function(e){setTextColor(e.target.value);}})),
+        h("input",{type:"color",className:"lp-editor-color-input",value:selectedEl?(lastPickedColor&&lastPickedColor.id===selectedEl.id?lastPickedColor.hex:selectedEl.color||"#ffffff"):"#ffffff",onChange:function(e){setTextColor(e.target.value);}})),
       h("div",{className:"lp-editor-divider"}),
       h("div",{style:{display:"flex",gap:4}},
         h("button",{className:"lp-editor-toolbar-btn"+(selectedEl&&selectedEl.bold?" sel":""),onClick:function(){toggleProp("bold");},type:"button",title:"Fett"},"B"),
