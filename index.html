@@ -1134,7 +1134,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.11";
+var KKM_VERSION="1.4.12";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2144,7 +2144,38 @@ function LpCardEditor(p){
       }catch(err){}
       var liveSel=window.getSelection();
       if(liveSel&&liveSel.rangeCount>0&&!liveSel.isCollapsed){
-        savedSelRef.current={id:selected,range:liveSel.getRangeAt(0).cloneRange()};
+        var freshRange=liveSel.getRangeAt(0).cloneRange();
+        savedSelRef.current={id:selected,range:freshRange};
+        /* Ohne diesen Schritt wuerde der Cursor beim normalen Weiterschreiben
+           direkt nach der Faerbung innerhalb des gerade gefaerbten <span>
+           landen und dessen Farbe fortsetzen (Standardverhalten von
+           contentEditable). Ein unsichtbarer Marker in der Basisfarbe des
+           Feldes direkt danach setzt eine echte DOM-Grenze, an der der
+           Browser die Formatierung nicht mehr fortsetzt.
+           Der Marker wird als Geschwisterknoten der gefaerbten Spanne
+           eingefuegt (nicht per Range.insertNode in deren Textknoten) -
+           das laesst den Textknoten der Spanne selbst unangetastet, damit
+           savedSelRef.current weiterhin gueltig bleibt und ein direkt
+           danach folgender erneuter Farbwechsel (ohne Neu-Selektion) auf
+           genau diese Spanne wirkt. */
+        try{
+          var baseColor=(curEls.find(function(x){return x.id===selected;})||{}).color||"#ffffff";
+          var endEl=freshRange.endContainer.nodeType===3?freshRange.endContainer.parentElement:freshRange.endContainer;
+          var marker=document.createTextNode("​");
+          if(endEl&&endEl.parentNode){
+            endEl.parentNode.insertBefore(marker,endEl.nextSibling);
+          }
+          var markerRange=document.createRange();
+          markerRange.selectNode(marker);
+          sel.removeAllRanges();
+          sel.addRange(markerRange);
+          document.execCommand("foreColor",false,baseColor);
+          var afterMarker=document.createRange();
+          afterMarker.setStartAfter(marker);
+          afterMarker.collapse(true);
+          sel.removeAllRanges();
+          sel.addRange(afterMarker);
+        }catch(err){}
       }
       updateElement(selected,{text:node.innerText,html:node.innerHTML},true);
       return;
