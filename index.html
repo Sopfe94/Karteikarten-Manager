@@ -918,7 +918,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 .lp-editor-toolbar-btn.sel{border-color:rgba(124,58,237,.7);background:rgba(124,58,237,.2)}
 .lp-editor-toolbar-btn:disabled{opacity:.35;cursor:not-allowed}
 .lp-editor-color-input{width:32px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:none;cursor:pointer;padding:0;flex-shrink:0}
-.lp-editor-select{height:30px;padding:0 8px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#fff;font-size:12px;font-family:var(--font-sans)}
+.lp-editor-select{height:30px;padding:0 8px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#fff;font-size:12px;font-family:var(--font-sans);-webkit-appearance:none;appearance:none;color-scheme:dark;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23ffffff' stroke-width='2' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px}
 .lp-editor-shape-btn{width:28px;height:28px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);cursor:pointer;flex-shrink:0}
 .lp-editor-shape-btn.rect{border-radius:2px}
 .lp-editor-shape-btn.rounded{border-radius:8px}
@@ -936,6 +936,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
   .lp-editor-pdf-row{display:flex;align-items:center;justify-content:center;padding:8px 24px}
 }
 .lp-editor-canvas-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:32px 24px 24px;gap:16px;overflow-y:auto}
+.lp-editor-flip-scene{width:100%;max-width:480px;perspective:1000px}
 .lp-editor-side-label{font-family:var(--font-sans);font-size:15px;font-weight:600;color:#fff}
 .lp-editor-card-surface{width:100%;max-width:480px;aspect-ratio:3/2;background:#0D0A1A;border:1px solid rgba(124,58,237,.55);box-shadow:0 0 14px rgba(124,58,237,.45),0 0 6px rgba(6,182,212,.3);border-radius:24px;position:relative;overflow:hidden}
 .lp-editor-el-wrapper{position:absolute;transform:translate(-50%,-50%);cursor:pointer;max-width:92%}
@@ -1132,7 +1133,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.4";
+var KKM_VERSION="1.4.5";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1900,6 +1901,9 @@ function LpCardEditor(p){
   var fe=useState(p.initialFrontElements||[]); var frontEls=fe[0]; var setFrontEls=fe[1];
   var be=useState(p.initialBackElements||[]); var backEls=be[0]; var setBackEls=be[1];
   var sd=useState("front"); var side=sd[0]; var setSide=sd[1];
+  var fd=useState(0); var flipDeg=fd[0]; var setFlipDeg=fd[1];
+  var fan=useState(true); var flipAnim=fan[0]; var setFlipAnim=fan[1];
+  var flippingRef=useRef(false);
   var sl=useState(null); var selected=sl[0]; var setSelected=sl[1];
   var mm=useState(false); var moveMode=mm[0]; var setMoveMode=mm[1];
   var hc=useState("#FBBF24"); var highlightColorHex=hc[0]; var setHighlightColorHex=hc[1];
@@ -2163,10 +2167,23 @@ function LpCardEditor(p){
     setSelected(null);
   }
   function flipCardEditor(){
+    if(flippingRef.current)return;
+    flippingRef.current=true;
+    setFlipAnim(true);
+    setFlipDeg(90);
     setTimeout(function(){
       setSide(function(s){return s==="front"?"back":"front";});
       setSelected(null);
-    },150);
+      setFlipAnim(false);
+      setFlipDeg(-90);
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){
+          setFlipAnim(true);
+          setFlipDeg(0);
+          setTimeout(function(){flippingRef.current=false;},280);
+        });
+      });
+    },280);
   }
   function handleBack(){
     if(dirtyRef.current&&!confirm("Ungespeicherte Karte verwerfen? Deine Änderungen gehen verloren."))return;
@@ -2263,8 +2280,8 @@ function LpCardEditor(p){
       h("button",{className:"lp-editor-toolbar-btn",onClick:addTextField,type:"button"},"+ Textfeld"),
       h("label",{className:"lp-editor-toolbar-btn"},"+ Bild",
         h("input",{type:"file",accept:"image/*",onChange:handleImageUpload,style:{display:"none"}})),
-      h("button",{className:"lp-editor-toolbar-btn"+(moveMode?" active":""),onClick:function(){setMoveMode(!moveMode);},type:"button",title:"Verschieben"},"✥"),
       h("div",{className:"lp-editor-divider"}),
+      h("button",{className:"lp-editor-toolbar-btn"+(moveMode?" active":""),onClick:function(){setMoveMode(!moveMode);},type:"button",title:"Verschieben"},"✥"),
       h("div",{className:"lp-editor-pdf-inline"},pdfButton),
       h("div",{className:"lp-editor-spacer"})),
 
@@ -2327,17 +2344,18 @@ function LpCardEditor(p){
 
     h("div",{className:"lp-editor-canvas-wrap"},
       h("span",{className:"lp-editor-side-label"},side==="front"?"Vorderseite":"Rückseite"),
-      h("div",{ref:surfaceRef,className:"lp-editor-card-surface",onMouseDown:function(e){if(e.target===e.currentTarget)setSelected(null);}},
-        curEls.map(function(el){
-          return h(LpEditorElement,{
-            key:el.id,el:el,selected:selected===el.id,moveMode:moveMode,
-            onDragStart:onDragStart(el.id),onResizeStart:onResizeStart(el.id),
-            onInput:onFieldInput,onBlurField:onFieldBlur,
-            onSelectionCheck:checkSelectionForField(el.id),
-            onSelect:function(){setSelected(el.id);},
-            registerNode:registerNode
-          });
-        })),
+      h("div",{className:"lp-editor-flip-scene"},
+        h("div",{ref:surfaceRef,className:"lp-editor-card-surface",style:{transform:"rotateY("+flipDeg+"deg)",transition:flipAnim?"transform .28s cubic-bezier(.25,.46,.45,.94)":"none"},onMouseDown:function(e){if(e.target===e.currentTarget)setSelected(null);}},
+          curEls.map(function(el){
+            return h(LpEditorElement,{
+              key:el.id,el:el,selected:selected===el.id,moveMode:moveMode,
+              onDragStart:onDragStart(el.id),onResizeStart:onResizeStart(el.id),
+              onInput:onFieldInput,onBlurField:onFieldBlur,
+              onSelectionCheck:checkSelectionForField(el.id),
+              onSelect:function(){setSelected(el.id);},
+              registerNode:registerNode
+            });
+          }))),
       h("button",{className:"lp-editor-flip-btn",onClick:flipCardEditor,type:"button"},"⟲ Karte umdrehen")),
 
     h("div",{className:"lp-editor-actions-row lp-editor-actions-bottom"},actionsRowChildren()),
