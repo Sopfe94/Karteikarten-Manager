@@ -1134,7 +1134,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.13";
+var KKM_VERSION="1.4.14";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1918,6 +1918,7 @@ function LpCardEditor(p){
   var surfaceRef=useRef(null);
   var fieldNodesRef=useRef({});
   var savedSelRef=useRef(null);
+  var savedCaretRef=useRef(null);
   var dirtyRef=useRef(false);
   var recoveredDraftRef=useRef(null);
   /* Ohne mitgegebenen Inhalt (frischer Einstieg ueber den Menuepunkt, oder
@@ -2123,8 +2124,20 @@ function LpCardEditor(p){
   function checkSelectionForField(id){
     return function(){
       var sel=window.getSelection();
-      if(sel&&sel.rangeCount>0&&!sel.isCollapsed&&sel.toString().length>0){
+      if(!sel||sel.rangeCount===0)return;
+      if(!sel.isCollapsed&&sel.toString().length>0){
         savedSelRef.current={id:id,range:sel.getRangeAt(0).cloneRange()};
+      }else if(sel.isCollapsed){
+        savedCaretRef.current={id:id,range:sel.getRangeAt(0).cloneRange()};
+        /* Der Cursor ist gerade zu einer reinen Position kollabiert (keine
+           Markierung mehr) - eine evtl. noch gemerkte ALTE Markierung
+           desselben Feldes ist damit nicht mehr aktuell und darf bei der
+           naechsten Farbwahl nicht mehr wiederverwendet werden, sonst
+           wuerde diese versehentlich erneut angewendet statt die Farbe
+           fuer den Cursor zu setzen. */
+        if(savedSelRef.current&&savedSelRef.current.id===id){
+          savedSelRef.current=null;
+        }
       }
     };
   }
@@ -2148,6 +2161,33 @@ function LpCardEditor(p){
       }
       updateElement(selected,{text:node.innerText,html:node.innerHTML},true);
       return;
+    }
+    /* Nichts markiert - nur der Cursor steht irgendwo (z.B. mitten im
+       Text nach dem Tippen). Ohne echte Selektion faerbt execCommand
+       nichts, und der bisherige contentEditable-Schreibstil an der
+       Cursor-Position (z.B. eine zuvor eingefaerbte Nachbarstelle)
+       bleibt sonst fuer neu getippten Text bestehen. Ein leerer,
+       eingefaerbter Marker genau an der Cursor-Position sorgt dafuer,
+       dass neu Getipptes ab hier in der gewaehlten Farbe weitergeht. */
+    var caret=savedCaretRef.current;
+    if(caret&&caret.id===selected&&node){
+      pushHistory();
+      node.focus();
+      try{
+        var csel=window.getSelection();
+        csel.removeAllRanges();
+        csel.addRange(caret.range);
+        document.execCommand("styleWithCSS",false,true);
+        document.execCommand("insertHTML",false,"<span style=\"color:"+hex+"\">​</span>");
+        var newSel=window.getSelection();
+        if(newSel&&newSel.rangeCount>0){
+          var afterMarker=newSel.getRangeAt(0).cloneRange();
+          afterMarker.collapse(false);
+          savedCaretRef.current={id:selected,range:afterMarker};
+        }
+        updateElement(selected,{text:node.innerText,html:node.innerHTML},true);
+        return;
+      }catch(err){}
     }
     updateElement(selected,{color:hex});
   }
