@@ -919,6 +919,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 .lp-editor-toolbar-btn:disabled{opacity:.35;cursor:not-allowed}
 .lp-editor-color-input{width:32px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:none;cursor:pointer;padding:0;flex-shrink:0}
 .lp-editor-select{height:30px;padding:0 8px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#fff;font-size:12px;font-family:var(--font-sans);-webkit-appearance:none;appearance:none;color-scheme:dark;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23ffffff' stroke-width='2' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px}
+.lp-editor-select option{color:#000}
 .lp-editor-shape-btn{width:28px;height:28px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);cursor:pointer;flex-shrink:0}
 .lp-editor-shape-btn.rect{border-radius:2px}
 .lp-editor-shape-btn.rounded{border-radius:8px}
@@ -1133,7 +1134,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.9";
+var KKM_VERSION="1.4.10";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
