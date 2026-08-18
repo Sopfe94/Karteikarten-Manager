@@ -1136,7 +1136,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.21";
+var KKM_VERSION="1.4.22";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1524,6 +1524,14 @@ function totalCardsLearned(){
   var total=0;
   Object.keys(logDb).forEach(function(k){ total+=(logDb[k].cardCount||0); });
   return total;
+}
+function pickRandomN(arr,n){
+  var copy=arr.slice();
+  for(var i=copy.length-1;i>0;i--){
+    var j=Math.floor(Math.random()*(i+1));
+    var t=copy[i];copy[i]=copy[j];copy[j]=t;
+  }
+  return copy.slice(0,n);
 }
 function deckStatusTag(pct){
   if(pct>=80)return {label:"FAST GESCHAFFT",cls:"done"};
@@ -2736,12 +2744,12 @@ function DeckDetail(p){
     setEditorSeed(null);
   }
   function delCard(id){ if(!confirm("Karte l\u00f6schen?"))return; p.onUpdate(Object.assign({},p.deck,{cards:p.deck.cards.filter(function(c){return c.id!==id;})})); }
-  function finish(upd){ if(upd)p.onUpdate(Object.assign({},p.deck,{cards:p.deck.cards.map(function(c){return upd[c.id]||c;})})); setStudy(false); }
+  function finish(upd){ if(upd)p.onUpdate(Object.assign({},p.deck,{cards:p.deck.cards.map(function(c){return upd[c.id]||c;}),updatedAt:new Date().toISOString()})); setStudy(false); }
   /* Speichert eine einzelne Kartenbewertung SOFORT, statt erst am Ende der
      Lernsitzung zu sammeln - verlaesst man die Sitzung ueber die Bottom-
      Navigation statt ueber "Beenden"/"Fertig", geht sonst der komplette
      Fortschritt verloren, weil kein Exit-Handler mehr aufgerufen wird. */
-  function saveProgress(updatedCard){ p.onUpdate(Object.assign({},p.deck,{cards:p.deck.cards.map(function(c){return c.id===updatedCard.id?updatedCard:c;})})); }
+  function saveProgress(updatedCard){ p.onUpdate(Object.assign({},p.deck,{cards:p.deck.cards.map(function(c){return c.id===updatedCard.id?updatedCard:c;}),updatedAt:new Date().toISOString()})); }
   function addFolder(d){ p.onUpdate(Object.assign({},p.deck,{folders:(deckFolders).concat([Object.assign({id:uid()},d)])})); setShowNewFolder(false); showToast("Fach erstellt!"); }
   function saveFolder(d){ p.onUpdate(Object.assign({},p.deck,{folders:deckFolders.map(function(f){return f.id===editFolderItem.id?Object.assign({},f,d):f;})})); setEditFolderItem(null); }
   function delFolder(id){
@@ -2798,13 +2806,15 @@ function DeckDetail(p){
   return h("div",{style:{display:"flex",flexDirection:"column",gap:24}},
     h("button",{className:"lp-xp-back",onClick:p.onBack},"← Alle Stapel"),
     h("div",{style:{display:"flex",flexDirection:"column",gap:20}},
-      h("div",null,
-        h("div",{className:"lp-xp-decktitle"},p.deck.emoji+" ",titleFirst,
-          titleLast&&h("span",{className:"grad"}," "+titleLast)),
-        h("div",{style:{display:"flex",alignItems:"center",gap:12,marginTop:8,flexWrap:"wrap"}},
-          h("span",{style:{fontSize:13,color:"var(--color-violet-ghost)",
-            fontFamily:"var(--font-mono)"}},p.deck.cards.length+" Karten"),
-          due.length>0&&h(DsBadge,{variant:"dark"},due.length+" fällig"))),
+      h("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12}},
+        h("div",null,
+          h("div",{className:"lp-xp-decktitle"},p.deck.emoji+" ",titleFirst,
+            titleLast&&h("span",{className:"grad"}," "+titleLast)),
+          h("div",{style:{display:"flex",alignItems:"center",gap:12,marginTop:8,flexWrap:"wrap"}},
+            h("span",{style:{fontSize:13,color:"var(--color-violet-ghost)",
+              fontFamily:"var(--font-mono)"}},p.deck.cards.length+" Karten"),
+            due.length>0&&h(DsBadge,{variant:"dark"},due.length+" fällig"))),
+        !p.deck._groupId&&p.onEdit&&h(ThreeDotMenu,{onEdit:p.onEdit,onDelete:p.onDelete})),
       h("div",{style:{display:"flex",flexDirection:"column",gap:12}},
         h(DsButton,{variant:"primary",size:"lg",fullWidth:true,
           onClick:function(){setStudy(true);}},
@@ -5983,6 +5993,7 @@ function App(p){
   }
   var decks=data.decks||[];
   var folders=data.folders||[];
+  var rfs=useState(function(){return pickRandomN(folders,3);}); var randomFacher=rfs[0];
   var effectiveGroupDecks=data.settings&&data.settings.lernSpaceEnabled!==false?data.groupDecks||[]:[];
   var dueTotal=decks.concat(effectiveGroupDecks).reduce(function(s,d){return s+getDue(d).length;},0);
   var activeDeck=decks.find(function(d){return d.id===deckId;})||effectiveGroupDecks.find(function(d){return d.id===deckId;});
@@ -6037,14 +6048,9 @@ function App(p){
       title:deck.name,
       subtitle:(deck.cards||[]).length+" Karten"+(dueN>0?" · "+dueN+" fällig":""),
       onClick:function(){setDeckId(deck.id);},
-      style:{position:"relative",minHeight:150,paddingRight:48}},
-      isGroup
-        ? h("div",{style:{position:"absolute",top:16,right:16}},
-            h(DsBadge,{variant:"dark"},deck._groupName||"Gruppe"))
-        : h("div",{style:{position:"absolute",top:12,right:12},
-            onClick:function(e){e.stopPropagation();}},
-            h(ThreeDotMenu,{onEdit:function(){setEditDeck(deck);},
-              onDelete:function(){delDeck(deck.id);}})));
+      style:{position:"relative",minHeight:150}},
+      isGroup&&h("div",{style:{position:"absolute",top:16,right:16}},
+            h(DsBadge,{variant:"dark"},deck._groupName||"Gruppe")));
   }
   function lpFachTile(f,size){
     var c=lpFachColor(f);
@@ -6099,7 +6105,9 @@ function App(p){
         h("div",{className:"lp-seclbl"},"DEINE ZULETZT GELERNTEN STAPEL"),
         allDecks.length===0
           ? h("div",{className:"lp-empty2"},"Noch keine Stapel. Leg im Tab „Stapel“ los.")
-          : h("div",{className:"lp-xp-cardgrid"},allDecks.slice(0,6).map(function(d){
+          : h("div",{className:"lp-xp-cardgrid"},allDecks.slice()
+              .sort(function(a,b){return new Date(b.updatedAt||b.created||0)-new Date(a.updatedAt||a.created||0);})
+              .slice(0,3).map(function(d){
               return lpDeckCard(d,d._groupId?"g:":"");
             }))));
   }
@@ -6298,10 +6306,24 @@ function App(p){
                       style:{minHeight:150}});
                   })),
 
+            randomFacher.length>0&&h("div",{style:{display:"flex",flexDirection:"column",gap:16}},
+              h("div",{className:"lp-section-hdr"},
+                h("div",{className:"lp-section-title"},"Deine Fächer"),
+                h("button",{className:"lp-section-link",onClick:function(){switchNav('explorer');}},"Alle anzeigen →")),
+              h("div",{className:"lp-xp-topicgrid"},randomFacher.map(function(f){
+                var cnt=decks.filter(function(d){return d.folderId===f.id;}).length;
+                return h("div",{key:f.id,className:"lp-xp-topic",
+                  onClick:function(){setXpSubject(f.id);setXpTab("stapel");setView("decks");setDeckListMode("manage");}},
+                  lpFachTile(f),
+                  h("div",null,
+                    h("div",{className:"lp-xp-topic-name"},f.name),
+                    h("div",{className:"lp-xp-topic-count"},cnt+" Stapel")));
+              }))),
+
             lpLernSpaceOn&&h(DashboardFriends,{onNav:switchNav,state:dashFriends,presence:presence})),
 
           view==="decks"&&!activeDeck&&!qsStep&&deckListMode==="manage"&&renderExplorer(),
-          view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,isPro:proUser,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck,onStudyingChange:setIsStudying}),
+          view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,isPro:proUser,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck,onStudyingChange:setIsStudying,onEdit:function(){setEditDeck(activeDeck);},onDelete:function(){delDeck(activeDeck.id);}}),
           qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs,onProgress:saveQsProgress}),
           view==="editor"&&!qsStep&&h(LpCardEditor,{key:"editor-"+editorResetKey,initialFrontElements:[],initialBackElements:[],deckPicker:decks,showToast:showToast,isPro:proUser,onCancel:function(){switchNav('explorer');},onSave:saveCardFromEditorEntry}),
           view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,presenceVisible:lsConsent&&presenceOn,presenceOn:presenceOn,onTogglePresence:togglePresence,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onForceRestore:handleForceRestore,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast})),
