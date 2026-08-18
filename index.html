@@ -1134,7 +1134,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.16";
+var KKM_VERSION="1.4.17";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -5898,15 +5898,18 @@ function App(p){
 
   function patch(pp){setData(function(prev){return Object.assign({},prev,pp,{_syncedAt:Date.now()});});}
   function switchNav(id){
-    /* Ungespeicherte Karte im Editor (egal ob ueber diesen Menuepunkt oder
-       aus einem Stapel heraus geoeffnet) nicht stillschweigend verwerfen -
-       beide Einstiege schreiben in denselben Draft-Key, switchNav ist die
-       zentrale Stelle, ueber die Sidebar/Bottom-Nav/Mobile-Topbar laufen.
-       Navigiert man GENAU auf den Editor zu, nicht warnen - ein evtl.
-       liegen gebliebener Entwurf wird dort stattdessen zum Wiederherstellen
-       angeboten, statt hier schon vorschnell verworfen zu werden. */
+    /* Ungespeicherte Karte im Editor nicht stillschweigend verwerfen -
+       aber NUR warnen, wenn der Editor gerade aktiv geoeffnet ist (view
+       === 'editor'). Ein Entwurf, der z.B. von einem Absturz/Reload aus
+       einer frueheren Sitzung noch in localStorage liegt, waehrend man
+       sich laengst auf einer anderen Seite befindet, soll beim
+       Weiternavigieren NICHT mehr staendig nachfragen - der wird beim
+       naechsten Oeffnen des Editors stattdessen ganz normal zum
+       Wiederherstellen angeboten (siehe recoveredDraftRef). Navigiert man
+       GENAU auf den Editor zu, ebenfalls nicht warnen - auch dort greift
+       stattdessen der Wiederherstellen-Dialog. */
     try{
-      if(id!=='editor'&&localStorage.getItem('kkm-editor-draft')){
+      if(id!=='editor'&&view==='editor'&&localStorage.getItem('kkm-editor-draft')){
         if(!confirm('Du hast eine ungespeicherte Karte im Editor. Trotzdem verlassen? Sie wird verworfen.'))return;
         localStorage.removeItem('kkm-editor-draft');
       }
