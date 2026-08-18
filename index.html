@@ -1133,7 +1133,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.8";
+var KKM_VERSION="1.4.9";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1683,7 +1683,7 @@ function makeSeedTextEl(text){
   return {id:"el"+Date.now()+Math.random().toString(36).slice(2,6),type:"text",x:50,y:50,width:180,height:100,fontFamily:"Arial",fontSize:16,color:"#ffffff",bold:false,underline:false,italic:false,highlight:null,align:"center",bullet:false,text:text||""};
 }
 function newImageEl(src){
-  return {id:"el"+Date.now()+Math.random().toString(36).slice(2,6),type:"image",x:50,y:50,width:120,shape:"rect",src:src,background:false,rotation:0};
+  return {id:"el"+Date.now()+Math.random().toString(36).slice(2,6),type:"image",x:50,y:50,width:120,shape:"rect",src:src,background:false};
 }
 function elementsToFlatText(els){
   return (els||[]).filter(function(e){return e.type==="text";}).map(function(e){return e.text||"";}).join("\n");
@@ -1704,8 +1704,7 @@ function LpEditorElement(pp){
 
   if(el.type==="image"&&el.background){
     if(!el.src)return null;
-    return h("div",{style:{position:"absolute",inset:0,zIndex:0,transform:"rotate("+(el.rotation||0)+"deg)"},onPointerDown:pp.onDragStart},
-      h("img",{ref:ref,src:el.src,draggable:false,className:"lp-editor-img",style:{width:"100%",height:"100%",objectFit:"cover",display:"block"}}));
+    return h("img",{ref:ref,src:el.src,draggable:false,className:"lp-editor-img",style:{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0},onPointerDown:pp.onDragStart});
   }
 
   var wrapStyle={left:el.x+"%",top:el.y+"%",zIndex:1};
@@ -1717,8 +1716,7 @@ function LpEditorElement(pp){
     var fw=el.width||120; var fh=el.height||fw;
     return h("div",{className:cls,style:wrapStyle,onPointerDown:pp.onDragStart},
       h("div",{style:{width:fw+"px",height:fh+"px",overflow:"hidden",borderRadius:br}},
-        h("div",{style:{width:"100%",height:"100%",transform:"rotate("+(el.rotation||0)+"deg)"}},
-          h("img",{ref:ref,src:el.src,draggable:false,className:"lp-editor-img",style:{width:"100%",height:"100%",objectFit:"cover",display:"block"}}))),
+        h("img",{ref:ref,src:el.src,draggable:false,className:"lp-editor-img",style:{width:"100%",height:"100%",objectFit:"cover",display:"block"}})),
       pp.selected&&h("div",{className:"lp-editor-resize-handle",onPointerDown:pp.onResizeStart}));
   }
 
@@ -2157,8 +2155,21 @@ function LpCardEditor(p){
   function rotateImage(){
     if(!selected)return;
     var el=curEls.find(function(x){return x.id===selected;});
-    if(!el)return;
-    updateElement(selected,{rotation:((el.rotation||0)+90)%360});
+    if(!el||!el.src)return;
+    var img=new Image();
+    img.onload=function(){
+      var canvas=document.createElement("canvas");
+      canvas.width=img.naturalHeight;
+      canvas.height=img.naturalWidth;
+      var ctx=canvas.getContext("2d");
+      ctx.translate(canvas.width/2,canvas.height/2);
+      ctx.rotate(Math.PI/2);
+      ctx.drawImage(img,-img.naturalWidth/2,-img.naturalHeight/2);
+      var dataUrl=canvas.toDataURL("image/jpeg",0.9);
+      var w=el.width||120, h=el.height||w;
+      updateElement(el.id,{src:dataUrl,width:h,height:w});
+    };
+    img.src=el.src;
   }
   function toggleBackground(){
     if(!isPro||!selected)return;
@@ -2496,15 +2507,13 @@ function LpCardFaceElement(pp){
   if(el.type==="image"){
     if(!el.src)return null;
     if(el.background){
-      return h("div",{style:{position:"absolute",inset:0,zIndex:0,transform:"rotate("+(el.rotation||0)+"deg)"}},
-        h("img",{src:el.src,style:{width:"100%",height:"100%",objectFit:"cover",display:"block"}}));
+      return h("img",{src:el.src,style:{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0}});
     }
     var br=el.shape==="circle"?"50%":el.shape==="rounded"?"16px":"0";
     var fw=el.width||120; var fh=el.height||fw;
     return h("div",{style:{position:"absolute",left:el.x+"%",top:el.y+"%",transform:"translate(-50%,-50%)",zIndex:1,maxWidth:"92%"}},
       h("div",{style:{width:fw+"px",height:fh+"px",overflow:"hidden",borderRadius:br}},
-        h("div",{style:{width:"100%",height:"100%",transform:"rotate("+(el.rotation||0)+"deg)"}},
-          h("img",{src:el.src,style:{width:"100%",height:"100%",objectFit:"cover",display:"block"}}))));
+        h("img",{src:el.src,style:{width:"100%",height:"100%",objectFit:"cover",display:"block"}})));
   }
   var textStyle={
     width:(el.width||180)+"px",
