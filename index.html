@@ -1214,7 +1214,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.36";
+var KKM_VERSION="1.4.37";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1642,12 +1642,6 @@ function shareDeck(deck,onFallback){
     if(ok){ navigator.share({files:[file],title:"Karteikarten: "+deck.name}).catch(function(e){if(e.name!=="AbortError")onFallback(f.name);}); return; }
     navigator.share({title:"Karteikarten: "+deck.name,text:f.json}).catch(function(){onFallback(f.name);}); return; }
   downloadDeck(deck); onFallback(f.name);
-}
-function parseDeckFile(str){
-  try{ var d=JSON.parse(str); if(!d.cards||!Array.isArray(d.cards))return null;
-    return {id:uid(),name:d.name||"Import",emoji:d.emoji||"\uD83D\uDCDA",created:todayStr(),
-      cards:d.cards.filter(function(c){return c.front&&c.back;}).map(function(c){return {id:uid(),front:c.front,back:c.back,lvl:0,nextReview:todayStr()};})}; }
-  catch(e){return null;}
 }
 
 var _fbUser = null;
@@ -2583,43 +2577,6 @@ function LpCardEditor(p){
     }));
 }
 
-function ImportModal(p){
-  var ss=useState("idle"); var st=ss[0]; var setSt=ss[1];
-  var ms=useState(""); var msg=ms[0]; var setMsg=ms[1];
-  var pv=useState(null); var prev=pv[0]; var setPrev=pv[1];
-  function onFile(ev){ var file=ev.target.files[0]; if(!file)return; var rd=new FileReader(); rd.onload=function(e){ var deck=parseDeckFile(e.target.result); if(!deck){setSt("err");setMsg("Ung\u00fcltige Datei.");return;} setPrev(deck);setSt("preview"); }; rd.readAsText(file); }
-  var idleBlock=st==="idle"?h("div",{style:{background:"rgba(124,58,237,.08)",border:"1.5px dashed rgba(124,58,237,.35)",borderRadius:"14px",padding:"24px",textAlign:"center"}},
-    h("div",{style:{fontSize:"30px",marginBottom:"8px"}},"\uD83D\uDCC2"),
-    h("div",{style:{fontWeight:600,marginBottom:"4px",color:"#fff"}},"Stapel-Datei ausw\u00e4hlen"),
-    h("div",{style:{fontSize:"13px",color:"rgba(255,255,255,.45)",marginBottom:"16px"}},"W\u00e4hle eine .kkm.json Datei"),
-    h("label",{className:"lp-btn-glow",style:{width:"auto",padding:"0 24px",height:40,cursor:"pointer",display:"inline-flex"}},
-      h("span",{className:"lp-btn-glow-label"},"Datei ausw\u00e4hlen"),
-      h("input",{type:"file",accept:".json,.kkm.json",style:{display:"none"},onChange:onFile}))
-  ):null;
-  var errBlock=st==="err"?h("div",null,
-    h("div",{style:{background:"rgba(239,68,68,.12)",color:"#fca5a5",border:"1px solid rgba(239,68,68,.25)",borderRadius:"10px",padding:"12px",fontWeight:600,marginBottom:"12px",fontSize:"13px"}},"Fehler: "+msg),
-    h(DsButton,{variant:"ghost",onClick:function(){setSt("idle");}},"Zur\u00fcck")
-  ):null;
-  var previewBlock=(st==="preview"&&prev)?h("div",null,
-    h("div",{style:{background:"rgba(16,185,129,.08)",border:"1px solid rgba(16,185,129,.25)",borderRadius:"14px",padding:"16px",marginBottom:"16px"}},
-      h("div",{style:{display:"flex",alignItems:"center",gap:"8px",marginBottom:"8px"}},
-        h("span",{style:{fontSize:"24px"}},prev.emoji),
-        h("div",null,
-          h("div",{style:{fontWeight:700,color:"#fff"}},prev.name),
-          h("div",{style:{fontSize:"13px",color:"rgba(255,255,255,.5)"}},prev.cards.length+" Karten"))),
-      h("div",{style:{fontSize:"13px",color:"rgba(255,255,255,.45)"}},"Vorschau:"),
-      prev.cards.slice(0,3).map(function(c,i){return h("div",{key:i,style:{background:"rgba(255,255,255,.05)",borderRadius:"10px",padding:"4px 8px",marginTop:"4px",fontSize:"13px",color:"#fff"}},h("strong",null,c.front)," -> ",c.back);})),
-    h("div",{className:"lp-modal-actions"},
-      h(DsButton,{variant:"ghost",onClick:function(){setSt("idle");setPrev(null);}},"Abbrechen"),
-      h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:function(){p.onImport(prev);}},
-        h("span",{className:"lp-btn-glow-label"},"Importieren ("+prev.cards.length+" Karten)")))
-  ):null;
-  return h("div",{className:"lp-modal-ov",onClick:p.onClose},
-    h("div",{className:"lp-modal-box",onClick:function(ev){ev.stopPropagation();}},
-      h("div",{className:"lp-modal-title"},"Stapel importieren"),
-      idleBlock,errBlock,previewBlock));
-}
-
 function ShareModal(p){
   return h("div",{className:"lp-modal-ov",onClick:p.onClose},
     h("div",{className:"lp-modal-box",onClick:function(ev){ev.stopPropagation();}},
@@ -2628,11 +2585,10 @@ function ShareModal(p){
         h("div",{style:{fontSize:"30px",marginBottom:"4px"}},p.deck.emoji),h("div",{style:{fontWeight:700,color:"#fff"}},p.deck.name),h("div",{style:{fontSize:"13px",color:"rgba(255,255,255,.5)"}},p.deck.cards.length+" Karten")),
       h("div",{style:{display:"flex",flexDirection:"column",gap:"8px"}},
         h(DsButton,{variant:"primary",onClick:function(){downloadDeck(p.deck);p.onClose();}},h("span",{className:"lp-btn-glow-label"},"Als Datei speichern")),
-        h("a",{href:"https://wa.me/?text="+encodeURIComponent("Karteikarten-Stapel: "+p.deck.name+" ("+p.deck.cards.length+" Karten). Importiere die Datei in Lernpuls."),target:"_blank",rel:"noopener",
+        h("a",{href:"https://wa.me/?text="+encodeURIComponent("Karteikarten-Stapel: "+p.deck.name+" ("+p.deck.cards.length+" Karten)."),target:"_blank",rel:"noopener",
           style:{background:"#25D366",color:"#fff",width:"100%",boxSizing:"border-box",justifyContent:"center",padding:"12px",textDecoration:"none",fontWeight:700,fontSize:"13px",borderRadius:"10px",display:"flex",alignItems:"center",gap:"8px"},
           onClick:function(){downloadDeck(p.deck);}},"WhatsApp teilen"),
         h(DsButton,{variant:"ghost",style:{width:"100%",boxSizing:"border-box"},onClick:function(){var f=makeDeckFile(p.deck);if(navigator.clipboard)navigator.clipboard.writeText(f.json).catch(function(){});p.onClose();}},"JSON kopieren")),
-      h("div",{style:{background:"rgba(245,158,11,.08)",border:"1px solid rgba(245,158,11,.2)",borderRadius:"10px",padding:"12px",fontSize:"13px",color:"#fcd34d",lineHeight:1.6}},"Datei speichern, in WhatsApp anh\u00e4ngen senden. Empf\u00e4nger: App \u00f6ffnen, Stapel importieren, Datei w\u00e4hlen."),
       h("div",{className:"lp-modal-actions"},h(DsButton,{variant:"ghost",onClick:p.onClose},"Schlie\u00dfen"))));
 }
 
@@ -3345,7 +3301,7 @@ var FAQ_ITEMS=[
   {q:"Wie funktioniert der Lern-Streak?",a:"Jeden Tag, an dem du dein Tagesziel an Karteikarten erreichst, z\u00e4hlt dein Streak einen Tag weiter. Du siehst ihn oben auf der Startseite und in deinem Profil. Das Tagesziel kannst du in den Einstellungen unter deinem Profil jederzeit anpassen."},
   {q:"Wie erstelle ich eigene Karteikarten?",a:"Lege zuerst einen Stapel an und ordne ihm optional ein Fach zu. \u00DCber \u201E+ Karte\u201C f\u00fcgst du Frage und Antwort hinzu. Innerhalb eines Stapels kannst du Karten zus\u00e4tzlich in Ordner sortieren."},
   {q:"Wie funktioniert Spaced Repetition (Lernalgorithmus)?",a:"Beim Lernen bewertest du jede Karte selbst: \u201EGewusst\u201C oder \u201ENoch \u00fcben\u201C. Bekannte Karten kommen erst nach 1\u20132\u20134\u20138\u201316\u201330 Tagen wieder dran, damit du dich auf das konzentrierst, was noch sitzen muss."},
-  {q:"Wie teile oder importiere ich einen Stapel?",a:"Tippe im Stapel oben auf das Teilen-Symbol \u2013 du kannst die Datei speichern oder direkt per WhatsApp senden. Empf\u00e4nger \u00f6ffnen die App, w\u00e4hlen \u201EStapel importieren\u201C und die erhaltene Datei."},
+  {q:"Wie teile ich einen Stapel?",a:"Tippe im Stapel oben auf das Teilen-Symbol \u2013 du kannst die Datei speichern oder direkt per WhatsApp senden."},
   {q:"Wie f\u00fcge ich Freunde hinzu und nutze das Netzwerk?",a:"Unter Netzwerk teilst du deine ID \u00fcber \u201EID teilen\u201C oder l\u00e4dst Freunde direkt per Benutzername ein. Best\u00e4tigte Freunde k\u00f6nnen Stapel miteinander teilen, gemeinsam in Gruppen lernen und im Gruppen-Chat schreiben."},
   {q:"Was ist der Learn Explorer?",a:"Der Learn Explorer ist dein zentraler Ort f\u00fcr alle Stapel und F\u00e4cher \u2013 von hier aus verwaltest, \u00f6ffnest und organisierst du deine gesamten Lerninhalte."},
   {q:"Wie \u00e4ndere ich Tagesziel oder Lernempfehlung?",a:"In den Einstellungen unter deinem Profil stellst du dein t\u00e4gliches Kartenziel ein und legst fest, wie viele Tage vor einem Termin dir Lernpuls eine Lernempfehlung anzeigen soll."},
@@ -5646,7 +5602,6 @@ function App(p){
   var dis=useState(null); var deckId=dis[0]; var setDeckId=dis[1];
   var sns=useState(false); var showNew=sns[0]; var setShowNew=sns[1];
   var eds=useState(null); var editDeck=eds[0]; var setEditDeck=eds[1];
-  var sis=useState(false); var showImport=sis[0]; var setShowImport=sis[1];
   var shs=useState(false); var showHelp=shs[0]; var setShowHelp=shs[1];
   var sims=useState(false); var showImp=sims[0]; var setShowImp=sims[1];
   var sdts=useState(false); var showDat=sdts[0]; var setShowDat=sdts[1];
@@ -6118,7 +6073,6 @@ function App(p){
   function addDeck(d){patch({decks:decks.concat([Object.assign({id:uid()},d,{cards:[],created:todayStr(),updatedAt:new Date().toISOString()})])});setShowNew(false);showToast("Stapel erstellt!");}
   function saveEditDeck(d){patch({decks:decks.map(function(dk){return dk.id===editDeck.id?Object.assign({},dk,d,{updatedAt:new Date().toISOString()}):dk;})});setEditDeck(null);}
   function delDeck(id){if(!confirm("Stapel l\u00f6schen?"))return;patch({decks:decks.filter(function(d){return d.id!==id;})});if(deckId===id)setDeckId(null);}
-  function doImport(deck){patch({decks:decks.concat([deck])});setShowImport(false);showToast(deck.name+" importiert!");}
   function updateDeck(u){
     if(u._groupId){
       patch({groupDecks:(data.groupDecks||[]).map(function(d){return d.id===u.id?Object.assign({},u,{updatedAt:new Date().toISOString()}):d;})});
@@ -6434,7 +6388,6 @@ function App(p){
     editDeck&&h(DeckModal,{deck:editDeck,folders:folders,onSave:saveEditDeck,onClose:function(){setEditDeck(null);}}),
     showNewFolder&&h(FolderModal,{kind:"fach",onSave:addFolder,onClose:function(){setShowNewFolder(false);}}),
     editFolder&&h(FolderModal,{kind:"fach",folder:editFolder,onSave:saveEditFolder,onClose:function(){setEditFolder(null);}}),
-    showImport&&h(ImportModal,{onImport:doImport,onClose:function(){setShowImport(false);}}),
     showHelp&&h(HelpModal,{onClose:function(){setShowHelp(false);}}),
     showDsgvo&&h(ConsentModal,{onAccept:function(){setShowDsgvo(false);}}),
     showReport&&h(ReportModal,{onClose:function(){setShowReport(false);}}),
