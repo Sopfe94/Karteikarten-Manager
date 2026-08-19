@@ -1159,7 +1159,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.25";
+var KKM_VERSION="1.4.26";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1932,7 +1932,7 @@ function LpCropMaskModal(p){
     h("div",{className:"lp-modal-box wide",onClick:function(e){e.stopPropagation();}},
       h("div",{className:"lp-modal-title"},"Bild freistellen"),
       h("div",{style:{position:"relative",display:"inline-block",maxWidth:"100%",touchAction:"none"}},
-        h("img",{ref:imgRef,src:el.src,onLoad:onImgLoad,draggable:false,style:{display:"block",maxWidth:"100%",maxHeight:"60vh",userSelect:"none"}}),
+        h("img",{ref:imgRef,src:el.src,onLoad:onImgLoad,draggable:false,style:{display:"block",maxWidth:"100%",maxHeight:"min(60dvh, calc(100dvh - 260px))",userSelect:"none"}}),
         mask&&h("div",{
           onPointerDown:onMaskDragStart,
           style:{position:"absolute",left:mask.x+"px",top:mask.y+"px",width:mask.w+"px",height:mask.h+"px",
@@ -6564,10 +6564,20 @@ if("serviceWorker" in navigator){
   var pageLoadedAt=Date.now();
   var swReloaded=false;
   var pendingSwReload=false;
+  /* Nach einem harten Reload durch checkForNewVersionIndependent() (SW
+     abgemeldet + Caches geleert) uebernimmt der frisch installierte SW
+     die Kontrolle einer zuvor unkontrollierten Seite - das loest genauso
+     ein controllerchange aus wie ein echtes neues Update, obwohl der
+     Inhalt bereits topaktuell ist. Ohne diese Sperre reloadet die Seite
+     sich dadurch ein zweites (manchmal drittes) Mal in Folge - genau das
+     mehrfache Neuladen des Splashscreens, das Sophie gemeldet hat. */
+  var justHardReloaded=sessionStorage.getItem("kkm-just-hard-reloaded")==="1";
+  sessionStorage.removeItem("kkm-just-hard-reloaded");
   function doSwReload(){
     if(swReloaded)return; swReloaded=true; location.reload();
   }
   navigator.serviceWorker.addEventListener("controllerchange",function(){
+    if(justHardReloaded){ justHardReloaded=false; return; }
     pendingSwReload=true;
     var justLaunched=(Date.now()-pageLoadedAt)<4000;
     if(justLaunched&&document.visibilityState==="visible")doSwReload();
@@ -6613,6 +6623,7 @@ if("serviceWorker" in navigator){
       if(known!==latest){
         swReloaded=true;
         localStorage.setItem("kkm-known-sw-cache",latest);
+        sessionStorage.setItem("kkm-just-hard-reloaded","1");
         Promise.all([
           navigator.serviceWorker.getRegistrations().then(function(regs){return Promise.all(regs.map(function(r){return r.unregister();}));}),
           (typeof caches!=="undefined")?caches.keys().then(function(keys){return Promise.all(keys.map(function(k){return caches.delete(k);}));}):Promise.resolve()
