@@ -1214,7 +1214,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.37";
+var KKM_VERSION="1.4.38";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6196,12 +6196,10 @@ function App(p){
     if(q) list=list.filter(function(d){return (d.name||"").toLowerCase().indexOf(q)>=0;});
     var subjFolder=folders.filter(function(f){return f.id===xpSubject;})[0];
     return h("div",{style:{display:"flex",flexDirection:"column",gap:24}},
-      h("div",{className:"lp-xp-sechdr"},
-        h("div",null,
-          h("div",{className:"lp-xp-h2"},"Lernen")),
+      h("div",{style:{display:"flex",flexDirection:"column",gap:16,alignItems:"flex-start"}},
         h(DsButton,{variant:"primary",size:"md",onClick:function(){setShowNew(true);}},
-          h("span",{className:"lp-btn-glow-label"},"+ Neuer Stapel"))),
-      h("div",{style:{display:"flex",gap:12,flexWrap:"wrap"}},
+          h("span",{className:"lp-btn-glow-label"},"+ Neuer Stapel")),
+        h("div",{className:"lp-xp-h2"},"Stapel"),
         allDecks.length>0&&h(DsButton,{variant:"primary",size:"md",
           onClick:function(){setQsStep("select");}},
           h("span",{className:"lp-btn-glow-label"},"Jetzt lernen"))),
