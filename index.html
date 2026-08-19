@@ -1214,7 +1214,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.33";
+var KKM_VERSION="1.4.34";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -5433,7 +5433,7 @@ function LpAnimatedGoalCard(p){
 function LpAnimatedDeckCard(p){
   var cu=useVisibleCountUp(p.progress,1800); var elRef=cu[0]; var animPct=cu[1];
   return h("div",{ref:elRef},
-    h(DsCard,{tag:p.tag,title:p.title,progress:animPct,onClick:p.onClick,style:p.style}));
+    h(DsCard,{tag:p.tag,title:p.title,subtitle:p.subtitle,progress:animPct,onClick:p.onClick,style:p.style},p.children));
 }
 
 /* Profil-Statkarte (Streak/Karten gelernt) - gleicher Hover-Glow und
@@ -6130,7 +6130,7 @@ function App(p){
     var pct=deckPct(deck); var tag=deckStatusTag(pct);
     var dueN=getDue(deck).length;
     var isGroup=!!deck._groupId;
-    return h(DsCard,{key:(keyPrefix||"")+deck.id,
+    return h(LpAnimatedDeckCard,{key:(keyPrefix||"")+deck.id,
       tag:tag.label,
       progress:pct,
       title:deck.name,
