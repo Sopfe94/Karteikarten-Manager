@@ -1013,6 +1013,15 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
 .lp-tabbar::-webkit-scrollbar{display:none}
 .lp-tab{background:none;border:none;padding:12px 10px;font-size:13px;font-family:var(--font-sans);font-weight:500;color:rgba(255,255,255,0.45);cursor:pointer;white-space:nowrap;flex-shrink:0;position:relative;box-shadow:none;transition:color .15s,box-shadow .15s}
 @media(min-width:768px){.lp-tab{padding:12px 18px}}
+/* Learn Explorer auf echten Desktop-Fenstern (nicht nur Tablet-Breite):
+   Titel/Tabs/Suche/Karten-Raster wirkten im Vergleich zur riesigen
+   verfuegbaren Flaeche winzig und "verloren" - hier deutlich groesser
+   ziehen. Bewusst eigene 1024px-Schwelle statt der bestehenden 768px,
+   damit schmalere Tablet-Fenster bei der kompakteren Groesse bleiben. */
+@media(min-width:1024px){
+  .lp-tab{font-size:15px;padding:14px 24px}
+  .lp-tabbar{min-height:54px}
+}
 .lp-tab.active{color:#fff;font-weight:600;box-shadow:inset 0 -2px 0 var(--color-cyan)}
 .lp-seclbl{font-family:var(--font-mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#A78BFA}
 .lp-row{display:flex;align-items:center;gap:12px;padding:16px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;transition:box-shadow .2s}
@@ -1085,6 +1094,12 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
   display:flex;align-items:center;justify-content:center;position:relative;
   transition:box-shadow .2s,border-color .2s}
 .lp-xp-searchbtn:hover{box-shadow:var(--glow-btn-hover);border-color:rgba(124,58,237,0.85)}
+@media(min-width:1024px){
+  .lp-xp-title{font-size:34px}
+  .lp-xp-searchwrap{max-width:520px}
+  .lp-xp-search-input{height:52px;font-size:16px;padding:0 18px}
+  .lp-xp-searchbtn{width:52px;height:52px}
+}
 .lp-xp-particles{position:absolute;top:-76px;left:0;width:420px;max-width:100%;height:128px;
   overflow:hidden;pointer-events:none;z-index:0}
 .lp-xp-particles span{position:absolute;bottom:0;font-weight:700;border:none;outline:none;
@@ -1121,6 +1136,13 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
 .lp-xp-cardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
 @media(min-width:768px){
   .lp-deck-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+}
+@media(min-width:1024px){
+  .lp-xp-h2{font-size:28px}
+  .lp-xp-h2sub{font-size:14px}
+  .lp-xp-topicgrid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+  .lp-xp-cardgrid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
+  .lp-deck-grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
 }
 .lp-xp-hit{display:flex;align-items:center;gap:12px;padding:12px 16px;background:rgba(255,255,255,0.03);
   border:1px solid rgba(255,255,255,0.05);border-radius:14px;cursor:pointer;width:100%;
@@ -1162,6 +1184,13 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
    App braucht die Leiste einen eigenen, deckenden Hintergrund, sonst
    ueberlappt darunter weggescrollter Inhalt lesbar mit den Tabs. */
 .lp-tabbar{position:sticky;top:0;z-index:5;background:var(--c-bg)}
+/* position:sticky klebt an der PADDING-Kante des Scroll-Containers, nicht
+   an dessen Rand - das obere padding von .lp-content-scroll (24px auf
+   Mobile) blieb dadurch als Luecke ueber der "geklebten" Tab-Leiste
+   stehen, statt dass diese direkt am Header anschliesst. top um genau
+   diesen Wert negativ verschieben schliesst die Luecke (nur Mobile -
+   Desktop hat keinen eigenen Header, an den angeschlossen werden muss). */
+@media(max-width:767px){.lp-tabbar{top:-24px}}
 </style>
 </head>
 <body><!-- KKM-v1.2.45-AKTUELL -->
@@ -1175,7 +1204,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.30";
+var KKM_VERSION="1.4.31";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
