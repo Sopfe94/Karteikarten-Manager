@@ -901,11 +901,19 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 .lp-editor-toolbar-1{display:flex;align-items:center;gap:10px;padding:14px 24px;border-bottom:1px solid rgba(255,255,255,.06);overflow-x:auto;flex-wrap:nowrap}
 .lp-editor-toolbar-2{display:flex;align-items:flex-end;gap:18px;padding:12px 24px;border-bottom:1px solid rgba(255,255,255,.06);overflow-x:auto;flex-wrap:nowrap}
 .lp-editor-toolbar-3{display:flex;align-items:center;gap:8px;padding:10px 24px;border-bottom:1px solid rgba(255,255,255,.06);overflow-x:auto;flex-wrap:nowrap}
+.lp-cropmask-img{max-height:60vh}
 @media(max-width:767px){
   .lp-editor-toolbar-1{justify-content:center;gap:8px;padding:10px 14px}
   .lp-editor-toolbar-2{gap:10px;padding:10px 14px}
   .lp-editor-toolbar-3{justify-content:center;padding:8px 14px}
   .lp-editor-fmt-label{display:none}
+  /* Auf kompakten Handy-Viewports kann das Bild sonst so hoch werden,
+     dass Abbrechen/Zuschneiden unterhalb des sichtbaren Bereichs
+     landen - im Bildbereich ist Touch-Scroll bewusst deaktiviert
+     (fuer die Zuschneide-Bedienung per Ziehen), daher waeren die
+     Buttons dann unerreichbar. Desktop hat genug Platz und bleibt bei
+     der urspruenglichen Groesse. */
+  .lp-cropmask-img{max-height:min(60dvh, calc(100dvh - 260px))}
 }
 .lp-editor-fmt-label{font-size:12px}
 .lp-editor-divider{width:1px;height:22px;flex-shrink:0;background:rgba(255,255,255,.08)}
@@ -1159,7 +1167,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.27";
+var KKM_VERSION="1.4.28";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1932,7 +1940,7 @@ function LpCropMaskModal(p){
     h("div",{className:"lp-modal-box wide",onClick:function(e){e.stopPropagation();}},
       h("div",{className:"lp-modal-title"},"Bild freistellen"),
       h("div",{style:{position:"relative",display:"inline-block",maxWidth:"100%",touchAction:"none"}},
-        h("img",{ref:imgRef,src:el.src,onLoad:onImgLoad,draggable:false,style:{display:"block",maxWidth:"100%",maxHeight:"min(60dvh, calc(100dvh - 260px))",userSelect:"none"}}),
+        h("img",{ref:imgRef,src:el.src,onLoad:onImgLoad,draggable:false,className:"lp-cropmask-img",style:{display:"block",maxWidth:"100%",userSelect:"none"}}),
         mask&&h("div",{
           onPointerDown:onMaskDragStart,
           style:{position:"absolute",left:mask.x+"px",top:mask.y+"px",width:mask.w+"px",height:mask.h+"px",
