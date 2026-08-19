@@ -867,8 +867,8 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 .lp-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;margin-top:32px}
 .lp-section-title{font-size:15px;font-weight:600;color:#fff}
 .lp-section-link{font-size:13px;color:var(--c-pur2);background:none;border:none;cursor:pointer;font-family:var(--font-sans);padding:0}
-.lp-deck-grid{display:grid;grid-template-columns:1fr;gap:16px}
-@media(min-width:768px){.lp-deck-grid{grid-template-columns:repeat(3,1fr)}}
+.lp-deck-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+@media(min-width:768px){.lp-deck-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .lp-deck-card{background:#0D0A1A;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:12px;min-height:150px;cursor:pointer;transition:box-shadow 200ms ease}
 .lp-deck-card:hover{box-shadow:0 4px 20px rgba(124,58,237,0.35)}
 .lp-deck-tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;background:rgba(124,58,237,0.2);color:#A78BFA;align-self:flex-start}
@@ -1103,6 +1103,15 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
   text-align:left;font-family:var(--font-sans);color:#fff;width:100%}
 .lp-xp-topic-tile{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;
   justify-content:center;font-size:17px;font-weight:700;flex-shrink:0}
+/* Auf breiten Desktop-Screens passt ins Fach-Grid eine hohe Zahl schmaler
+   Spalten (Mindestbreite 180px), wodurch die Karten im Vergleich zu den
+   Stapel-Karten (Grid-Mindestbreite 240px) winzig und gequetscht
+   wirkten - auf Desktop dieselbe, groessere Mindestbreite wie beim
+   Stapel-Grid nutzen. Mobile (einspaltig, volle Breite durch auto-fill)
+   bleibt unveraendert. */
+@media(min-width:768px){
+  .lp-xp-topicgrid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+}
 .lp-xp-topic-name{font-size:15px;font-weight:600;margin-bottom:4px}
 .lp-xp-topic-count{font-size:11px;color:var(--color-violet-ghost);font-family:var(--font-mono)}
 .lp-xp-topic-x{position:absolute;top:12px;right:12px;width:24px;height:24px;border-radius:50%;
@@ -1166,7 +1175,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.29";
+var KKM_VERSION="1.4.30";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -5146,7 +5155,7 @@ function DsCard(p){
   return h('div',{onClick:p.onClick,className:cls,style:Object.assign({
       background:'#0D0A1A',border:'1px solid rgba(255,255,255,0.07)',
       borderRadius:16,padding:'20px 24px',display:'flex',flexDirection:'column',
-      gap:10,cursor:p.onClick?'pointer':'default',
+      gap:10,cursor:p.onClick?'pointer':'default',minWidth:0,
       transition:'transform 200ms ease, box-shadow 200ms ease',
       fontFamily:'var(--font-sans)'},p.style||{})},
     p.tag&&h('div',null,h('span',{style:{display:'inline-flex',alignItems:'center',
@@ -5154,7 +5163,7 @@ function DsCard(p){
       letterSpacing:'0.14em',textTransform:'uppercase',
       background:'rgba(124,58,237,0.2)',color:'#A78BFA'}},p.tag)),
     p.title&&h('div',{style:{fontSize:17,fontWeight:600,letterSpacing:'-0.02em',
-      color:'#F5F3FF',lineHeight:1.3}},p.title),
+      color:'#F5F3FF',lineHeight:1.3,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},p.title),
     p.subtitle&&h('div',{style:{fontSize:13,color:sub,lineHeight:1.55}},p.subtitle),
     p.children,
     p.progress!==undefined&&h('div',{style:{marginTop:4}},
