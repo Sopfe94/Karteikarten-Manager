@@ -1077,6 +1077,23 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
 @keyframes lp-morph-pulse{0%,54%{box-shadow:0 0 10px rgba(124,58,237,0.5)}62%{box-shadow:0 0 26px rgba(6,182,212,0.9),0 0 40px rgba(124,58,237,0.6)}80%,100%{box-shadow:0 0 12px rgba(6,182,212,0.5)}}
 @keyframes lp-morph-front{0%,58%{opacity:1}60%,100%{opacity:0}}
 @keyframes lp-morph-back{0%,58%{opacity:0}60%,100%{opacity:1}}
+/* Mobile: die Karten legen die Strecke zwischen Suchfeld und Header
+   schon frueh im 5s-Zyklus zurueck (schmaler Abstand ggue. der vollen
+   Aufstiegshoehe). Der Flip-Zeitpunkt (urspruenglich bei 60%, passend
+   fuer Desktop) wird darum fuer Mobile auf 10% vorgezogen (per
+   Playwright-Messung ermittelt: Mitte Header/Suchfeld ist bei ca. 8%
+   erreicht), damit die Karten sichtbar zwischen Header und Suchfeld
+   drehen statt erst, wenn sie schon darueber hinaus sind. !important
+   noetig, da die Original-Animation inline gesetzt ist. */
+@keyframes lp-morph-flip-m{0%{transform:scaleX(1)}10%{transform:scaleX(0.06)}20%,100%{transform:scaleX(1)}}
+@keyframes lp-morph-pulse-m{0%,4%{box-shadow:0 0 10px rgba(124,58,237,0.5)}12%{box-shadow:0 0 26px rgba(6,182,212,0.9),0 0 40px rgba(124,58,237,0.6)}30%,100%{box-shadow:0 0 12px rgba(6,182,212,0.5)}}
+@keyframes lp-morph-front-m{0%,8%{opacity:1}10%,100%{opacity:0}}
+@keyframes lp-morph-back-m{0%,8%{opacity:0}10%,100%{opacity:1}}
+@media(max-width:1023px){
+  .lp-morph-flipwrap{animation:lp-morph-flip-m 5s linear infinite 0s backwards, lp-morph-pulse-m 5s linear infinite 0s backwards !important}
+  .lp-morph-face-front{animation:lp-morph-front-m 5s linear infinite 0s backwards !important}
+  .lp-morph-face-back{animation:lp-morph-back-m 5s linear infinite 0s backwards !important}
+}
 @keyframes book-glow-violet{0%,100%{box-shadow:inset 3px 0 0 rgba(0,0,0,0.25),0 8px 16px rgba(124,58,237,0.4),0 0 40px rgba(124,58,237,0.5)}50%{box-shadow:inset 3px 0 0 rgba(0,0,0,0.25),0 8px 16px rgba(124,58,237,0.6),0 0 78px rgba(124,58,237,0.9)}}
 @keyframes book-glow-cyan{0%,100%{box-shadow:inset 3px 0 0 rgba(0,0,0,0.25),0 10px 20px rgba(6,182,212,0.4),0 0 42px rgba(6,182,212,0.5)}50%{box-shadow:inset 3px 0 0 rgba(0,0,0,0.25),0 10px 20px rgba(6,182,212,0.6),0 0 80px rgba(6,182,212,0.9)}}
 @keyframes lp-search-glow{0%{opacity:0;transform:scale(0.6)}45%{opacity:0.9;transform:scale(1.25)}100%{opacity:0;transform:scale(1.6)}}
@@ -1215,7 +1232,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.43";
+var KKM_VERSION="1.4.44";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -5526,12 +5543,12 @@ function LpStapelIntro(){
     slots.map(function(sl){
       return h('div',{key:sl.key,style:{position:'absolute',left:sl.left+'%',bottom:0,
         animation:'lp-morph-rise 5s linear infinite 0s backwards',willChange:'transform,opacity'}},
-        h('div',{style:{width:sl.w,height:sl.h,position:'relative',borderRadius:6,
+        h('div',{className:'lp-morph-flipwrap',style:{width:sl.w,height:sl.h,position:'relative',borderRadius:6,
           animation:'lp-morph-flip 5s linear infinite 0s backwards, lp-morph-pulse 5s linear infinite 0s backwards'}},
-          h('div',{style:Object.assign({},faceBase,{border:'1px solid rgba(124,58,237,0.95)',
+          h('div',{className:'lp-morph-face-front',style:Object.assign({},faceBase,{border:'1px solid rgba(124,58,237,0.95)',
             background:'#171030',color:'#C4B5FD',
             animation:'lp-morph-front 5s linear infinite 0s backwards'})},'?'),
-          h('div',{style:Object.assign({},faceBase,{border:'1px solid rgba(6,182,212,0.9)',
+          h('div',{className:'lp-morph-face-back',style:Object.assign({},faceBase,{border:'1px solid rgba(6,182,212,0.9)',
             background:'linear-gradient(135deg,rgba(124,58,237,0.55),rgba(6,182,212,0.45))',color:'#fff',
             animation:'lp-morph-back 5s linear infinite 0s backwards'})},'✓')));
     }));
