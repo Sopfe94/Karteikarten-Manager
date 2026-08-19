@@ -927,11 +927,11 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
 .lp-editor-color-input{width:32px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:none;cursor:pointer;padding:0;flex-shrink:0}
 .lp-editor-select{height:30px;padding:0 8px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#fff;font-size:12px;font-family:var(--font-sans);-webkit-appearance:none;appearance:none;color-scheme:dark;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23ffffff' stroke-width='2' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px}
 .lp-editor-select option{color:#000}
-.lp-editor-shape-btn{width:28px;height:28px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);cursor:pointer;flex-shrink:0}
+.lp-editor-shape-btn{width:28px;height:28px;border:1px solid rgba(255,255,255,.35);background:#fff;cursor:pointer;flex-shrink:0}
 .lp-editor-shape-btn.rect{border-radius:2px}
 .lp-editor-shape-btn.rounded{border-radius:8px}
 .lp-editor-shape-btn.circle{border-radius:50%}
-.lp-editor-shape-btn.sel{border-color:rgba(124,58,237,.7)}
+.lp-editor-shape-btn.sel{border-color:#7C3AED;box-shadow:0 0 0 2px rgba(124,58,237,.5)}
 .lp-editor-pro-lock{position:relative}
 .lp-editor-pro-badge{position:absolute;top:-6px;right:-4px;font-family:var(--font-mono);font-size:8px;font-weight:600;letter-spacing:.04em;color:rgba(255,255,255,.3);pointer-events:none;white-space:nowrap}
 .lp-editor-actions-row{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:8px 24px}
@@ -1100,8 +1100,7 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
 .lp-xp-topicgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
 .lp-xp-topic{position:relative;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);
   border-radius:16px;padding:18px 20px;cursor:pointer;display:flex;align-items:center;gap:16px;
-  transition:box-shadow .2s;text-align:left;font-family:var(--font-sans);color:#fff;width:100%}
-.lp-xp-topic:hover{box-shadow:0 0 16px rgba(124,58,237,0.28)}
+  text-align:left;font-family:var(--font-sans);color:#fff;width:100%}
 .lp-xp-topic-tile{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;
   justify-content:center;font-size:17px;font-weight:700;flex-shrink:0}
 .lp-xp-topic-name{font-size:15px;font-weight:600;margin-bottom:4px}
@@ -1167,7 +1166,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.28";
+var KKM_VERSION="1.4.29";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1939,7 +1938,7 @@ function LpCropMaskModal(p){
   return h("div",{className:"lp-modal-ov",onClick:p.onCancel},
     h("div",{className:"lp-modal-box wide",onClick:function(e){e.stopPropagation();}},
       h("div",{className:"lp-modal-title"},"Bild freistellen"),
-      h("div",{style:{position:"relative",display:"inline-block",maxWidth:"100%",touchAction:"none"}},
+      h("div",{style:{position:"relative",display:"inline-block",maxWidth:"100%",touchAction:"none",overflow:"hidden",borderRadius:"8px"}},
         h("img",{ref:imgRef,src:el.src,onLoad:onImgLoad,draggable:false,className:"lp-cropmask-img",style:{display:"block",maxWidth:"100%",userSelect:"none"}}),
         mask&&h("div",{
           onPointerDown:onMaskDragStart,
@@ -1954,7 +1953,7 @@ function LpCropMaskModal(p){
         h("button",{className:"lp-editor-shape-btn rounded"+(shape==="rounded"?" sel":""),onClick:function(){switchShape("rounded");},type:"button",title:"Abgerundet"}),
         h("button",{className:"lp-editor-shape-btn circle"+(shape==="circle"?" sel":""),onClick:function(){switchShape("circle");},type:"button",title:"Rund"})),
       h("div",{className:"lp-modal-actions"},
-        h(DsButton,{variant:"ghost",onClick:p.onCancel},"Abbrechen"),
+        h(DsButton,{variant:"danger",onClick:p.onCancel},"Abbrechen"),
         h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:confirmCrop},h("span",{className:"lp-btn-glow-label"},"✓ Zuschneiden")))));
 }
 
@@ -6135,7 +6134,7 @@ function App(p){
           ? h("div",{className:"lp-empty2"},"Noch keine Fächer angelegt.")
           : h("div",{className:"lp-xp-topicgrid"},folders.slice(0,6).map(function(f){
               var cnt=decks.filter(function(d){return d.folderId===f.id;}).length;
-              return h("div",{key:f.id,className:"lp-xp-topic",
+              return h("div",{key:f.id,className:"lp-xp-topic lp-hover-glow",
                 onClick:function(){setXpSubject(f.id);setXpTab("stapel");}},
                 lpFachTile(f),
                 h("div",null,
@@ -6221,7 +6220,7 @@ function App(p){
         ? h("div",{className:"lp-empty2"},"Noch keine Fächer. Leg dein erstes an.")
         : h("div",{className:"lp-xp-topicgrid"},list.map(function(f){
             var cnt=decks.filter(function(d){return d.folderId===f.id;}).length;
-            return h("div",{key:f.id,className:"lp-xp-topic",
+            return h("div",{key:f.id,className:"lp-xp-topic lp-hover-glow",
               style:{paddingRight:48},onClick:function(){setEditFolder(f);}},
               lpFachTile(f),
               h("div",null,
@@ -6353,7 +6352,7 @@ function App(p){
                 h("button",{className:"lp-section-link",onClick:function(){switchNav('explorer');}},"Alle anzeigen →")),
               h("div",{className:"lp-xp-topicgrid"},randomFacher.map(function(f){
                 var cnt=decks.filter(function(d){return d.folderId===f.id;}).length;
-                return h("div",{key:f.id,className:"lp-xp-topic",
+                return h("div",{key:f.id,className:"lp-xp-topic lp-hover-glow",
                   onClick:function(){setXpSubject(f.id);setXpTab("stapel");setView("decks");setDeckListMode("manage");}},
                   lpFachTile(f),
                   h("div",null,
