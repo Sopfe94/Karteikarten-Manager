@@ -1082,6 +1082,7 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
 @keyframes lp-search-glow{0%{opacity:0;transform:scale(0.6)}45%{opacity:0.9;transform:scale(1.25)}100%{opacity:0;transform:scale(1.6)}}
 
 .lp-xp-head{display:flex;flex-direction:column;gap:20px;position:relative}
+@media(min-width:1024px){.lp-xp-head{margin-top:48px}}
 .lp-xp-title{font-size:26px;font-weight:700;letter-spacing:-0.03em;line-height:1.15;color:#fff;position:relative;z-index:1}
 .lp-xp-title .grad{background:var(--grad-brand);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .lp-xp-searchwrap{max-width:420px;position:relative;z-index:1}
@@ -1104,6 +1105,15 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
   overflow:hidden;pointer-events:none;z-index:0}
 .lp-xp-particles span{position:absolute;bottom:0;font-weight:700;border:none;outline:none;
   background:none;box-shadow:none;will-change:transform,opacity}
+/* Beim Desktop-Groesser-Ziehen der Suchleiste (420px -> 520px) ist die
+   Zeichen-Animation (fest 420px breit) nicht mitgewachsen - sie endete
+   dadurch vor dem rechten Rand der Suchleiste statt genau daran, und
+   wirkte im Vergleich zur nun groesseren Umgebung klein/unscharf.
+   transform:scale vergroessert Container UND Zeichen gleichmaessig vom
+   linken oberen Rand aus (bleibt so am linken Suchleisten-Rand
+   verankert), ohne die einzeln unterschiedlichen Zeichen-Groessen der
+   Animation zu vereinheitlichen. */
+@media(min-width:1024px){.lp-xp-particles{transform:scale(1.25);transform-origin:top left}}
 .lp-xp-stapelintro{position:absolute;top:-160px;left:0;width:420px;max-width:100%;height:263px;
   overflow:hidden;pointer-events:none;z-index:0}
 .lp-xp-booksintro{position:absolute;top:-90px;right:0;width:230px;height:184px;
@@ -1204,7 +1214,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.31";
+var KKM_VERSION="1.4.32";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
