@@ -1077,7 +1077,7 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
   display:flex;align-items:center;justify-content:center;position:relative;
   transition:box-shadow .2s,border-color .2s}
 .lp-xp-searchbtn:hover{box-shadow:var(--glow-btn-hover);border-color:rgba(124,58,237,0.85)}
-.lp-xp-particles{position:absolute;top:-90px;left:0;width:420px;max-width:100%;height:128px;
+.lp-xp-particles{position:absolute;top:-76px;left:0;width:420px;max-width:100%;height:128px;
   overflow:hidden;pointer-events:none;z-index:0}
 .lp-xp-particles span{position:absolute;bottom:0;font-weight:700;border:none;outline:none;
   background:none;box-shadow:none;will-change:transform,opacity}
@@ -1123,6 +1123,24 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
 .lp-xp-decktitle{font-size:24px;font-weight:700;letter-spacing:-0.03em;line-height:1.2;color:#fff}
 .lp-xp-decktitle .grad{background:var(--grad-brand);-webkit-background-clip:text;
   background-clip:text;-webkit-text-fill-color:transparent}
+
+/* Learn Explorer auf dem Handy wirkte zu gequetscht (Karten stiessen an
+   den Bildschirmrand, Schrift/Abstaende zu grosszuegig fuer die schmale
+   Breite) - etwas mehr Luft an den Seiten, etwas kompaktere Typografie
+   und Karten nur auf Mobile, Desktop bleibt unveraendert. */
+@media(max-width:767px){
+  .lp-xp-page{padding:0 8px}
+  .lp-xp-title{font-size:22px}
+  .lp-xp-h2{font-size:20px}
+  .lp-xp-decktitle{font-size:20px}
+  .lp-tab{padding:12px 8px}
+  .lp-seclbl{font-size:10px}
+  .lp-xp-topic{padding:14px 16px}
+  .lp-xp-topic-name{font-size:14px}
+  .lp-xp-cardgrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  .lp-xp-topicgrid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+  .lp-xp-cardgrid .lp-hover-glow{padding:14px 16px!important;min-height:120px!important;gap:8px!important}
+}
 </style>
 </head>
 <body><!-- KKM-v1.2.45-AKTUELL -->
@@ -1136,7 +1154,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.22";
+var KKM_VERSION="1.4.23";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6202,7 +6220,7 @@ function App(p){
     var allDecks=decks.concat(effectiveGroupDecks);
     var tabs=[["overview","Übersicht"],["stapel","Stapel"],
       ["faecher","Fächer"],["unterlagen","Unterlagen"]];
-    return h("div",{style:{display:"flex",flexDirection:"column",gap:32}},
+    return h("div",{className:"lp-xp-page",style:{display:"flex",flexDirection:"column",gap:32}},
       h("div",{className:"lp-xp-head"},
         xpTab==="overview"&&h(LpMathParticles,null),
         xpTab==="stapel"&&h(LpStapelIntro,null),
