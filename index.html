@@ -1125,9 +1125,12 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
   background-clip:text;-webkit-text-fill-color:transparent}
 
 /* Learn Explorer auf dem Handy wirkte zu gequetscht (Karten stiessen an
-   den Bildschirmrand, Schrift/Abstaende zu grosszuegig fuer die schmale
-   Breite) - etwas mehr Luft an den Seiten, etwas kompaktere Typografie
-   und Karten nur auf Mobile, Desktop bleibt unveraendert. */
+   den Bildschirmrand) - etwas mehr Luft an den Seiten und kompaktere
+   Ueberschriften/Tabs nur auf Mobile, Desktop bleibt unveraendert. Die
+   Karten-Raster (.lp-xp-cardgrid/.lp-xp-topicgrid) bleiben bei ihren
+   normalen Mindestbreiten - die faellt auf schmalen Screens durch
+   auto-fill schon von selbst auf eine Spalte, exakt wie in der
+   Design-Vorlage (einspaltige, volle Breite nutzende Karten). */
 @media(max-width:767px){
   .lp-xp-page{padding:0 8px}
   .lp-xp-title{font-size:22px}
@@ -1135,12 +1138,14 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
   .lp-xp-decktitle{font-size:20px}
   .lp-tab{padding:12px 8px}
   .lp-seclbl{font-size:10px}
-  .lp-xp-topic{padding:14px 16px}
-  .lp-xp-topic-name{font-size:14px}
-  .lp-xp-cardgrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
-  .lp-xp-topicgrid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
-  .lp-xp-cardgrid .lp-hover-glow{padding:14px 16px!important;min-height:120px!important;gap:8px!important}
 }
+/* Tab-Leiste bleibt beim Scrollen sichtbar, heftet sich an den Header
+   an (genau wie im echten Prototyp: discoverTabBarWrapStyle nutzt
+   position:sticky). Im Prototyp selbst ist der Hintergrund transparent,
+   das funktioniert dort nur wegen des Vorschau-Rahmens - in der echten
+   App braucht die Leiste einen eigenen, deckenden Hintergrund, sonst
+   ueberlappt darunter weggescrollter Inhalt lesbar mit den Tabs. */
+.lp-tabbar{position:sticky;top:0;z-index:5;background:var(--c-bg)}
 </style>
 </head>
 <body><!-- KKM-v1.2.45-AKTUELL -->
@@ -1154,7 +1159,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.23";
+var KKM_VERSION="1.4.24";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
