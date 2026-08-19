@@ -1214,7 +1214,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.34";
+var KKM_VERSION="1.4.35";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -5436,6 +5436,35 @@ function LpAnimatedDeckCard(p){
     h(DsCard,{tag:p.tag,title:p.title,subtitle:p.subtitle,progress:animPct,onClick:p.onClick,style:p.style},p.children));
 }
 
+/* Schlankere Karten-Optik fuer den Stapel-Tab (nur Auswahl zum Lernen):
+   Fach-Punkt+Name statt Status-Tag, sonst wie DsCard inkl. animiertem
+   Fortschrittsbalken. Die Uebersicht ("zuletzt gelernt") behaelt
+   bewusst den Status-Tag (LpAnimatedDeckCard). */
+function LpStapelDeckCard(p){
+  var cu=useVisibleCountUp(p.progress,1800); var elRef=cu[0]; var animPct=cu[1];
+  return h("div",{ref:elRef,className:"lp-hover-glow",
+    style:{background:"#0D0A1A",border:"1px solid rgba(255,255,255,0.07)",
+      borderRadius:16,padding:"20px 24px",display:"flex",flexDirection:"column",
+      gap:8,cursor:"pointer",minWidth:0,fontFamily:"var(--font-sans)"},
+    onClick:p.onClick},
+    p.fachName&&h("div",{style:{display:"flex",alignItems:"center",gap:8}},
+      h("span",{style:{width:8,height:8,borderRadius:"50%",flexShrink:0,background:p.fachColor}}),
+      h("span",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.12em",
+        textTransform:"uppercase",fontFamily:"var(--font-mono)",color:p.fachColor}},p.fachName)),
+    h("div",{style:{fontSize:17,fontWeight:600,letterSpacing:"-0.02em",color:"#F5F3FF",
+      whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},p.title),
+    h("div",{style:{fontSize:13,color:"rgba(255,255,255,0.45)"}},p.subtitle),
+    h("div",{style:{marginTop:4}},
+      h("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:6}},
+        h("span",{style:{fontSize:10,fontFamily:"var(--font-mono)",letterSpacing:"0.1em",
+          color:"rgba(255,255,255,0.45)",textTransform:"uppercase"}},"Fortschritt"),
+        h("span",{style:{fontSize:10,fontFamily:"var(--font-mono)",color:"#7C3AED",fontWeight:700}},
+          Math.round(animPct)+"%")),
+      h("div",{style:{height:4,background:"rgba(255,255,255,0.08)",borderRadius:999,overflow:"hidden"}},
+        h("div",{style:{height:"100%",width:animPct+"%",
+          background:"linear-gradient(90deg,#7C3AED,#06B6D4)",borderRadius:999}}))));
+}
+
 /* Profil-Statkarte (Streak/Karten gelernt) - gleicher Hover-Glow und
    gleicher Hochzaehl-Mechanismus wie die Stapel-Karten auf der
    Startseite, nur ohne Fortschrittsbalken. */
@@ -6140,6 +6169,15 @@ function App(p){
       isGroup&&h("div",{style:{position:"absolute",top:16,right:16}},
             h(DsBadge,{variant:"dark"},deck._groupName||"Gruppe")));
   }
+  function lpDeckCardStapel(deck,fach,keyPrefix){
+    return h(LpStapelDeckCard,{key:(keyPrefix||"")+deck.id,
+      fachName:fach?fach.name:null,
+      fachColor:fach?lpFachColor(fach):null,
+      title:deck.name,
+      subtitle:(deck.cards||[]).length+" Karten",
+      progress:deckPct(deck),
+      onClick:function(){setDeckId(deck.id);}});
+  }
   function lpFachTile(f,size){
     var px=size||40;
     return h("div",{className:"lp-xp-topic-tile",
@@ -6204,9 +6242,6 @@ function App(p){
     if(xpSubject) list=list.filter(function(d){return d.folderId===xpSubject;});
     if(q) list=list.filter(function(d){return (d.name||"").toLowerCase().indexOf(q)>=0;});
     var subjFolder=folders.filter(function(f){return f.id===xpSubject;})[0];
-    var foldersWithDecks=folders.filter(function(f){
-      return list.some(function(d){return d.folderId===f.id;});});
-    var ungrouped=list.filter(function(d){return !d.folderId;});
     return h("div",{style:{display:"flex",flexDirection:"column",gap:24}},
       h("div",{className:"lp-xp-sechdr"},
         h("div",null,
@@ -6227,31 +6262,16 @@ function App(p){
           style:{width:24,height:24,borderRadius:"50%",border:"none",
             background:"rgba(255,255,255,0.08)",color:"#fff",fontSize:13,cursor:"pointer",
             lineHeight:1,fontFamily:"var(--font-sans)"}},"×")),
-      foldersWithDecks.map(function(folder){
-        var fDecks=list.filter(function(d){return d.folderId===folder.id;});
-        return h("div",{key:folder.id},
-          h("div",{className:"lp-xp-folderhdr"},
-            lpFachTile(folder,28),
-            h("span",{className:"lp-xp-folderhdr-name"},folder.name),
-            h(DsBadge,{variant:"dark"},fDecks.length+" Stapel"),
-            h("button",{className:"lp-icon-btn-sm",title:"Fach bearbeiten",
-              onClick:function(){setEditFolder(folder);}},"✎"),
-            h("button",{className:"lp-icon-btn-sm del",title:"Fach löschen",
-              onClick:function(){delFolder(folder.id);}},"×")),
-          h("div",{className:"lp-xp-cardgrid"},fDecks.map(function(d){
-            return lpDeckCard(d,d._groupId?"g:":"");})));
-      }),
-      h("div",null,
-        foldersWithDecks.length>0&&h("div",{className:"lp-xp-folderhdr"},
-          h("span",{className:"lp-xp-folderhdr-name"},"Ohne Fach"),
-          h(DsBadge,{variant:"dark"},ungrouped.length+" Stapel")),
-        h("div",{className:"lp-xp-cardgrid"},
-          ungrouped.map(function(d){return lpDeckCard(d,d._groupId?"g:":"");}),
-          h(DsCard,{onClick:function(){setShowNew(true);},
-            style:{minHeight:150,alignItems:"center",justifyContent:"center",
-              border:"1px dashed rgba(124,58,237,0.4)",background:"rgba(124,58,237,0.05)"}},
-            h("div",{style:{fontSize:24}},"✨"),
-            h("div",{style:{fontSize:13,color:"rgba(255,255,255,0.45)"}},"Neuer Stapel")))));
+      h("div",{className:"lp-xp-cardgrid"},
+        list.map(function(d){
+          var fach=folders.filter(function(f){return f.id===d.folderId;})[0];
+          return lpDeckCardStapel(d,fach,d._groupId?"g:":"");
+        }),
+        h(DsCard,{key:"new",onClick:function(){setShowNew(true);},
+          style:{minHeight:150,alignItems:"center",justifyContent:"center",
+            border:"1px dashed rgba(124,58,237,0.4)",background:"rgba(124,58,237,0.05)"}},
+          h("div",{style:{fontSize:24}},"✨"),
+          h("div",{style:{fontSize:13,color:"rgba(255,255,255,0.45)"}},"Neuer Stapel"))));
   }
   function renderXpFaecher(q){
     var list=q?folders.filter(function(f){
