@@ -1214,7 +1214,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.38";
+var KKM_VERSION="1.4.39";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6196,12 +6196,13 @@ function App(p){
     if(q) list=list.filter(function(d){return (d.name||"").toLowerCase().indexOf(q)>=0;});
     var subjFolder=folders.filter(function(f){return f.id===xpSubject;})[0];
     return h("div",{style:{display:"flex",flexDirection:"column",gap:24}},
-      h("div",{style:{display:"flex",flexDirection:"column",gap:16,alignItems:"flex-start"}},
-        h(DsButton,{variant:"primary",size:"md",onClick:function(){setShowNew(true);}},
-          h("span",{className:"lp-btn-glow-label"},"+ Neuer Stapel")),
-        h("div",{className:"lp-xp-h2"},"Stapel"),
+      h("div",{style:{display:"flex",flexDirection:"column",gap:16}},
+        h("div",{className:"lp-xp-sechdr"},
+          h("div",{className:"lp-xp-h2"},"Stapel"),
+          h(DsButton,{variant:"primary",size:"md",onClick:function(){setShowNew(true);}},
+            h("span",{className:"lp-btn-glow-label"},"+ Neuer Stapel"))),
         allDecks.length>0&&h(DsButton,{variant:"primary",size:"md",
-          onClick:function(){setQsStep("select");}},
+          onClick:function(){setQsStep("select");},style:{alignSelf:"flex-start"}},
           h("span",{className:"lp-btn-glow-label"},"Jetzt lernen"))),
       xpSubject&&subjFolder&&h("div",{className:"lp-xp-filterchip"},
         h("span",{style:{fontSize:13,color:"rgba(255,255,255,0.6)"}},"Gefiltert nach: ",
