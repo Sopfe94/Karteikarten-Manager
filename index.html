@@ -1214,7 +1214,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.35";
+var KKM_VERSION="1.4.36";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -5447,10 +5447,10 @@ function LpStapelDeckCard(p){
       borderRadius:16,padding:"20px 24px",display:"flex",flexDirection:"column",
       gap:8,cursor:"pointer",minWidth:0,fontFamily:"var(--font-sans)"},
     onClick:p.onClick},
-    p.fachName&&h("div",{style:{display:"flex",alignItems:"center",gap:8}},
-      h("span",{style:{width:8,height:8,borderRadius:"50%",flexShrink:0,background:p.fachColor}}),
-      h("span",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.12em",
-        textTransform:"uppercase",fontFamily:"var(--font-mono)",color:p.fachColor}},p.fachName)),
+    p.fachName&&h("div",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.12em",
+      textTransform:"uppercase",fontFamily:"var(--font-mono)",background:"var(--grad-brand)",
+      WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",
+      display:"inline-block",width:"fit-content"}},p.fachName),
     h("div",{style:{fontSize:17,fontWeight:600,letterSpacing:"-0.02em",color:"#F5F3FF",
       whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},p.title),
     h("div",{style:{fontSize:13,color:"rgba(255,255,255,0.45)"}},p.subtitle),
@@ -6172,7 +6172,6 @@ function App(p){
   function lpDeckCardStapel(deck,fach,keyPrefix){
     return h(LpStapelDeckCard,{key:(keyPrefix||"")+deck.id,
       fachName:fach?fach.name:null,
-      fachColor:fach?lpFachColor(fach):null,
       title:deck.name,
       subtitle:(deck.cards||[]).length+" Karten",
       progress:deckPct(deck),
@@ -6245,16 +6244,13 @@ function App(p){
     return h("div",{style:{display:"flex",flexDirection:"column",gap:24}},
       h("div",{className:"lp-xp-sechdr"},
         h("div",null,
-          h("div",{className:"lp-xp-h2"},"Lernen"),
-          h("div",{className:"lp-xp-h2sub"},"Wähle einen Stapel zum Lernen")),
+          h("div",{className:"lp-xp-h2"},"Lernen")),
         h(DsButton,{variant:"primary",size:"md",onClick:function(){setShowNew(true);}},
           h("span",{className:"lp-btn-glow-label"},"+ Neuer Stapel"))),
       h("div",{style:{display:"flex",gap:12,flexWrap:"wrap"}},
         allDecks.length>0&&h(DsButton,{variant:"primary",size:"md",
           onClick:function(){setQsStep("select");}},
-          h("span",{className:"lp-btn-glow-label"},"Jetzt lernen")),
-        h(DsButton,{variant:"ghost",size:"md",
-          onClick:function(){setShowImport(true);}},"Stapel importieren")),
+          h("span",{className:"lp-btn-glow-label"},"Jetzt lernen"))),
       xpSubject&&subjFolder&&h("div",{className:"lp-xp-filterchip"},
         h("span",{style:{fontSize:13,color:"rgba(255,255,255,0.6)"}},"Gefiltert nach: ",
           h("b",{style:{color:"#fff"}},subjFolder.name)),
@@ -6266,12 +6262,7 @@ function App(p){
         list.map(function(d){
           var fach=folders.filter(function(f){return f.id===d.folderId;})[0];
           return lpDeckCardStapel(d,fach,d._groupId?"g:":"");
-        }),
-        h(DsCard,{key:"new",onClick:function(){setShowNew(true);},
-          style:{minHeight:150,alignItems:"center",justifyContent:"center",
-            border:"1px dashed rgba(124,58,237,0.4)",background:"rgba(124,58,237,0.05)"}},
-          h("div",{style:{fontSize:24}},"✨"),
-          h("div",{style:{fontSize:13,color:"rgba(255,255,255,0.45)"}},"Neuer Stapel"))));
+        })));
   }
   function renderXpFaecher(q){
     var list=q?folders.filter(function(f){
