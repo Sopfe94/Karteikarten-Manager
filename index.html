@@ -1238,7 +1238,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.59";
+var KKM_VERSION="1.4.60";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6291,9 +6291,11 @@ function App(p){
     return h("div",{className:"lp-xp-soon"},
       h("div",{className:"lp-xp-soon-icon"},"📄"),
       h("h2",null,"Unterlagen"),
-      h("p",null,"Verbinde dein Google-Konto, um PDFs zu scannen und zu verwalten."),
-      h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",marginTop:8},onClick:handleGoogleLogin},
-        h("span",{className:"lp-btn-glow-label"},"Mit Google anmelden")));
+      googleUser
+        ? h("p",null,"Dein Google-Konto ist verbunden. PDFs scannen und verwalten bauen wir als Nächstes.")
+        : h("p",null,"Diese Funktion steht nur mit Google-Anmeldung zur Verfügung."),
+      !googleUser&&h("button",{className:"lp-section-link",style:{fontSize:14,marginTop:8},
+        onClick:function(){switchNav('profil');}},"Zu den Einstellungen →"));
   }
   function renderExplorer(){
     var q=xpQuery.trim().toLowerCase();
