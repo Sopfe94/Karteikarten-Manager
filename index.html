@@ -1182,8 +1182,13 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
 .lp-xp-folderhdr{display:flex;align-items:center;gap:8px;padding:8px 4px 12px;
   border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:12px}
 .lp-xp-folderhdr-name{font-size:15px;font-weight:600;color:#A78BFA;flex:1}
-.lp-xp-soon{padding:48px 20px;text-align:center;border:1px dashed rgba(255,255,255,0.12);
-  border-radius:20px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.lp-xp-soon{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;gap:20px;padding:40px 24px}
+.lp-xp-soon-icon{width:80px;height:80px;border-radius:20px;
+  border:1px solid rgba(124,58,237,0.3);background:rgba(124,58,237,0.08);
+  display:flex;align-items:center;justify-content:center;font-size:2rem;margin-bottom:8px}
+.lp-xp-soon h2{font-size:22px;font-weight:700;letter-spacing:-0.02em;color:#fff}
+.lp-xp-soon p{font-size:14px;color:rgba(255,255,255,0.45);max-width:280px;line-height:1.6}
 .lp-xp-back{align-self:flex-start;background:none;border:none;color:rgba(255,255,255,0.5);
   font-size:13px;font-family:var(--font-sans);cursor:pointer;padding:0}
 .lp-xp-back:hover{color:#A78BFA}
@@ -1233,7 +1238,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.57";
+var KKM_VERSION="1.4.58";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6284,10 +6289,13 @@ function App(p){
   }
   function renderXpUnterlagen(){
     return h("div",{className:"lp-xp-soon"},
-      h("div",{style:{fontSize:24}},"📄"),
-      h("div",{className:"lp-xp-h2"},"Kommt bald"),
-      h("div",{className:"lp-xp-h2sub",style:{maxWidth:320}},
-        "Unterlagen — Scannen, Ordner und PDF-Ansicht — bauen wir als Nächstes."));
+      h("div",{className:"lp-xp-soon-icon"},"📄"),
+      h("h2",null,"Unterlagen"),
+      googleUser
+        ? h("p",null,"Bald kannst du hier PDFs scannen und verwalten — wir bauen es als Nächstes.")
+        : h("p",null,"Verbinde dein Google-Konto, um PDFs zu scannen und zu verwalten."),
+      !googleUser&&h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",marginTop:8},onClick:handleGoogleLogin},
+        h("span",{className:"lp-btn-glow-label"},"Mit Google anmelden")));
   }
   function renderExplorer(){
     var q=xpQuery.trim().toLowerCase();
