@@ -1232,7 +1232,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.50";
+var KKM_VERSION="1.4.51";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2954,10 +2954,14 @@ function DeckSelectModal(p){
   function toggle(id){ if(sel.indexOf(id)>=0)setSel(sel.filter(function(s){return s!==id;})); else setSel(sel.concat([id])); }
   var total=withCards.filter(function(d){return sel.indexOf(d.id)>=0;}).reduce(function(s,d){return s+d.cards.length;},0);
   var foldersWithDecks=folders.filter(function(f){return withCards.some(function(d){return d.folderId===f.id;});});
-  var fs=useState(foldersWithDecks.length?foldersWithDecks[0].id:""); var selFach=fs[0]; var setSelFach=fs[1];
+  var fs=useState(""); var selFach=fs[0]; var setSelFach=fs[1];
+  var initedFachRef=useRef(false);
   useEffect(function(){
-    if(foldersWithDecks.length>0&&!foldersWithDecks.some(function(f){return f.id===selFach;})){
-      setSelFach(foldersWithDecks[0].id);
+    if(!initedFachRef.current&&foldersWithDecks.length>0){
+      if(!selFach||!foldersWithDecks.some(function(f){return f.id===selFach;})){
+        setSelFach(foldersWithDecks[0].id);
+      }
+      initedFachRef.current=true;
     }
   });
   var selFachDecks=selFach?withCards.filter(function(d){return d.folderId===selFach;}):[];
@@ -2968,8 +2972,8 @@ function DeckSelectModal(p){
     }
   },[selFach]);
   var allSel=withCards.length>0&&withCards.every(function(d){return sel.indexOf(d.id)>=0;});
-  function toggleAlle(){ if(allSel)setSel([]); else setSel(withCards.map(function(d){return d.id;})); }
-  var visibleDecks=allSel?withCards:(selFach?selFachDecks:withCards);
+  function toggleAlle(){ if(allSel){setSel([]);setSelFach("");} else setSel(withCards.map(function(d){return d.id;})); }
+  var visibleDecks=foldersWithDecks.length===0?withCards:(allSel?withCards:(selFach?selFachDecks:[]));
   if(!withCards.length) return h("div",{className:"lp-modal-ov",onClick:p.onClose},h("div",{className:"lp-modal-box",onClick:function(ev){ev.stopPropagation();}},h("div",{className:"lp-modal-title"},"Keine Karten"),h("div",{style:{textAlign:"center",padding:"20px",color:"rgba(255,255,255,.5)",fontSize:13}},"Erstelle zuerst Stapel mit Karten."),h("div",{className:"lp-modal-actions"},h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:p.onClose},h("span",{className:"lp-btn-glow-label"},"OK")))));
   return h("div",{className:"lp-modal-ov",onClick:p.onClose},
     h("div",{className:"lp-modal-box",onClick:function(ev){ev.stopPropagation();}},
@@ -2978,6 +2982,7 @@ function DeckSelectModal(p){
         h("label",{className:"lp-field-label"},"Fach"),
         h("div",{style:{display:"flex",alignItems:"center",gap:10}},
           h("select",{className:"lp-dark-input",style:{flex:1},value:selFach,onChange:function(ev){setSelFach(ev.target.value);}},
+            h("option",{value:""},"Fach auswählen"),
             foldersWithDecks.map(function(f){return h("option",{key:f.id,value:f.id},f.name);})),
           h("label",{style:{display:"flex",alignItems:"center",gap:6,fontSize:13,color:"rgba(255,255,255,.7)",cursor:"pointer",whiteSpace:"nowrap"}},
             h("input",{type:"checkbox",checked:allSel,onChange:toggleAlle,style:{width:18,height:18,accentColor:"#7C3AED",cursor:"pointer"}}),
