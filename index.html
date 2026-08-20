@@ -1232,7 +1232,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.53";
+var KKM_VERSION="1.4.54";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1744,7 +1744,7 @@ function FolderModal(p){
         h("input",{className:"lp-dark-input",value:n,onInput:function(ev){sn(ev.target.value);},placeholder:"z.B. Mathematik",autoFocus:true,onKeyDown:function(ev){if(ev.key==="Enter")save();}})),
       !isFach&&h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Symbol"),
             h("div",{className:"lp-swatch-row"},FOLDER_EMOJIS.map(function(em){ return h("button",{key:em,type:"button",className:"lp-swatch"+(e===em?" sel":""),onClick:function(){se(em);}},em); }))),
-      h("div",{className:"lp-modal-actions"},h(DsButton,{variant:"ghost",onClick:p.onClose},"Abbrechen"),h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:save},h("span",{className:"lp-btn-glow-label"},"Speichern")))));
+      h("div",{className:"lp-modal-actions"},h(DsButton,{variant:"danger",onClick:p.onClose},"Abbrechen"),h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:save},h("span",{className:"lp-btn-glow-label"},"Speichern")))));
 }
 
 function DeckModal(p){
