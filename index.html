@@ -1085,10 +1085,10 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
    erreicht), damit die Karten sichtbar zwischen Header und Suchfeld
    drehen statt erst, wenn sie schon darueber hinaus sind. !important
    noetig, da die Original-Animation inline gesetzt ist. */
-@keyframes lp-morph-flip-m{0%{transform:scaleX(1)}10%{transform:scaleX(0.06)}20%,100%{transform:scaleX(1)}}
-@keyframes lp-morph-pulse-m{0%,4%{box-shadow:0 0 10px rgba(124,58,237,0.5)}12%{box-shadow:0 0 26px rgba(6,182,212,0.9),0 0 40px rgba(124,58,237,0.6)}30%,100%{box-shadow:0 0 12px rgba(6,182,212,0.5)}}
-@keyframes lp-morph-front-m{0%,8%{opacity:1}10%,100%{opacity:0}}
-@keyframes lp-morph-back-m{0%,8%{opacity:0}10%,100%{opacity:1}}
+@keyframes lp-morph-flip-m{0%,14%{transform:scaleX(1)}18%{transform:scaleX(0.06)}22%,100%{transform:scaleX(1)}}
+@keyframes lp-morph-pulse-m{0%,12%{box-shadow:0 0 10px rgba(124,58,237,0.5)}20%{box-shadow:0 0 26px rgba(6,182,212,0.9),0 0 40px rgba(124,58,237,0.6)}38%,100%{box-shadow:0 0 12px rgba(6,182,212,0.5)}}
+@keyframes lp-morph-front-m{0%,16%{opacity:1}18%,100%{opacity:0}}
+@keyframes lp-morph-back-m{0%,16%{opacity:0}18%,100%{opacity:1}}
 @media(max-width:1023px){
   .lp-morph-flipwrap{animation:lp-morph-flip-m 5s linear infinite 0s backwards, lp-morph-pulse-m 5s linear infinite 0s backwards !important}
   .lp-morph-face-front{animation:lp-morph-front-m 5s linear infinite 0s backwards !important}
@@ -1233,7 +1233,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.56";
+var KKM_VERSION="1.4.57";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
