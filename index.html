@@ -1232,7 +1232,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.52";
+var KKM_VERSION="1.4.53";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1735,22 +1735,14 @@ function FolderModal(p){
   var ns=useState(p.folder?p.folder.name:""); var n=ns[0]; var sn=ns[1];
   var es=useState(p.folder?p.folder.emoji:"\uD83D\uDCC1"); var e=es[0]; var se=es[1];
   var isFach=p.kind==="fach";
-  var cs=useState(p.folder&&p.folder.color?p.folder.color:LP_FACH_COLORS[0]); var col=cs[0]; var setCol=cs[1];
+  var cs=useState(function(){return p.folder&&p.folder.color?p.folder.color:LP_FACH_COLORS[Math.floor(Math.random()*LP_FACH_COLORS.length)];}); var col=cs[0];
   function save(){ if(!n.trim())return; isFach?p.onSave({name:n.trim(),color:col}):p.onSave({name:n.trim(),emoji:e}); }
   return h("div",{className:"lp-modal-ov",onClick:p.onClose},
     h("div",{className:"lp-modal-box",onClick:function(ev){ev.stopPropagation();}},
-      h("div",{className:"lp-modal-title"},p.folder?(isFach?"Fach bearbeiten":"Ordner bearbeiten"):(isFach?"Neues Fach":"Neuer Ordner")),
+      h("div",{className:"lp-modal-title grad"},p.folder?(isFach?"Fach bearbeiten":"Ordner bearbeiten"):(isFach?"Neues Fach":"Neuer Ordner")),
       h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Name"),
         h("input",{className:"lp-dark-input",value:n,onInput:function(ev){sn(ev.target.value);},placeholder:"z.B. Mathematik",autoFocus:true,onKeyDown:function(ev){if(ev.key==="Enter")save();}})),
-      isFach
-        ? h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Farbe"),
-            h("div",{className:"lp-swatch-row"},LP_FACH_COLORS.map(function(c){
-              return h("button",{key:c,type:"button",title:c,
-                style:{width:28,height:28,borderRadius:"50%",background:c,cursor:"pointer",padding:0,
-                  border:col===c?"2px solid #fff":"2px solid transparent"},
-                onClick:function(){setCol(c);}});
-            })))
-        : h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Symbol"),
+      !isFach&&h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Symbol"),
             h("div",{className:"lp-swatch-row"},FOLDER_EMOJIS.map(function(em){ return h("button",{key:em,type:"button",className:"lp-swatch"+(e===em?" sel":""),onClick:function(){se(em);}},em); }))),
       h("div",{className:"lp-modal-actions"},h(DsButton,{variant:"ghost",onClick:p.onClose},"Abbrechen"),h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:save},h("span",{className:"lp-btn-glow-label"},"Speichern")))));
 }
@@ -6268,12 +6260,12 @@ function App(p){
     var list=q?folders.filter(function(f){
       return (f.name||"").toLowerCase().indexOf(q)>=0;}):folders;
     return h("div",{style:{display:"flex",flexDirection:"column",gap:24}},
-      h("div",{className:"lp-xp-sechdr"},
-        h("div",null,
+      h("div",{className:"lp-xp-sechdr",style:{flexWrap:"nowrap"}},
+        h("div",{style:{flex:"1 1 auto",minWidth:0}},
           h("div",{className:"lp-xp-h2"},"Fächer"),
           h("div",{className:"lp-xp-h2sub",style:{maxWidth:420}},
             "Fächer ordnest du deinen Stapeln zu — sie werden für deine Lernempfehlungen genutzt.")),
-        h(DsButton,{variant:"primary",size:"md",onClick:function(){setShowNewFolder(true);}},
+        h(DsButton,{variant:"primary",size:"md",style:{flexShrink:0},onClick:function(){setShowNewFolder(true);}},
           h("span",{className:"lp-btn-glow-label"},"+ Neues Fach"))),
       list.length===0
         ? h("div",{className:"lp-empty2"},"Noch keine Fächer. Leg dein erstes an.")
