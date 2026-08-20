@@ -1232,7 +1232,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.51";
+var KKM_VERSION="1.4.52";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1714,7 +1714,7 @@ function ThreeDotMenu(p){
 function LpStapelMenuBtn(p){
   var os=useState(false); var open=os[0]; var setOpen=os[1];
   function optCard(title,sub,onClick){
-    return h("button",{className:"lp-row clickable",style:{width:"100%",textAlign:"left",
+    return h("button",{className:"lp-row lp-hover-glow",style:{width:"100%",textAlign:"left",
         border:"1px solid rgba(255,255,255,.08)",flexDirection:"column",alignItems:"flex-start",
         gap:4,cursor:"pointer",fontFamily:"var(--font-sans)"},onClick:onClick},
       h("div",{className:"lp-row-title"},title),h("div",{className:"lp-row-sub"},sub));
