@@ -1232,7 +1232,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.49";
+var KKM_VERSION="1.4.50";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2955,6 +2955,11 @@ function DeckSelectModal(p){
   var total=withCards.filter(function(d){return sel.indexOf(d.id)>=0;}).reduce(function(s,d){return s+d.cards.length;},0);
   var foldersWithDecks=folders.filter(function(f){return withCards.some(function(d){return d.folderId===f.id;});});
   var fs=useState(foldersWithDecks.length?foldersWithDecks[0].id:""); var selFach=fs[0]; var setSelFach=fs[1];
+  useEffect(function(){
+    if(foldersWithDecks.length>0&&!foldersWithDecks.some(function(f){return f.id===selFach;})){
+      setSelFach(foldersWithDecks[0].id);
+    }
+  });
   var selFachDecks=selFach?withCards.filter(function(d){return d.folderId===selFach;}):[];
   useEffect(function(){
     if(selFachDecks.length===1){
