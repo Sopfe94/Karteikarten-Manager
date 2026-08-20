@@ -18,6 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 /* ═══════════════════════════════════════════════════════════
@@ -1238,7 +1239,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.60";
+var KKM_VERSION="1.4.61";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1283,6 +1284,105 @@ function getSb(){
     dbg('✅ Supabase-Client erstellt');
   }
   return _sbClient;
+}
+
+/* ---- Google Drive Anbindung (Unterlagen) ----
+   Der Google-Login laeuft ueber Supabase Auth; beim Login mit dem
+   drive.file-Scope liefert Supabase zusaetzlich provider_token
+   (kurzlebig, ~1h) und provider_refresh_token. Supabase erneuert den
+   provider_token selbst NICHT automatisch - dafuer sorgt hier
+   /api/google-refresh, das mit dem serverseitig gehaltenen
+   Client-Secret einen neuen Access-Token bei Google holt. */
+var DRIVE_ROOT_NAME='Lernpuls Unterlagen';
+var DRIVE_FOLDER_MIME='application/vnd.google-apps.folder';
+var _driveAT=null; var _driveATExp=0;
+function driveStoreRefreshToken(rt){ if(rt){try{localStorage.setItem('kkm-drive-rt',rt);}catch(e){} } }
+function driveGetStoredRefreshToken(){ try{return localStorage.getItem('kkm-drive-rt');}catch(e){return null;} }
+function driveClearTokens(){ _driveAT=null; _driveATExp=0; try{localStorage.removeItem('kkm-drive-rt');}catch(e){} }
+function driveSetAccessToken(at,expSec){ _driveAT=at; _driveATExp=Date.now()+((expSec||3500)*1000); }
+function driveRefreshAccessToken(){
+  var rt=driveGetStoredRefreshToken();
+  if(!rt) return Promise.reject(new Error('no_refresh_token'));
+  return fetch('/api/google-refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refresh_token:rt})})
+    .then(function(r){ if(!r.ok) throw new Error('refresh_failed'); return r.json(); })
+    .then(function(d){ driveSetAccessToken(d.access_token,d.expires_in); return d.access_token; });
+}
+function driveGetAccessToken(){
+  if(_driveAT && Date.now()<_driveATExp-60000) return Promise.resolve(_driveAT);
+  return driveRefreshAccessToken();
+}
+function driveFetch(url,opts){
+  opts=opts||{};
+  return driveGetAccessToken().then(function(at){
+    opts.headers=Object.assign({},opts.headers,{'Authorization':'Bearer '+at});
+    return fetch(url,opts);
+  }).then(function(r){
+    if(r.status===401){
+      return driveRefreshAccessToken().then(function(at2){
+        opts.headers=Object.assign({},opts.headers,{'Authorization':'Bearer '+at2});
+        return fetch(url,opts);
+      });
+    }
+    return r;
+  });
+}
+function driveFindFolder(name,parentId){
+  var safeName=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  var q="name='"+safeName+"' and mimeType='"+DRIVE_FOLDER_MIME+"' and trashed=false and '"+(parentId||'root')+"' in parents";
+  return driveFetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id,name)&spaces=drive')
+    .then(function(r){return r.json();})
+    .then(function(d){return (d.files&&d.files[0])?d.files[0].id:null;});
+}
+function driveCreateFolder(name,parentId){
+  return driveFetch('https://www.googleapis.com/drive/v3/files?fields=id,name',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name:name,mimeType:DRIVE_FOLDER_MIME,parents:parentId?[parentId]:undefined})
+  }).then(function(r){return r.json();});
+}
+function driveEnsureRootFolder(){
+  return driveFindFolder(DRIVE_ROOT_NAME,null).then(function(id){
+    if(id) return id;
+    return driveCreateFolder(DRIVE_ROOT_NAME,null).then(function(f){return f.id;});
+  });
+}
+function driveListChildren(folderId){
+  var q="'"+folderId+"' in parents and trashed=false";
+  return driveFetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id,name,mimeType,modifiedTime,size,webViewLink)&orderBy=folder,name')
+    .then(function(r){return r.json();})
+    .then(function(d){return d.files||[];});
+}
+function driveDeleteFile(id){
+  return driveFetch('https://www.googleapis.com/drive/v3/files/'+id,{method:'DELETE'});
+}
+function driveUploadPdf(blob,filename,parentId){
+  var metadata={name:filename,mimeType:'application/pdf',parents:parentId?[parentId]:undefined};
+  var form=new FormData();
+  form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));
+  form.append('file',blob);
+  return driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',{
+    method:'POST',body:form
+  }).then(function(r){return r.json();});
+}
+function loadImageDims(dataUrl){
+  return new Promise(function(resolve){
+    var img=new Image();
+    img.onload=function(){resolve({url:dataUrl,w:img.naturalWidth,h:img.naturalHeight});};
+    img.src=dataUrl;
+  });
+}
+function buildPdfBlobFromImages(dataUrls){
+  return Promise.all(dataUrls.map(loadImageDims)).then(function(imgs){
+    var doc=new window.jspdf.jsPDF({unit:'pt',format:'a4'});
+    var pageW=doc.internal.pageSize.getWidth(), pageH=doc.internal.pageSize.getHeight();
+    imgs.forEach(function(im,i){
+      if(i>0) doc.addPage();
+      var scale=Math.min(pageW/im.w,pageH/im.h);
+      var w=im.w*scale, h=im.h*scale;
+      var x=(pageW-w)/2, y=(pageH-h)/2;
+      doc.addImage(im.url,'JPEG',x,y,w,h);
+    });
+    return doc.output('blob');
+  });
 }
 
 var _syncUser=null; var _syncTimeout=null; var _realtimeChannel=null; var _applyingRemote=false; var _preloadedLsData=null; var _unCache={};
@@ -5753,6 +5853,24 @@ function App(p){
      frische Download fertig ist. */
   var gph=useState(function(){try{return localStorage.getItem('kkm-gphoto');}catch(e){return null;}});
   var googlePhoto=gph[0]; var setGooglePhoto=gph[1];
+  /* Unterlagen (Google Drive): Ordner-Navigation + Scan-Flow.
+     docsRootId=null bis der/die "Lernpuls Unterlagen"-Ordner in Drive
+     gefunden/erstellt wurde; docsFolderId ist der aktuell geoeffnete
+     Ordner, docsPath der Breadcrumb-Stack ab der Wurzel. */
+  var drid=useState(null); var docsRootId=drid[0]; var setDocsRootId=drid[1];
+  var dfid=useState(null); var docsFolderId=dfid[0]; var setDocsFolderId=dfid[1];
+  var dpth=useState([]); var docsPath=dpth[0]; var setDocsPath=dpth[1];
+  var dfol=useState([]); var docsFolders=dfol[0]; var setDocsFolders=dfol[1];
+  var dfil=useState([]); var docsFiles=dfil[0]; var setDocsFiles=dfil[1];
+  var dld=useState(false); var docsLoading=dld[0]; var setDocsLoading=dld[1];
+  var derr=useState(null); var docsError=derr[0]; var setDocsError=derr[1];
+  var nfm=useState(false); var newDocFolderModalOpen=nfm[0]; var setNewDocFolderModalOpen=nfm[1];
+  var nfn=useState(""); var newDocFolderName=nfn[0]; var setNewDocFolderName=nfn[1];
+  var scm=useState(false); var scanModalOpen=scm[0]; var setScanModalOpen=scm[1];
+  var scmo=useState(null); var scanMode=scmo[0]; var setScanMode=scmo[1];
+  var scp=useState([]); var scanPages=scp[0]; var setScanPages=scp[1];
+  var scbs=useState(false); var scanBusy=scbs[0]; var setScanBusy=scbs[1];
+  var docFileInputRef=useRef(null);
   var ums=useState(false); var showUsernameModal=ums[0]; var setShowUsernameModal=ums[1];
   var sus=useState(loadSocialUsername()); var socialUsername=sus[0]; var setSocialUsername=sus[1];
   var lscvs=useState(true); var lsContentVis=lscvs[0]; var setLsContentVis=lscvs[1];
@@ -5789,6 +5907,8 @@ function App(p){
       var session=res.data&&res.data.session;
       if(session&&session.user){
         setGoogleUser(session.user);
+        if(session.provider_token)driveSetAccessToken(session.provider_token,3500);
+        if(session.provider_refresh_token)driveStoreRefreshToken(session.provider_refresh_token);
         localStorage.setItem('kkm-onboarded','1');
         setShowLogin(false);
         handleAuthUser(session.user);
@@ -5808,6 +5928,8 @@ function App(p){
     var sub=sb.auth.onAuthStateChange(function(event,session){
       if(session&&session.user){
         setGoogleUser(session.user);
+        if(session.provider_token)driveSetAccessToken(session.provider_token,3500);
+        if(session.provider_refresh_token)driveStoreRefreshToken(session.provider_refresh_token);
         if(event==='SIGNED_IN'){
           localStorage.setItem('kkm-onboarded','1');
           setShowLogin(false);
@@ -5984,11 +6106,14 @@ function App(p){
   function handleGoogleLogin(){
     var sb=getSb();
     var redirectTo=location.protocol==='https:'?window.location.origin:'https://karteikarten-manager.vercel.app';
-    sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:redirectTo}});
+    sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:redirectTo,
+      scopes:'https://www.googleapis.com/auth/drive.file',
+      queryParams:{access_type:'offline',prompt:'consent'}}});
   }
 
   function handleGoogleLogout(){
     _syncUser=null;
+    driveClearTokens();
     if(_realtimeChannel){getSb().removeChannel(_realtimeChannel);_realtimeChannel=null;}
     var sb=getSb();
     sb.auth.signOut().then(function(){
@@ -6287,15 +6412,215 @@ function App(p){
                 onClick:function(e){e.stopPropagation();delFolder(f.id);}},"×"));
           })));
   }
+  /* Unterlagen: Root-Ordner ermitteln/anlegen sobald der Tab zum
+     ersten Mal geoeffnet wird, danach dessen Inhalt laden. */
+  useEffect(function(){
+    if(xpTab!=="unterlagen"||!googleUser||docsRootId)return;
+    setDocsLoading(true);setDocsError(null);
+    driveEnsureRootFolder().then(function(id){
+      setDocsRootId(id);setDocsFolderId(id);setDocsPath([]);
+      return driveListChildren(id);
+    }).then(function(children){
+      setDocsFolders(children.filter(function(c){return c.mimeType===DRIVE_FOLDER_MIME;}));
+      setDocsFiles(children.filter(function(c){return c.mimeType!==DRIVE_FOLDER_MIME;}));
+      setDocsLoading(false);
+    }).catch(function(e){
+      setDocsError("Verbindung zu Google Drive fehlgeschlagen.");setDocsLoading(false);
+      dbg("❌ Drive-Fehler:",e.message);
+    });
+  },[xpTab,googleUser,docsRootId]);
+  function loadDocsFolder(id){
+    setDocsLoading(true);setDocsError(null);
+    driveListChildren(id).then(function(children){
+      setDocsFolders(children.filter(function(c){return c.mimeType===DRIVE_FOLDER_MIME;}));
+      setDocsFiles(children.filter(function(c){return c.mimeType!==DRIVE_FOLDER_MIME;}));
+      setDocsLoading(false);
+    }).catch(function(e){
+      setDocsError("Verbindung zu Google Drive fehlgeschlagen.");setDocsLoading(false);
+      dbg("❌ Drive-Fehler:",e.message);
+    });
+  }
+  function openDocFolder(f){
+    var next=docsPath.concat([{id:f.id,name:f.name}]);
+    setDocsPath(next);setDocsFolderId(f.id);loadDocsFolder(f.id);
+  }
+  function goToDocRoot(){ setDocsPath([]);setDocsFolderId(docsRootId);loadDocsFolder(docsRootId); }
+  function goToDocPathIndex(i){
+    var next=docsPath.slice(0,i+1);
+    setDocsPath(next);
+    var id=next.length?next[next.length-1].id:docsRootId;
+    setDocsFolderId(id);loadDocsFolder(id);
+  }
+  function openNewDocFolderModal(){ setNewDocFolderName("");setNewDocFolderModalOpen(true); }
+  function closeNewDocFolderModal(){ setNewDocFolderModalOpen(false); }
+  function saveNewDocFolder(){
+    if(!newDocFolderName.trim())return;
+    driveCreateFolder(newDocFolderName.trim(),docsFolderId).then(function(){
+      setNewDocFolderModalOpen(false);loadDocsFolder(docsFolderId);
+    }).catch(function(){ showToast("Ordner konnte nicht erstellt werden."); });
+  }
+  function deleteDocFolder(f){
+    if(!confirm('Ordner "'+f.name+'" wirklich löschen? Enthaltene Dateien werden mitgelöscht.'))return;
+    driveDeleteFile(f.id).then(function(){ loadDocsFolder(docsFolderId); })
+      .catch(function(){ showToast("Löschen fehlgeschlagen."); });
+  }
+  function deleteDocFile(d){
+    if(!confirm('"'+d.name+'" wirklich löschen?'))return;
+    driveDeleteFile(d.id).then(function(){ loadDocsFolder(docsFolderId); })
+      .catch(function(){ showToast("Löschen fehlgeschlagen."); });
+  }
+  function openScanModal(){ setScanMode(null);setScanPages([]);setScanModalOpen(true); }
+  function closeScanModal(){ setScanModalOpen(false);setScanMode(null);setScanPages([]); }
+  function triggerCameraCapture(){ if(docFileInputRef.current)docFileInputRef.current.click(); }
+  function scanChooseSingle(){ setScanMode("single");triggerCameraCapture(); }
+  function scanChooseMulti(){ setScanMode("multi");triggerCameraCapture(); }
+  function addAnotherScanPage(){ triggerCameraCapture(); }
+  function finishScanWithPages(pages){
+    if(!pages.length)return;
+    setScanBusy(true);
+    buildPdfBlobFromImages(pages).then(function(blob){
+      var stamp=new Date().toISOString().replace(/[:.]/g,"-");
+      return driveUploadPdf(blob,"Scan_"+stamp+".pdf",docsFolderId);
+    }).then(function(){
+      setScanBusy(false);setScanModalOpen(false);setScanMode(null);setScanPages([]);
+      loadDocsFolder(docsFolderId);
+      showToast("Dokument gespeichert.");
+    }).catch(function(e){
+      setScanBusy(false);
+      showToast("Scan konnte nicht gespeichert werden.");
+      dbg("❌ Scan-Upload-Fehler:",e.message);
+    });
+  }
+  function finishMultiScan(){ finishScanWithPages(scanPages); }
+  function handleCameraCapture(e){
+    var file=e.target.files&&e.target.files[0];
+    e.target.value="";
+    if(!file)return;
+    var fr=new FileReader();
+    fr.onload=function(){
+      var url=fr.result;
+      var next=scanPages.concat([url]);
+      setScanPages(next);
+      if(scanMode==="single")finishScanWithPages(next);
+    };
+    fr.readAsDataURL(file);
+  }
+  function docFileMeta(d){
+    var kb=d.size?Math.round(d.size/1024):null;
+    var when=d.modifiedTime?new Date(d.modifiedTime).toLocaleDateString("de-DE"):"";
+    return (kb?kb+" KB · ":"")+when;
+  }
   function renderXpUnterlagen(){
-    return h("div",{className:"lp-xp-soon"},
-      h("div",{className:"lp-xp-soon-icon"},"📄"),
-      h("h2",null,"Unterlagen"),
-      googleUser
-        ? h("p",null,"Dein Google-Konto ist verbunden. PDFs scannen und verwalten bauen wir als Nächstes.")
-        : h("p",null,"Diese Funktion steht nur mit Google-Anmeldung zur Verfügung."),
-      !googleUser&&h("button",{className:"lp-section-link",style:{fontSize:14,marginTop:8},
-        onClick:function(){switchNav('profil');}},"Zu den Einstellungen →"));
+    if(!googleUser){
+      return h("div",{className:"lp-xp-soon"},
+        h("div",{className:"lp-xp-soon-icon"},"📄"),
+        h("h2",null,"Unterlagen"),
+        h("p",null,"Diese Funktion steht nur mit Google-Anmeldung zur Verfügung."),
+        h("button",{className:"lp-section-link",style:{fontSize:14,marginTop:8},
+          onClick:function(){switchNav('profil');}},"Zu den Einstellungen →"));
+    }
+    return h("div",{style:{display:"flex",flexDirection:"column",gap:20,position:"relative"}},
+      h("input",{type:"file",accept:"image/*",capture:"environment",ref:docFileInputRef,
+        onChange:handleCameraCapture,style:{display:"none"}}),
+      h("div",{className:"lp-xp-sechdr"},
+        h("div",{style:{flex:"1 1 240px",minWidth:0}},
+          h("div",{className:"lp-xp-h2"},"Unterlagen"),
+          h("div",{className:"lp-xp-h2sub"},"Scanne Arbeitsunterlagen mit der Kamera direkt als PDF in deine Ordner.")),
+        h("div",{style:{display:"flex",gap:10,flexShrink:0}},
+          h(DsButton,{variant:"primary",size:"md",onClick:openNewDocFolderModal},
+            h("span",{className:"lp-btn-glow-label"},"+ Ordner")),
+          h(DsButton,{variant:"primary",size:"md",onClick:openScanModal},
+            h("span",{className:"lp-btn-glow-label"},"Scannen")))),
+
+      h("div",{style:{display:"flex",alignItems:"flex-start",gap:10,background:"rgba(124,58,237,0.08)",
+          border:"1px solid rgba(124,58,237,0.25)",borderRadius:14,padding:"14px 16px",
+          fontSize:12,color:"rgba(255,255,255,0.6)",lineHeight:1.6}},
+        h("span",null,"🔒"),
+        h("span",null,"Ordner und gescannte PDFs werden automatisch in deinem Google Drive abgelegt.")),
+
+      docsPath.length>0&&h("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",
+          fontSize:12,color:"rgba(255,255,255,0.4)"}},
+        h("span",{style:{cursor:"pointer",color:"var(--color-violet-light)"},onClick:goToDocRoot},"Alle Unterlagen"),
+        docsPath.map(function(p,i){
+          return h(R.Fragment,{key:p.id},
+            h("span",null,"/"),
+            h("span",{style:{color:"#fff",cursor:i<docsPath.length-1?"pointer":"default"},
+              onClick:i<docsPath.length-1?function(){goToDocPathIndex(i);}:undefined},p.name));
+        })),
+
+      docsError&&h("div",{className:"lp-xp-soon",style:{padding:24}},
+        h("p",null,docsError),
+        h("button",{className:"lp-section-link",style:{fontSize:14},
+          onClick:function(){setDocsRootId(null);}},"Erneut versuchen")),
+
+      !docsError&&docsLoading&&h("div",{style:{textAlign:"center",padding:"32px 0",color:"rgba(255,255,255,0.4)",fontSize:13}},"Lädt…"),
+
+      !docsError&&!docsLoading&&docsFolders.length>0&&h("div",{style:{display:"flex",flexWrap:"wrap",gap:10}},
+        docsFolders.map(function(fo){
+          return h("div",{key:fo.id,style:{position:"relative",display:"inline-flex",alignItems:"center",gap:8,
+              background:"var(--grad-brand)",border:"none",boxShadow:"0 4px 16px rgba(124,58,237,0.3)",
+              borderRadius:8,padding:"8px 36px 8px 14px",width:"fit-content",cursor:"pointer"},
+              onClick:function(){openDocFolder(fo);}},
+            h("span",{style:{fontSize:13,fontWeight:600,color:"#fff"}},fo.name),
+            h("button",{title:"Ordner löschen",onClick:function(e){e.stopPropagation();deleteDocFolder(fo);},
+              style:{position:"absolute",top:"50%",right:8,transform:"translateY(-50%)",width:18,height:18,
+                borderRadius:"50%",border:"none",background:"rgba(255,255,255,0.2)",color:"#fff",
+                fontSize:11,cursor:"pointer",lineHeight:1}},"×"));
+        })),
+
+      !docsError&&!docsLoading&&docsFiles.length>0&&h("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+        docsFiles.map(function(d){
+          return h("div",{key:d.id,style:{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",
+              background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:14,cursor:"pointer"},
+              onClick:function(){if(d.webViewLink)window.open(d.webViewLink,"_blank");}},
+            h("div",{style:{fontSize:18}},"📄"),
+            h("div",{style:{flex:1,minWidth:0}},
+              h("div",{style:{fontSize:13,fontWeight:600,color:"#fff"}},d.name),
+              h("div",{style:{fontSize:11,color:"var(--color-violet-ghost)",fontFamily:"var(--font-mono)"}},docFileMeta(d))),
+            h("button",{title:"Löschen",onClick:function(e){e.stopPropagation();deleteDocFile(d);},
+              style:{width:26,height:26,borderRadius:"50%",border:"none",background:"rgba(255,255,255,0.06)",
+                color:"rgba(255,255,255,0.5)",fontSize:12,cursor:"pointer",lineHeight:1}},"×"));
+        })),
+
+      !docsError&&!docsLoading&&docsFolders.length===0&&docsFiles.length===0&&
+        h("div",{style:{padding:"32px 20px",textAlign:"center",color:"rgba(255,255,255,0.35)",fontSize:13,
+            border:"1px dashed rgba(255,255,255,0.1)",borderRadius:16}},
+          "Noch keine Ordner oder Dokumente hier — leg einen Ordner an oder scanne dein erstes Dokument."),
+
+      newDocFolderModalOpen&&h("div",{className:"lp-modal-ov",onClick:closeNewDocFolderModal},
+        h("div",{className:"lp-modal-box",onClick:function(e){e.stopPropagation();}},
+          h("div",{className:"lp-modal-title grad"},"Neuer Ordner"),
+          h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Name"),
+            h("input",{className:"lp-dark-input",value:newDocFolderName,autoFocus:true,
+              onInput:function(e){setNewDocFolderName(e.target.value);},
+              onKeyDown:function(e){if(e.key==="Enter")saveNewDocFolder();},
+              placeholder:"z.B. Chemie"})),
+          h("div",{className:"lp-modal-actions"},
+            h(DsButton,{variant:"danger",onClick:closeNewDocFolderModal},"Abbrechen"),
+            h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:saveNewDocFolder},
+              h("span",{className:"lp-btn-glow-label"},"Erstellen"))))),
+
+      scanModalOpen&&h("div",{className:"lp-modal-ov",onClick:scanBusy?undefined:closeScanModal},
+        h("div",{className:"lp-modal-box",onClick:function(e){e.stopPropagation();}},
+          h("div",{className:"lp-modal-title grad"},"Dokument scannen"),
+          scanBusy&&h("div",{style:{textAlign:"center",padding:"24px 0",color:"rgba(255,255,255,0.6)",fontSize:13}},"Wird gespeichert…"),
+          !scanBusy&&scanMode&&h("div",{style:{display:"flex",flexDirection:"column",gap:14,alignItems:"center",textAlign:"center",padding:"12px 0"}},
+            h("div",{style:{fontSize:13,color:"rgba(255,255,255,0.6)"}},scanPages.length+" Seite(n) aufgenommen"),
+            h("div",{style:{display:"flex",gap:10}},
+              h(DsButton,{variant:"ghost",onClick:addAnotherScanPage},"+ Weitere Seite"),
+              h(DsButton,{variant:"primary",onClick:finishMultiScan},
+                h("span",{className:"lp-btn-glow-label"},"Als PDF speichern")))),
+          !scanBusy&&!scanMode&&h("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+            h("button",{className:"lp-row lp-hover-glow",style:{textAlign:"left",flexDirection:"column",
+                alignItems:"flex-start",gap:4,cursor:"pointer",fontFamily:"var(--font-sans)"},onClick:scanChooseSingle},
+              h("div",{className:"lp-row-title"},"Einzelnes Foto"),
+              h("div",{className:"lp-row-sub"},"Eine Aufnahme wird zu einem PDF.")),
+            h("button",{className:"lp-row lp-hover-glow",style:{textAlign:"left",flexDirection:"column",
+                alignItems:"flex-start",gap:4,cursor:"pointer",fontFamily:"var(--font-sans)"},onClick:scanChooseMulti},
+              h("div",{className:"lp-row-title"},"Mehrere Seiten"),
+              h("div",{className:"lp-row-sub"},"Mehrere Aufnahmen werden zu einem PDF zusammengefügt."))),
+          !scanBusy&&h("div",{className:"lp-modal-actions"},
+            h(DsButton,{variant:"danger",onClick:closeScanModal},"Abbrechen")))));
   }
   function renderExplorer(){
     var q=xpQuery.trim().toLowerCase();
