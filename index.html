@@ -1239,7 +1239,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.63";
+var KKM_VERSION="1.4.64";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1383,6 +1383,120 @@ function buildPdfBlobFromImages(dataUrls){
     });
     return doc.output('blob');
   });
+}
+
+/* ---- Dokumentenerkennung beim Scannen (OpenCV.js) ----
+   Wird erst geladen, wenn tatsaechlich gescannt wird (nicht beim
+   App-Start) - opencv.js ist mit ~8MB der mit Abstand groesste Teil
+   der App und die meisten Nutzer scannen nie. Schlaegt das Laden fehl
+   (z.B. offline), faellt confirmScanCrop() automatisch auf einen
+   einfachen rechteckigen Zuschnitt ohne Perspektivkorrektur zurueck -
+   die Zuschneide-Funktion selbst bleibt also immer nutzbar. */
+var _cvLoadPromise=null;
+function loadOpenCv(){
+  if(window.cv&&window.cv.Mat) return Promise.resolve(window.cv);
+  if(_cvLoadPromise) return _cvLoadPromise;
+  _cvLoadPromise=new Promise(function(resolve,reject){
+    var s=document.createElement('script');
+    s.src='https://docs.opencv.org/4.9.0/opencv.js';
+    s.async=true;
+    var timeout=setTimeout(function(){reject(new Error('opencv_timeout'));},25000);
+    s.onload=function(){
+      if(!window.cv){reject(new Error('opencv_unavailable'));return;}
+      if(window.cv.Mat){clearTimeout(timeout);resolve(window.cv);return;}
+      window.cv['onRuntimeInitialized']=function(){clearTimeout(timeout);resolve(window.cv);};
+    };
+    s.onerror=function(){clearTimeout(timeout);reject(new Error('opencv_load_failed'));};
+    document.head.appendChild(s);
+  });
+  return _cvLoadPromise;
+}
+function cvSortCorners(pts){
+  var bySum=pts.slice().sort(function(a,b){return (a.x+a.y)-(b.x+b.y);});
+  var tl=bySum[0], br=bySum[3];
+  var byDiff=pts.slice().sort(function(a,b){return (a.y-a.x)-(b.y-b.x);});
+  var tr=byDiff[0], bl=byDiff[3];
+  return [tl,tr,br,bl];
+}
+/* Klassischer Scanner-Algorithmus: Kanten finden, groesste
+   4-eckige Kontur suchen - dieselbe Grundtechnik wie in CamScanner/
+   Adobe Scan & Co. Liefert null wenn nichts Passendes gefunden wird. */
+function cvDetectDocumentCorners(imgEl){
+  return loadOpenCv().then(function(cv){
+    var src=cv.imread(imgEl);
+    var gray=new cv.Mat(),blurred=new cv.Mat(),edges=new cv.Mat(),dilated=new cv.Mat();
+    var kernel=cv.Mat.ones(3,3,cv.CV_8U);
+    var contours=new cv.MatVector(),hierarchy=new cv.Mat();
+    var points=null;
+    try{
+      cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);
+      cv.GaussianBlur(gray,blurred,new cv.Size(5,5),0);
+      cv.Canny(blurred,edges,50,150);
+      cv.dilate(edges,dilated,kernel);
+      cv.findContours(dilated,contours,hierarchy,cv.RETR_LIST,cv.CHAIN_APPROX_SIMPLE);
+      var best=null,bestArea=0;
+      for(var i=0;i<contours.size();i++){
+        var cnt=contours.get(i);
+        var peri=cv.arcLength(cnt,true);
+        var approx=new cv.Mat();
+        cv.approxPolyDP(cnt,approx,0.02*peri,true);
+        if(approx.rows===4&&cv.isContourConvex(approx)){
+          var area=cv.contourArea(approx);
+          if(area>bestArea&&area>0.15*src.rows*src.cols){
+            bestArea=area;
+            if(best)best.delete();
+            best=approx;
+          }else{ approx.delete(); }
+        }else{ approx.delete(); }
+        cnt.delete();
+      }
+      if(best){
+        points=[];
+        for(var j=0;j<4;j++) points.push({x:best.data32S[j*2],y:best.data32S[j*2+1]});
+        best.delete();
+      }
+    } finally {
+      src.delete();gray.delete();blurred.delete();edges.delete();dilated.delete();
+      kernel.delete();contours.delete();hierarchy.delete();
+    }
+    return points?cvSortCorners(points):null;
+  });
+}
+function cvWarpCrop(imgEl,corners){
+  return loadOpenCv().then(function(cv){
+    var src=cv.imread(imgEl);
+    var tl=corners[0],tr=corners[1],br=corners[2],bl=corners[3];
+    var widthA=Math.hypot(br.x-bl.x,br.y-bl.y), widthB=Math.hypot(tr.x-tl.x,tr.y-tl.y);
+    var maxWidth=Math.max(widthA,widthB);
+    var heightA=Math.hypot(tr.x-br.x,tr.y-br.y), heightB=Math.hypot(tl.x-bl.x,tl.y-bl.y);
+    var maxHeight=Math.max(heightA,heightB);
+    var srcTri=cv.matFromArray(4,1,cv.CV_32FC2,[tl.x,tl.y,tr.x,tr.y,br.x,br.y,bl.x,bl.y]);
+    var dstTri=cv.matFromArray(4,1,cv.CV_32FC2,[0,0,maxWidth,0,maxWidth,maxHeight,0,maxHeight]);
+    var M=cv.getPerspectiveTransform(srcTri,dstTri);
+    var dst=new cv.Mat();
+    var dataUrl;
+    try{
+      cv.warpPerspective(src,dst,M,new cv.Size(maxWidth,maxHeight),cv.INTER_LINEAR,cv.BORDER_CONSTANT,new cv.Scalar());
+      var canvas=document.createElement('canvas');
+      cv.imshow(canvas,dst);
+      dataUrl=canvas.toDataURL('image/jpeg',0.92);
+    } finally {
+      src.delete();dst.delete();M.delete();srcTri.delete();dstTri.delete();
+    }
+    return dataUrl;
+  });
+}
+/* Fallback ohne OpenCV (z.B. Laden fehlgeschlagen): einfacher
+   rechteckiger Zuschnitt ohne Perspektivkorrektur, damit Zuschneiden
+   trotzdem funktioniert. */
+function plainBoundingCrop(imgEl,corners){
+  var xs=corners.map(function(c){return c.x;}), ys=corners.map(function(c){return c.y;});
+  var minX=Math.max(0,Math.min.apply(null,xs)), maxX=Math.min(imgEl.naturalWidth,Math.max.apply(null,xs));
+  var minY=Math.max(0,Math.min.apply(null,ys)), maxY=Math.min(imgEl.naturalHeight,Math.max.apply(null,ys));
+  var w=Math.max(1,maxX-minX), h=Math.max(1,maxY-minY);
+  var canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+  canvas.getContext('2d').drawImage(imgEl,minX,minY,w,h,0,0,w,h);
+  return canvas.toDataURL('image/jpeg',0.92);
 }
 
 var _syncUser=null; var _syncTimeout=null; var _realtimeChannel=null; var _applyingRemote=false; var _preloadedLsData=null; var _unCache={};
@@ -5873,6 +5987,17 @@ function App(p){
   var scmo=useState(null); var scanMode=scmo[0]; var setScanMode=scmo[1];
   var scp=useState([]); var scanPages=scp[0]; var setScanPages=scp[1];
   var scbs=useState(false); var scanBusy=scbs[0]; var setScanBusy=scbs[1];
+  /* Zuschnitt-Schritt nach der Aufnahme: scanCropCorners sind 4 Punkte
+     {x,y} in Original-Pixel-Koordinaten des Fotos (nicht Anzeige-
+     Groesse) - so bleibt die Umrechnung beim Ziehen unabhaengig von
+     Zoom/Viewport konsistent. */
+  var sco=useState(false); var scanCropOpen=sco[0]; var setScanCropOpen=sco[1];
+  var scsrc=useState(null); var scanCropSrc=scsrc[0]; var setScanCropSrc=scsrc[1];
+  var sccr=useState(null); var scanCropCorners=sccr[0]; var setScanCropCorners=sccr[1];
+  var scdet=useState(false); var scanCropBusy=scdet[0]; var setScanCropBusy=scdet[1];
+  var scimgsz=useState(null); var scanCropImgSize=scimgsz[0]; var setScanCropImgSize=scimgsz[1];
+  var scanCropImgRef=useRef(null);
+  var scanCropDragRef=useRef(null);
   var docFileInputRef=useRef(null);
   var ums=useState(false); var showUsernameModal=ums[0]; var setShowUsernameModal=ums[1];
   var sus=useState(loadSocialUsername()); var socialUsername=sus[0]; var setSocialUsername=sus[1];
@@ -6501,12 +6626,93 @@ function App(p){
     if(!file)return;
     var fr=new FileReader();
     fr.onload=function(){
-      var url=fr.result;
-      var next=scanPages.concat([url]);
-      setScanPages(next);
-      if(scanMode==="single")finishScanWithPages(next);
+      setScanCropSrc(fr.result);
+      setScanCropCorners(null);
+      setScanCropImgSize(null);
+      setScanCropBusy(true);
+      setScanCropOpen(true);
     };
     fr.readAsDataURL(file);
+  }
+  function onScanCropImageLoad(e){
+    var img=e.target;
+    setScanCropImgSize({w:img.naturalWidth,h:img.naturalHeight});
+    var fallback=[
+      {x:img.naturalWidth*0.05,y:img.naturalHeight*0.05},
+      {x:img.naturalWidth*0.95,y:img.naturalHeight*0.05},
+      {x:img.naturalWidth*0.95,y:img.naturalHeight*0.95},
+      {x:img.naturalWidth*0.05,y:img.naturalHeight*0.95}
+    ];
+    cvDetectDocumentCorners(img).then(function(pts){
+      setScanCropCorners(pts||fallback);
+      setScanCropBusy(false);
+    }).catch(function(){
+      setScanCropCorners(fallback);
+      setScanCropBusy(false);
+    });
+  }
+  /* Pointer-Events vereinen Maus/Touch/Stift automatisch (gleiches
+     Muster wie LpCropMaskModal) - startScanCornerDrag merkt sich beim
+     Pointerdown die Anzeige-zu-Original-Skalierung, damit beim Ziehen
+     korrekt zwischen CSS-Pixeln und den in Original-Bildkoordinaten
+     gespeicherten Ecken umgerechnet wird. */
+  function startScanCornerDrag(idx){
+    return function(e){
+      e.preventDefault();e.stopPropagation();
+      var img=scanCropImgRef.current;
+      if(!img||!scanCropImgSize)return;
+      var rect=img.getBoundingClientRect();
+      scanCropDragRef.current={idx:idx,rect:rect,
+        scaleX:scanCropImgSize.w/rect.width,scaleY:scanCropImgSize.h/rect.height};
+    };
+  }
+  useEffect(function(){
+    function onMove(e){
+      var d=scanCropDragRef.current;
+      if(!d||!scanCropImgSize)return;
+      var x=Math.max(0,Math.min(scanCropImgSize.w,(e.clientX-d.rect.left)*d.scaleX));
+      var y=Math.max(0,Math.min(scanCropImgSize.h,(e.clientY-d.rect.top)*d.scaleY));
+      setScanCropCorners(function(prev){
+        if(!prev)return prev;
+        var next=prev.slice(); next[d.idx]={x:x,y:y}; return next;
+      });
+    }
+    function onUp(){ scanCropDragRef.current=null; }
+    window.addEventListener("pointermove",onMove);
+    window.addEventListener("pointerup",onUp);
+    window.addEventListener("pointercancel",onUp);
+    return function(){
+      window.removeEventListener("pointermove",onMove);
+      window.removeEventListener("pointerup",onUp);
+      window.removeEventListener("pointercancel",onUp);
+    };
+  },[scanCropImgSize]);
+  function confirmScanCrop(){
+    var img=scanCropImgRef.current;
+    if(!img||!scanCropCorners)return;
+    setScanCropBusy(true);
+    cvWarpCrop(img,scanCropCorners).catch(function(){
+      return plainBoundingCrop(img,scanCropCorners);
+    }).then(function(dataUrl){
+      var next=scanPages.concat([dataUrl]);
+      setScanCropOpen(false);setScanCropSrc(null);setScanCropCorners(null);
+      setScanCropImgSize(null);setScanCropBusy(false);
+      setScanPages(next);
+      if(scanMode==="single")finishScanWithPages(next);
+    }).catch(function(e){
+      setScanCropBusy(false);
+      showToast("Zuschneiden fehlgeschlagen.");
+      dbg("❌ Scan-Zuschnitt-Fehler:",e.message);
+    });
+  }
+  function retakeScanPhoto(){
+    setScanCropOpen(false);setScanCropSrc(null);setScanCropCorners(null);
+    setScanCropImgSize(null);setScanCropBusy(false);
+    triggerCameraCapture();
+  }
+  function cancelScanCrop(){
+    setScanCropOpen(false);setScanCropSrc(null);setScanCropCorners(null);
+    setScanCropImgSize(null);setScanCropBusy(false);
   }
   function docFileMeta(d){
     var kb=d.size?Math.round(d.size/1024):null;
@@ -6623,7 +6829,41 @@ function App(p){
               h("div",{className:"lp-row-title"},"Mehrere Seiten"),
               h("div",{className:"lp-row-sub"},"Mehrere Aufnahmen werden zu einem PDF zusammengefügt."))),
           !scanBusy&&h("div",{className:"lp-modal-actions"},
-            h(DsButton,{variant:"danger",onClick:closeScanModal},"Abbrechen")))));
+            h(DsButton,{variant:"danger",onClick:closeScanModal},"Abbrechen"))),
+        scanCropOpen&&h("div",{style:{position:"fixed",inset:0,zIndex:1100,background:"#0a0714",
+            display:"flex",flexDirection:"column"},onClick:function(e){e.stopPropagation();}},
+          h("div",{style:{padding:"16px 20px",paddingTop:"max(16px, env(safe-area-inset-top))",
+              display:"flex",alignItems:"center",justifyContent:"space-between"}},
+            h("div",{className:"lp-modal-title grad",style:{margin:0}},"Zuschnitt anpassen"),
+            h("button",{onClick:cancelScanCrop,title:"Abbrechen",
+                style:{width:32,height:32,borderRadius:"50%",border:"1px solid rgba(255,255,255,.15)",
+                  background:"rgba(255,255,255,.06)",color:"#fff",fontSize:16,cursor:"pointer",lineHeight:1}},"×")),
+          scanCropBusy&&!scanCropImgSize&&h("div",{style:{textAlign:"center",padding:"12px 0",
+              color:"rgba(255,255,255,.5)",fontSize:12}},"Erkenne Dokument…"),
+          h("div",{style:{flex:1,position:"relative",display:"flex",alignItems:"center",
+              justifyContent:"center",overflow:"hidden",padding:16,minHeight:0}},
+            scanCropSrc&&h("div",{style:{position:"relative",maxWidth:"100%",maxHeight:"100%",lineHeight:0}},
+              h("img",{ref:scanCropImgRef,src:scanCropSrc,onLoad:onScanCropImageLoad,draggable:false,
+                style:{display:"block",maxWidth:"100%",maxHeight:"calc(100dvh - 220px)",userSelect:"none"}}),
+              scanCropCorners&&scanCropImgSize&&h("svg",{
+                  style:{position:"absolute",top:0,left:0,width:"100%",height:"100%",pointerEvents:"none"},
+                  viewBox:"0 0 "+scanCropImgSize.w+" "+scanCropImgSize.h,preserveAspectRatio:"none"},
+                h("polygon",{points:scanCropCorners.map(function(c){return c.x+","+c.y;}).join(" "),
+                  fill:"rgba(124,58,237,0.18)",stroke:"#7C3AED",
+                  strokeWidth:Math.max(2,scanCropImgSize.w*0.004),vectorEffect:"non-scaling-stroke"})),
+              scanCropCorners&&scanCropImgSize&&scanCropCorners.map(function(c,idx){
+                return h("div",{key:idx,onPointerDown:startScanCornerDrag(idx),
+                  style:{position:"absolute",
+                    left:(c.x/scanCropImgSize.w*100)+"%",top:(c.y/scanCropImgSize.h*100)+"%",
+                    width:28,height:28,marginLeft:-14,marginTop:-14,borderRadius:"50%",
+                    background:"#7C3AED",border:"3px solid #fff",
+                    boxShadow:"0 0 12px rgba(124,58,237,.8)",cursor:"grab",touchAction:"none"}});
+              }))),
+          h("div",{style:{padding:"16px 20px",paddingBottom:"max(16px, env(safe-area-inset-bottom))",
+              display:"flex",gap:10}},
+            h(DsButton,{variant:"ghost",style:{flex:1},disabled:scanCropBusy,onClick:retakeScanPhoto},"Neu aufnehmen"),
+            h(DsButton,{variant:"primary",style:{flex:2},disabled:scanCropBusy||!scanCropCorners,onClick:confirmScanCrop},
+              h("span",{className:"lp-btn-glow-label"},scanCropBusy?"Wird verarbeitet…":"Zuschnitt übernehmen"))))));
   }
   function renderExplorer(){
     var q=xpQuery.trim().toLowerCase();
