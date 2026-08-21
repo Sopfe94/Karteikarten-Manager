@@ -1243,7 +1243,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.69";
+var KKM_VERSION="1.4.70";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1418,8 +1418,18 @@ function withCvFallback(promise,ms,fallbackValue){
                  function(){ if(!done){done=true;clearTimeout(t);resolve(fallbackValue);} });
   });
 }
-var CV_WORKER_SRC=[
-"importScripts('https://docs.opencv.org/4.9.0/opencv.js');",
+/* opencv.js wird selbst gehostet (nicht mehr von docs.opencv.org
+   geladen): auf Sophies Handy schlug das Laden von dort zuverlaessig
+   innerhalb von 2-3 Sekunden fehl (zu schnell fuer ein echtes
+   Netzwerk-Timeout - importScripts() in einem Blob-URL-Worker scheint
+   bei fremden Domains in Safari nicht zuverlaessig zu funktionieren).
+   Vom eigenen Origin geladen faellt dieses Problem komplett weg, und
+   die App haengt nicht mehr von der Erreichbarkeit eines fremden
+   Servers ab. __OPENCV_URL__ wird unten durch die tatsaechliche,
+   absolute URL ersetzt (wichtig: relative Pfade in Blob-Workern lassen
+   sich in manchen Browsern nicht zuverlaessig aufloesen). */
+var CV_WORKER_SRC_TEMPLATE=[
+"importScripts('__OPENCV_URL__');",
 "var cvReady=new Promise(function(resolve){",
 "  if(self.cv&&self.cv.Mat){resolve();return;}",
 "  self.cv=self.cv||{};",
@@ -1524,7 +1534,9 @@ var CV_WORKER_SRC=[
 ].join("\n");
 function getCvWorker(){
   if(_cvWorker)return _cvWorker;
-  var blob=new Blob([CV_WORKER_SRC],{type:'application/javascript'});
+  var opencvUrl=new URL('opencv.js',document.baseURI).href;
+  var src=CV_WORKER_SRC_TEMPLATE.replace('__OPENCV_URL__',opencvUrl);
+  var blob=new Blob([src],{type:'application/javascript'});
   _cvWorker=new Worker(URL.createObjectURL(blob));
   return _cvWorker;
 }
