@@ -1243,7 +1243,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.70";
+var KKM_VERSION="1.4.71";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1467,18 +1467,29 @@ var CV_WORKER_SRC_TEMPLATE=[
 "      }",
 "      candidates.sort(function(a,b){return b.area-a.area;});",
 "      candidates=candidates.slice(0,25);",
+"      /* Ein einzelner fester Vereinfachungs-Toleranzwert reicht nicht: */",
+"      /* echte Fotos (Falten, Schatten, Papierkante) brauchen oft eine */",
+"      /* groessere Toleranz als sehr saubere Kanten, sonst bleiben zu */",
+"      /* viele Ecken uebrig. Deshalb steigende Toleranz probieren, bis */",
+"      /* sich die Kontur zu einer sauberen 4-Punkte-Form vereinfacht. */",
+"      var epsFactors=[0.02,0.03,0.04,0.05,0.06,0.07,0.08];",
 "      for(var k=0;k<candidates.length;k++){",
 "        if(candidates[k].area<minArea)break;",
 "        var cnt2=contours.get(candidates[k].idx);",
 "        var peri=cv.arcLength(cnt2,true);",
-"        var approx=new cv.Mat();",
-"        cv.approxPolyDP(cnt2,approx,0.02*peri,true);",
-"        if(approx.rows===4&&cv.isContourConvex(approx)){",
-"          var area=cv.contourArea(approx);",
+"        var found=null;",
+"        for(var e=0;e<epsFactors.length;e++){",
+"          var approx=new cv.Mat();",
+"          cv.approxPolyDP(cnt2,approx,epsFactors[e]*peri,true);",
+"          if(approx.rows===4&&cv.isContourConvex(approx)){found=approx;break;}",
+"          approx.delete();",
+"        }",
+"        if(found){",
+"          var area=cv.contourArea(found);",
 "          if(area>bestArea&&area>minArea){",
-"            bestArea=area;if(best)best.delete();best=approx;",
-"          }else{approx.delete();}",
-"        }else{approx.delete();}",
+"            bestArea=area;if(best)best.delete();best=found;",
+"          }else{found.delete();}",
+"        }",
 "        cnt2.delete();",
 "      }",
 "    }",
