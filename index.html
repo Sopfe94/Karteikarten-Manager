@@ -1243,7 +1243,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.72";
+var KKM_VERSION="1.5.0";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1429,12 +1429,62 @@ function withCvFallback(promise,ms,fallbackValue){
    absolute URL ersetzt (wichtig: relative Pfade in Blob-Workern lassen
    sich in manchen Browsern nicht zuverlaessig aufloesen). */
 var CV_WORKER_SRC_TEMPLATE=[
-"importScripts('__OPENCV_URL__');",
-"var cvReady=new Promise(function(resolve){",
+"/* Beide Bibliotheken werden bewusst in try/catch geladen: schlaegt */",
+"/* eine von beiden fehl (z.B. blockiertes Netzwerk), soll das nicht */",
+"/* das komplette Worker-Skript abbrechen (Worker-Skripte brechen bei */",
+"/* einem unabgefangenen Fehler in der obersten Ausfuehrungsebene ab, */",
+"/* BEVOR onmessage ueberhaupt registriert wird) - sonst waere auch */",
+"/* die jeweils andere, unabhaengige Erkennung mit betroffen. */",
+"var cvLoadFailed=false;",
+"try{ importScripts('__OPENCV_URL__'); }catch(cvLoadErr){ cvLoadFailed=true; }",
+"var cvReady=cvLoadFailed?Promise.reject(new Error('opencv_load_failed')):new Promise(function(resolve){",
 "  if(self.cv&&self.cv.Mat){resolve();return;}",
 "  self.cv=self.cv||{};",
 "  self.cv['onRuntimeInitialized']=function(){resolve();};",
 "});",
+"cvReady.catch(function(){});",
+"var ortLoadFailed=false;",
+"try{",
+"  importScripts('__ORT_URL__');",
+"  ort.env.wasm.wasmPaths='__ORT_WASM_BASE__';",
+"  ort.env.wasm.numThreads=1;",
+"}catch(ortLoadErr){ ortLoadFailed=true; }",
+"/* Trainiertes Erkennungsmodell (DocAligner, lcnet050) statt reiner */",
+"/* Kantenerkennung - erkennt echte Dokumente auch bei unruhigem */",
+"/* Hintergrund/Reflexionen deutlich zuverlaessiger, weil es an */",
+"/* tausenden Dokumentfotos trainiert wurde statt nur nach Kontrast- */",
+"/* kanten zu suchen. Session wird erst beim ersten Scan erstellt */",
+"/* (laedt das ~5MB Modell nach), danach wiederverwendet. */",
+"var _onnxSession=null;",
+"function getOnnxSession(){",
+"  if(ortLoadFailed)return Promise.reject(new Error('ort_load_failed'));",
+"  if(!_onnxSession)_onnxSession=ort.InferenceSession.create('__ONNX_URL__',{executionProviders:['wasm']});",
+"  return _onnxSession;",
+"}",
+"function mlDetectCorners(imgData,origW,origH){",
+"  return getOnnxSession().then(function(session){",
+"    var w=256,h=256;",
+"    var chw=new Float32Array(3*w*h);",
+"    var px=imgData.data;",
+"    for(var i=0;i<w*h;i++){",
+"      chw[i]=px[i*4]/255;",
+"      chw[w*h+i]=px[i*4+1]/255;",
+"      chw[2*w*h+i]=px[i*4+2]/255;",
+"    }",
+"    var tensor=new ort.Tensor('float32',chw,[1,3,h,w]);",
+"    return session.run({img:tensor});",
+"  }).then(function(results){",
+"    var hasObj=results.has_obj.data[0];",
+"    var p=results.points.data;",
+"    var pts=[",
+"      {x:p[0]*origW,y:p[1]*origH},",
+"      {x:p[2]*origW,y:p[3]*origH},",
+"      {x:p[4]*origW,y:p[5]*origH},",
+"      {x:p[6]*origW,y:p[7]*origH}",
+"    ];",
+"    return {points:sortCorners(pts),hasObj:hasObj};",
+"  });",
+"}",
 "function sortCorners(pts){",
 "  var bySum=pts.slice().sort(function(a,b){return (a.x+a.y)-(b.x+b.y);});",
 "  var tl=bySum[0],br=bySum[3];",
@@ -1546,6 +1596,17 @@ var CV_WORKER_SRC_TEMPLATE=[
 "}",
 "onmessage=function(e){",
 "  var msg=e.data;",
+"  /* mldetect haengt bewusst NICHT an cvReady - braucht nur ort (schon */",
+"  /* synchron per importScripts geladen), damit ein evtl. Problem mit */",
+"  /* OpenCV.js die ML-Erkennung nicht mit ausbremst. */",
+"  if(msg.type==='mldetect'){",
+"    mlDetectCorners(msg.imageData,msg.origW,msg.origH).then(function(res){",
+"      postMessage({id:msg.id,type:'mldetect',points:res.points,hasObj:res.hasObj});",
+"    },function(err){",
+"      postMessage({id:msg.id,type:'mldetect',error:(err&&err.message)||String(err)});",
+"    });",
+"    return;",
+"  }",
 "  cvReady.then(function(){",
 "    try{",
 "      if(msg.type==='detect'){",
@@ -1566,7 +1627,14 @@ var CV_WORKER_SRC_TEMPLATE=[
 function getCvWorker(){
   if(_cvWorker)return _cvWorker;
   var opencvUrl=new URL('opencv.js',document.baseURI).href;
-  var src=CV_WORKER_SRC_TEMPLATE.replace('__OPENCV_URL__',opencvUrl);
+  var ortUrl=new URL('ort.wasm.min.js',document.baseURI).href;
+  var ortWasmBase=new URL('.',document.baseURI).href;
+  var onnxUrl=new URL('docaligner.onnx',document.baseURI).href;
+  var src=CV_WORKER_SRC_TEMPLATE
+    .replace('__OPENCV_URL__',opencvUrl)
+    .replace('__ORT_URL__',ortUrl)
+    .replace('__ORT_WASM_BASE__',ortWasmBase)
+    .replace('__ONNX_URL__',onnxUrl);
   var blob=new Blob([src],{type:'application/javascript'});
   _cvWorker=new Worker(URL.createObjectURL(blob));
   return _cvWorker;
@@ -1629,11 +1697,31 @@ function downscaledImageData(imgEl,maxSide){
   ctx.drawImage(imgEl,0,0,w,h);
   return {imageData:ctx.getImageData(0,0,w,h),scale:scale};
 }
+/* Fuers ML-Modell wird direkt (ohne Seitenverhaeltnis beizubehalten)
+   auf 256x256 skaliert - genau das erwartet das Modell als Eingabe. */
+function squareImageData(imgEl,size){
+  var canvas=document.createElement('canvas');
+  canvas.width=size;canvas.height=size;
+  canvas.getContext('2d').drawImage(imgEl,0,0,size,size);
+  return canvas.getContext('2d').getImageData(0,0,size,size);
+}
+/* Erst das trainierte Modell probieren (deutlich zuverlaessiger bei
+   echten, unruhigen Fotos) - nur wenn das nichts Brauchbares liefert
+   (zu geringe Sicherheit oder Fehler), auf die klassische Kanten-
+   erkennung zurueckfallen. Beides schlaegt fehl -> manueller Fallback
+   (volles Foto) wie gehabt beim Aufrufer. */
 function cvDetectDocumentCorners(imgEl){
-  var d=downscaledImageData(imgEl,700);
-  return cvWorkerCall('detect',{imageData:d.imageData}).then(function(res){
-    if(!res.points)return null;
-    return res.points.map(function(p){return {x:p.x/d.scale,y:p.y/d.scale};});
+  var w=imgEl.naturalWidth,h=imgEl.naturalHeight;
+  var squareData=squareImageData(imgEl,256);
+  return cvWorkerCall('mldetect',{imageData:squareData,origW:w,origH:h}).then(function(res){
+    if(res.hasObj>0.05)return res.points;
+    throw new Error('ml_low_confidence');
+  }).catch(function(){
+    var d=downscaledImageData(imgEl,700);
+    return cvWorkerCall('detect',{imageData:d.imageData}).then(function(res){
+      if(!res.points)return null;
+      return res.points.map(function(p){return {x:p.x/d.scale,y:p.y/d.scale};});
+    });
   });
 }
 function cvWarpCrop(imgEl,corners){
