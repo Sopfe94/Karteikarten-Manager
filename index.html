@@ -1243,7 +1243,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.5.2";
+var KKM_VERSION="1.5.3";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1741,11 +1741,16 @@ function applyDocEnhance(srcCanvas){
   return out;
 }
 function cvWarpCrop(imgEl,corners){
-  /* Hoehere Arbeitsaufloesung als bei der Erkennung (die braucht nur
-     grobe Kanten) - der eigentliche Zuschnitt/Perspektivausgleich ist
-     eine einzelne Matrix-Operation und dadurch auch bei hoeherer
-     Aufloesung schnell, im Gegensatz zur Konturenerkennung frueher. */
-  var d=downscaledImageData(imgEl,3200);
+  /* Praktisch keine Deckelung mehr (6000 statt vorher 3200): das Limit
+     bezog sich auf das GESAMTE Foto, nicht auf den Ausschnitt selbst -
+     da das Blatt nie den kompletten Bildrahmen ausfuellt, kam am Ende
+     spuerbar weniger als 3200px fuer den eigentlichen Zuschnitt heraus
+     (bei einem echten Testfoto nur ~2459px, ca. 210 statt der fuer
+     Druckqualitaet ueblichen 300 DPI - das war der Grund fuer die
+     bemaengelte Unschaerfe). Der eigentliche Zuschnitt/Perspektiv-
+     ausgleich ist eine einzelne schnelle Matrix-Operation, auch bei
+     voller Handyfoto-Aufloesung kein Problem. */
+  var d=downscaledImageData(imgEl,6000);
   var scaled=corners.map(function(c){return {x:c.x*d.scale,y:c.y*d.scale};});
   return cvWorkerCall('warp',{imageData:d.imageData,corners:scaled}).then(function(res){
     var raw=document.createElement('canvas');
