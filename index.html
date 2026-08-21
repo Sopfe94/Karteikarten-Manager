@@ -1239,7 +1239,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.62";
+var KKM_VERSION="1.4.63";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3665,7 +3665,7 @@ function LoginScreen(p){
             h('path',{fill:'#34A853',d:'M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z'})),
           h('span',{className:"lp-btn-glow-label"},'Mit Google anmelden')),
         h('button',{className:"lp-btn-dark",onClick:handleGuest},'Als Gast fortfahren')),
-      p.onGoogleLogin&&h('div',{style:{fontSize:12,color:'rgba(255,255,255,.4)',textAlign:'center',
+      p.onGoogleLogin&&h('div',{style:{fontSize:12,color:'#fff',textAlign:'center',
           lineHeight:1.5,padding:'0 8px',marginTop:4}},
         'Google fragt beim Anmelden zusätzlich nach Zugriff auf dein Google Drive — den brauchst du nur für die Unterlagen-Funktion (PDFs scannen & verwalten).')),
     showHelp&&h('div',{onClick:function(){setShowHelp(false);},style:{position:'fixed',inset:0,zIndex:10000,background:'rgba(0,0,0,.7)',display:'flex',alignItems:'flex-end',justifyContent:'center',padding:'0 0 24px'}},
