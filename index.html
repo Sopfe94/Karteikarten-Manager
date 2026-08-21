@@ -1243,7 +1243,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.67";
+var KKM_VERSION="1.4.68";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1390,19 +1390,27 @@ function buildPdfBlobFromImages(dataUrls){
 }
 
 /* ---- Dokumentenerkennung beim Scannen (OpenCV.js) ----
-   Wird erst geladen, wenn tatsaechlich gescannt wird (nicht beim
-   App-Start) - opencv.js ist mit ~8MB der mit Abstand groesste Teil
-   der App und die meisten Nutzer scannen nie. Schlaegt das Laden fehl
-   (z.B. offline), faellt confirmScanCrop() automatisch auf einen
-   einfachen rechteckigen Zuschnitt ohne Perspektivkorrektur zurueck -
-   die Zuschneide-Funktion selbst bleibt also immer nutzbar. */
-var _cvLoadPromise=null;
-/* Absicherung falls das Laden/Erkennen aus unerwarteten Gruenden
-   haengen bleibt statt sauber abzulehnen (z.B. ein Promise das nie
-   aufgeloest wird) - garantiert, dass der Zuschnitt-Bildschirm
-   spaetestens nach `ms` mit dem Fallback weitermacht statt fuer immer
-   auf "Erkenne Dokument..." stehen zu bleiben. */
-function withTimeout(promise,ms,fallbackValue){
+   Laeuft komplett in einem Web Worker, nicht im Hauptthread. Grund:
+   drei Anlaeufe mit Downscaling + RETR_EXTERNAL + Vorauswahl haben das
+   Einfrieren bei detailreichen Dokumenten nicht zuverlaessig behoben -
+   das eigentliche Problem ist, dass JEDE synchrone Berechnung im
+   Hauptthread (egal ob OpenCV.js selbst kompiliert/initialisiert oder
+   Canny/findContours laeuft) UI-Events komplett blockiert, und kein
+   Timeout eine bereits laufende synchrone Berechnung unterbrechen kann.
+   Im Worker kann die Erkennung beliebig lange brauchen, ohne dass ×,
+   "Neu aufnehmen" oder sonst irgendwas in der App jemals haengt - im
+   schlimmsten Fall greift einfach der withTimeout-Fallback auf manuelle
+   Eckpunkte, waehrend die Bedienung durchgehend reagiert. */
+var _cvWorker=null, _cvWorkerSeq=0;
+/* Eigener Name (nicht "withTimeout"!): es gibt bereits eine gleich-
+   benannte Funktion weiter unten fuer die Supabase-Anfragen, die bei
+   Zeitueberschreitung ABLEHNT statt mit einem Fallback aufzuloesen.
+   Zwei "function withTimeout" im selben Scope ueberschreiben sich
+   gegenseitig (die spaeter im Code stehende gewinnt) - dadurch lief
+   dieser Fallback bisher nie wie gedacht, sondern heimlich die falsche,
+   ablehnende Funktion. Das war der eigentliche Grund, warum der
+   Zuschnitt-Bildschirm trotz aller vorherigen Fixes haengen blieb. */
+function withCvFallback(promise,ms,fallbackValue){
   return new Promise(function(resolve){
     var done=false;
     var t=setTimeout(function(){ if(!done){done=true;resolve(fallbackValue);} },ms);
@@ -1410,144 +1418,166 @@ function withTimeout(promise,ms,fallbackValue){
                  function(){ if(!done){done=true;clearTimeout(t);resolve(fallbackValue);} });
   });
 }
-function loadOpenCv(){
-  if(window.cv&&window.cv.Mat) return Promise.resolve(window.cv);
-  if(_cvLoadPromise) return _cvLoadPromise;
-  _cvLoadPromise=new Promise(function(resolve,reject){
-    var s=document.createElement('script');
-    s.src='https://docs.opencv.org/4.9.0/opencv.js';
-    s.async=true;
-    var timeout=setTimeout(function(){reject(new Error('opencv_timeout'));},25000);
-    s.onload=function(){
-      if(!window.cv){reject(new Error('opencv_unavailable'));return;}
-      if(window.cv.Mat){clearTimeout(timeout);resolve(window.cv);return;}
-      window.cv['onRuntimeInitialized']=function(){clearTimeout(timeout);resolve(window.cv);};
-    };
-    s.onerror=function(){clearTimeout(timeout);reject(new Error('opencv_load_failed'));};
-    document.head.appendChild(s);
+var CV_WORKER_SRC=[
+"importScripts('https://docs.opencv.org/4.9.0/opencv.js');",
+"var cvReady=new Promise(function(resolve){",
+"  if(self.cv&&self.cv.Mat){resolve();return;}",
+"  self.cv=self.cv||{};",
+"  self.cv['onRuntimeInitialized']=function(){resolve();};",
+"});",
+"function sortCorners(pts){",
+"  var bySum=pts.slice().sort(function(a,b){return (a.x+a.y)-(b.x+b.y);});",
+"  var tl=bySum[0],br=bySum[3];",
+"  var byDiff=pts.slice().sort(function(a,b){return (a.y-a.x)-(b.y-b.x);});",
+"  var tr=byDiff[0],bl=byDiff[3];",
+"  return [tl,tr,br,bl];",
+"}",
+"function detectCorners(imgData){",
+"  var src=cv.matFromImageData(imgData);",
+"  var gray=new cv.Mat(),blurred=new cv.Mat(),edges=new cv.Mat(),dilated=new cv.Mat();",
+"  var kernel=cv.Mat.ones(3,3,cv.CV_8U);",
+"  var contours=new cv.MatVector(),hierarchy=new cv.Mat();",
+"  var points=null;",
+"  try{",
+"    cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);",
+"    cv.GaussianBlur(gray,blurred,new cv.Size(5,5),0);",
+"    cv.Canny(blurred,edges,50,150);",
+"    cv.dilate(edges,dilated,kernel);",
+"    cv.findContours(dilated,contours,hierarchy,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE);",
+"    var n=contours.size();",
+"    var minArea=0.15*src.rows*src.cols;",
+"    var best=null,bestArea=0;",
+"    if(n>0&&n<=20000){",
+"      var candidates=[];",
+"      for(var i=0;i<n;i++){",
+"        var cnt=contours.get(i);",
+"        var rect=cv.boundingRect(cnt);",
+"        candidates.push({idx:i,area:rect.width*rect.height});",
+"        cnt.delete();",
+"      }",
+"      candidates.sort(function(a,b){return b.area-a.area;});",
+"      candidates=candidates.slice(0,25);",
+"      for(var k=0;k<candidates.length;k++){",
+"        if(candidates[k].area<minArea)break;",
+"        var cnt2=contours.get(candidates[k].idx);",
+"        var peri=cv.arcLength(cnt2,true);",
+"        var approx=new cv.Mat();",
+"        cv.approxPolyDP(cnt2,approx,0.02*peri,true);",
+"        if(approx.rows===4&&cv.isContourConvex(approx)){",
+"          var area=cv.contourArea(approx);",
+"          if(area>bestArea&&area>minArea){",
+"            bestArea=area;if(best)best.delete();best=approx;",
+"          }else{approx.delete();}",
+"        }else{approx.delete();}",
+"        cnt2.delete();",
+"      }",
+"    }",
+"    if(best){",
+"      points=[];",
+"      for(var j=0;j<4;j++)points.push({x:best.data32S[j*2],y:best.data32S[j*2+1]});",
+"      best.delete();",
+"    }",
+"  } finally {",
+"    src.delete();gray.delete();blurred.delete();edges.delete();dilated.delete();",
+"    kernel.delete();contours.delete();hierarchy.delete();",
+"  }",
+"  return points?sortCorners(points):null;",
+"}",
+"function warpCrop(imgData,corners){",
+"  var src=cv.matFromImageData(imgData);",
+"  var tl=corners[0],tr=corners[1],br=corners[2],bl=corners[3];",
+"  var widthA=Math.hypot(br.x-bl.x,br.y-bl.y),widthB=Math.hypot(tr.x-tl.x,tr.y-tl.y);",
+"  var maxWidth=Math.max(1,Math.round(Math.max(widthA,widthB)));",
+"  var heightA=Math.hypot(tr.x-br.x,tr.y-br.y),heightB=Math.hypot(tl.x-bl.x,tl.y-bl.y);",
+"  var maxHeight=Math.max(1,Math.round(Math.max(heightA,heightB)));",
+"  var srcTri=cv.matFromArray(4,1,cv.CV_32FC2,[tl.x,tl.y,tr.x,tr.y,br.x,br.y,bl.x,bl.y]);",
+"  var dstTri=cv.matFromArray(4,1,cv.CV_32FC2,[0,0,maxWidth,0,maxWidth,maxHeight,0,maxHeight]);",
+"  var M=cv.getPerspectiveTransform(srcTri,dstTri);",
+"  var dst=new cv.Mat();",
+"  var out;",
+"  try{",
+"    cv.warpPerspective(src,dst,M,new cv.Size(maxWidth,maxHeight),cv.INTER_LINEAR,cv.BORDER_CONSTANT,new cv.Scalar());",
+"    out={data:new Uint8ClampedArray(dst.data),width:dst.cols,height:dst.rows};",
+"  } finally {",
+"    src.delete();dst.delete();M.delete();srcTri.delete();dstTri.delete();",
+"  }",
+"  return out;",
+"}",
+"onmessage=function(e){",
+"  var msg=e.data;",
+"  cvReady.then(function(){",
+"    try{",
+"      if(msg.type==='detect'){",
+"        var pts=detectCorners(msg.imageData);",
+"        postMessage({id:msg.id,type:'detect',points:pts});",
+"      } else if(msg.type==='warp'){",
+"        var res=warpCrop(msg.imageData,msg.corners);",
+"        postMessage({id:msg.id,type:'warp',data:res.data,width:res.width,height:res.height},[res.data.buffer]);",
+"      }",
+"    }catch(err){",
+"      postMessage({id:msg.id,type:msg.type,error:(err&&err.message)||String(err)});",
+"    }",
+"  },function(err){",
+"    postMessage({id:msg.id,type:msg.type,error:(err&&err.message)||String(err)});",
+"  });",
+"};"
+].join("\n");
+function getCvWorker(){
+  if(_cvWorker)return _cvWorker;
+  var blob=new Blob([CV_WORKER_SRC],{type:'application/javascript'});
+  _cvWorker=new Worker(URL.createObjectURL(blob));
+  return _cvWorker;
+}
+function cvWorkerCall(type,payload,transferList){
+  return new Promise(function(resolve,reject){
+    var w=getCvWorker();
+    var id=++_cvWorkerSeq;
+    function onMsg(e){
+      if(!e.data||e.data.id!==id)return;
+      w.removeEventListener('message',onMsg);
+      w.removeEventListener('error',onErr);
+      if(e.data.error){reject(new Error(e.data.error));}else{resolve(e.data);}
+    }
+    function onErr(e){
+      w.removeEventListener('message',onMsg);
+      w.removeEventListener('error',onErr);
+      reject(new Error((e&&e.message)||'cv_worker_error'));
+    }
+    w.addEventListener('message',onMsg);
+    w.addEventListener('error',onErr);
+    var msg={id:id,type:type};
+    for(var k in payload) msg[k]=payload[k];
+    w.postMessage(msg,transferList||[]);
   });
-  return _cvLoadPromise;
 }
-function cvSortCorners(pts){
-  var bySum=pts.slice().sort(function(a,b){return (a.x+a.y)-(b.x+b.y);});
-  var tl=bySum[0], br=bySum[3];
-  var byDiff=pts.slice().sort(function(a,b){return (a.y-a.x)-(b.y-b.x);});
-  var tr=byDiff[0], bl=byDiff[3];
-  return [tl,tr,br,bl];
-}
-/* Klassischer Scanner-Algorithmus: Kanten finden, groesste
-   4-eckige Kontur suchen - dieselbe Grundtechnik wie in CamScanner/
-   Adobe Scan & Co. Liefert null wenn nichts Passendes gefunden wird. */
 /* Skaliert ein <img> auf ein Canvas mit begrenzter Kantenlaenge und
-   liefert das Canvas + den Skalierungsfaktor zurueck. Echte Handyfotos
-   haben oft 8-12 Megapixel - Canny/findContours darauf ungebremst
-   laufen zu lassen blockiert den Hauptthread mehrere Sekunden (fuehlt
-   sich wie ein Aufhaengen der App an). Arbeiten auf einer kleineren
-   Kopie macht die Erkennung sekundenschnell, ohne dass die spaeteren
-   Ergebnis-Koordinaten an Genauigkeit verlieren (werden hochgerechnet). */
-function downscaledCanvas(imgEl,maxSide){
+   liefert die Pixeldaten + den Skalierungsfaktor zurueck. Das
+   Zeichnen/Auslesen passiert im Hauptthread (Millisekunden, unkritisch)
+   - nur die eigentliche OpenCV-Berechnung laeuft im Worker. */
+function downscaledImageData(imgEl,maxSide){
   var scale=Math.min(1,maxSide/Math.max(imgEl.naturalWidth,imgEl.naturalHeight));
+  var w=Math.max(1,Math.round(imgEl.naturalWidth*scale)), h=Math.max(1,Math.round(imgEl.naturalHeight*scale));
   var canvas=document.createElement('canvas');
-  canvas.width=Math.max(1,Math.round(imgEl.naturalWidth*scale));
-  canvas.height=Math.max(1,Math.round(imgEl.naturalHeight*scale));
-  canvas.getContext('2d').drawImage(imgEl,0,0,canvas.width,canvas.height);
-  return {canvas:canvas,scale:scale};
+  canvas.width=w;canvas.height=h;
+  var ctx=canvas.getContext('2d');
+  ctx.drawImage(imgEl,0,0,w,h);
+  return {imageData:ctx.getImageData(0,0,w,h),scale:scale};
 }
 function cvDetectDocumentCorners(imgEl){
-  return loadOpenCv().then(function(cv){
-    /* Kleiner arbeiten reicht fuers Ecken-Finden voellig und haelt die
-       Konturenzahl von vornherein niedriger. */
-    var ds=downscaledCanvas(imgEl,700), scale=ds.scale;
-    var src=cv.imread(ds.canvas);
-    var gray=new cv.Mat(),blurred=new cv.Mat(),edges=new cv.Mat(),dilated=new cv.Mat();
-    var kernel=cv.Mat.ones(3,3,cv.CV_8U);
-    var contours=new cv.MatVector(),hierarchy=new cv.Mat();
-    var points=null;
-    try{
-      cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);
-      cv.GaussianBlur(gray,blurred,new cv.Size(5,5),0);
-      cv.Canny(blurred,edges,50,150);
-      cv.dilate(edges,dilated,kernel);
-      cv.findContours(dilated,contours,hierarchy,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE);
-      /* RETR_EXTERNAL statt RETR_LIST: liefert nur die aeusseren
-         Konturen, nicht jede einzelne verschachtelte Kante darin. Bei
-         detailreichen Vorlagen (z.B. Tabellen/Formulare mit vielen
-         Gitterlinien) lieferte RETR_LIST vorher zehntausende
-         Mini-Konturen - jede einzeln mit approxPolyDP zu pruefen
-         blockierte den Browser dadurch teils minutenlang komplett
-         (kein Timeout kann eine laufende synchrone Berechnung
-         unterbrechen). Zusaetzlich: billige boundingRect-Vorauswahl
-         der 25 groessten Kandidaten, bevor die teureren arcLength/
-         approxPolyDP-Aufrufe ueberhaupt laufen, plus eine harte
-         Obergrenze als letzte Absicherung. */
-      var n=contours.size();
-      var minArea=0.15*src.rows*src.cols;
-      var best=null,bestArea=0;
-      if(n>0&&n<=4000){
-        var candidates=[];
-        for(var i=0;i<n;i++){
-          var cnt=contours.get(i);
-          var rect=cv.boundingRect(cnt);
-          candidates.push({idx:i,area:rect.width*rect.height});
-          cnt.delete();
-        }
-        candidates.sort(function(a,b){return b.area-a.area;});
-        candidates=candidates.slice(0,25);
-        for(var k=0;k<candidates.length;k++){
-          if(candidates[k].area<minArea) break;
-          var cnt2=contours.get(candidates[k].idx);
-          var peri=cv.arcLength(cnt2,true);
-          var approx=new cv.Mat();
-          cv.approxPolyDP(cnt2,approx,0.02*peri,true);
-          if(approx.rows===4&&cv.isContourConvex(approx)){
-            var area=cv.contourArea(approx);
-            if(area>bestArea&&area>minArea){
-              bestArea=area;
-              if(best)best.delete();
-              best=approx;
-            }else{ approx.delete(); }
-          }else{ approx.delete(); }
-          cnt2.delete();
-        }
-      }
-      if(best){
-        points=[];
-        for(var j=0;j<4;j++) points.push({x:best.data32S[j*2]/scale,y:best.data32S[j*2+1]/scale});
-        best.delete();
-      }
-    } finally {
-      src.delete();gray.delete();blurred.delete();edges.delete();dilated.delete();
-      kernel.delete();contours.delete();hierarchy.delete();
-    }
-    return points?cvSortCorners(points):null;
+  var d=downscaledImageData(imgEl,700);
+  return cvWorkerCall('detect',{imageData:d.imageData}).then(function(res){
+    if(!res.points)return null;
+    return res.points.map(function(p){return {x:p.x/d.scale,y:p.y/d.scale};});
   });
 }
 function cvWarpCrop(imgEl,corners){
-  return loadOpenCv().then(function(cv){
-    var ds=downscaledCanvas(imgEl,2000), scale=ds.scale;
-    var src=cv.imread(ds.canvas);
-    var tl={x:corners[0].x*scale,y:corners[0].y*scale};
-    var tr={x:corners[1].x*scale,y:corners[1].y*scale};
-    var br={x:corners[2].x*scale,y:corners[2].y*scale};
-    var bl={x:corners[3].x*scale,y:corners[3].y*scale};
-    var widthA=Math.hypot(br.x-bl.x,br.y-bl.y), widthB=Math.hypot(tr.x-tl.x,tr.y-tl.y);
-    var maxWidth=Math.max(widthA,widthB);
-    var heightA=Math.hypot(tr.x-br.x,tr.y-br.y), heightB=Math.hypot(tl.x-bl.x,tl.y-bl.y);
-    var maxHeight=Math.max(heightA,heightB);
-    var srcTri=cv.matFromArray(4,1,cv.CV_32FC2,[tl.x,tl.y,tr.x,tr.y,br.x,br.y,bl.x,bl.y]);
-    var dstTri=cv.matFromArray(4,1,cv.CV_32FC2,[0,0,maxWidth,0,maxWidth,maxHeight,0,maxHeight]);
-    var M=cv.getPerspectiveTransform(srcTri,dstTri);
-    var dst=new cv.Mat();
-    var dataUrl;
-    try{
-      cv.warpPerspective(src,dst,M,new cv.Size(maxWidth,maxHeight),cv.INTER_LINEAR,cv.BORDER_CONSTANT,new cv.Scalar());
-      var canvas=document.createElement('canvas');
-      cv.imshow(canvas,dst);
-      dataUrl=canvas.toDataURL('image/jpeg',0.92);
-    } finally {
-      src.delete();dst.delete();M.delete();srcTri.delete();dstTri.delete();
-    }
-    return dataUrl;
+  var d=downscaledImageData(imgEl,2000);
+  var scaled=corners.map(function(c){return {x:c.x*d.scale,y:c.y*d.scale};});
+  return cvWorkerCall('warp',{imageData:d.imageData,corners:scaled}).then(function(res){
+    var canvas=document.createElement('canvas');
+    canvas.width=res.width;canvas.height=res.height;
+    canvas.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(res.data),res.width,res.height),0,0);
+    return canvas.toDataURL('image/jpeg',0.92);
   });
 }
 /* Fallback ohne OpenCV (z.B. Laden fehlgeschlagen): einfacher
@@ -6707,7 +6737,12 @@ function App(p){
       {x:img.naturalWidth*0.95,y:img.naturalHeight*0.95},
       {x:img.naturalWidth*0.05,y:img.naturalHeight*0.95}
     ];
-    withTimeout(cvDetectDocumentCorners(img).catch(function(){return null;}),8000,null).then(function(pts){
+    /* Grosszuegiges Zeitlimit: der Worker muss beim allerersten Scan
+       erst noch opencv.js laden+initialisieren (auf langsamem Mobilfunk
+       kann das etwas dauern) - da das komplett im Worker laeuft, bleibt
+       die Bedienung waehrenddessen immer reagierbar, ein Timeout heisst
+       hier nur "manuelle Ecken statt Auto-Erkennung", kein Einfrieren. */
+    withCvFallback(cvDetectDocumentCorners(img).catch(function(){return null;}),15000,null).then(function(pts){
       setScanCropCorners(pts||fallback);
       setScanCropBusy(false);
     });
@@ -6752,8 +6787,8 @@ function App(p){
     var img=scanCropImgRef.current;
     if(!img||!scanCropCorners)return;
     setScanCropBusy(true);
-    cvWarpCrop(img,scanCropCorners).catch(function(){
-      return plainBoundingCrop(img,scanCropCorners);
+    withCvFallback(cvWarpCrop(img,scanCropCorners).catch(function(){return null;}),15000,null).then(function(dataUrl){
+      return dataUrl||plainBoundingCrop(img,scanCropCorners);
     }).then(function(dataUrl){
       var next=scanPages.concat([dataUrl]);
       setScanCropOpen(false);setScanCropSrc(null);setScanCropCorners(null);
