@@ -1239,7 +1239,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.64";
+var KKM_VERSION="1.4.65";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1393,6 +1393,19 @@ function buildPdfBlobFromImages(dataUrls){
    einfachen rechteckigen Zuschnitt ohne Perspektivkorrektur zurueck -
    die Zuschneide-Funktion selbst bleibt also immer nutzbar. */
 var _cvLoadPromise=null;
+/* Absicherung falls das Laden/Erkennen aus unerwarteten Gruenden
+   haengen bleibt statt sauber abzulehnen (z.B. ein Promise das nie
+   aufgeloest wird) - garantiert, dass der Zuschnitt-Bildschirm
+   spaetestens nach `ms` mit dem Fallback weitermacht statt fuer immer
+   auf "Erkenne Dokument..." stehen zu bleiben. */
+function withTimeout(promise,ms,fallbackValue){
+  return new Promise(function(resolve){
+    var done=false;
+    var t=setTimeout(function(){ if(!done){done=true;resolve(fallbackValue);} },ms);
+    promise.then(function(v){ if(!done){done=true;clearTimeout(t);resolve(v);} },
+                 function(){ if(!done){done=true;clearTimeout(t);resolve(fallbackValue);} });
+  });
+}
 function loadOpenCv(){
   if(window.cv&&window.cv.Mat) return Promise.resolve(window.cv);
   if(_cvLoadPromise) return _cvLoadPromise;
@@ -1421,9 +1434,25 @@ function cvSortCorners(pts){
 /* Klassischer Scanner-Algorithmus: Kanten finden, groesste
    4-eckige Kontur suchen - dieselbe Grundtechnik wie in CamScanner/
    Adobe Scan & Co. Liefert null wenn nichts Passendes gefunden wird. */
+/* Skaliert ein <img> auf ein Canvas mit begrenzter Kantenlaenge und
+   liefert das Canvas + den Skalierungsfaktor zurueck. Echte Handyfotos
+   haben oft 8-12 Megapixel - Canny/findContours darauf ungebremst
+   laufen zu lassen blockiert den Hauptthread mehrere Sekunden (fuehlt
+   sich wie ein Aufhaengen der App an). Arbeiten auf einer kleineren
+   Kopie macht die Erkennung sekundenschnell, ohne dass die spaeteren
+   Ergebnis-Koordinaten an Genauigkeit verlieren (werden hochgerechnet). */
+function downscaledCanvas(imgEl,maxSide){
+  var scale=Math.min(1,maxSide/Math.max(imgEl.naturalWidth,imgEl.naturalHeight));
+  var canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(imgEl.naturalWidth*scale));
+  canvas.height=Math.max(1,Math.round(imgEl.naturalHeight*scale));
+  canvas.getContext('2d').drawImage(imgEl,0,0,canvas.width,canvas.height);
+  return {canvas:canvas,scale:scale};
+}
 function cvDetectDocumentCorners(imgEl){
   return loadOpenCv().then(function(cv){
-    var src=cv.imread(imgEl);
+    var ds=downscaledCanvas(imgEl,1000), scale=ds.scale;
+    var src=cv.imread(ds.canvas);
     var gray=new cv.Mat(),blurred=new cv.Mat(),edges=new cv.Mat(),dilated=new cv.Mat();
     var kernel=cv.Mat.ones(3,3,cv.CV_8U);
     var contours=new cv.MatVector(),hierarchy=new cv.Mat();
@@ -1452,7 +1481,7 @@ function cvDetectDocumentCorners(imgEl){
       }
       if(best){
         points=[];
-        for(var j=0;j<4;j++) points.push({x:best.data32S[j*2],y:best.data32S[j*2+1]});
+        for(var j=0;j<4;j++) points.push({x:best.data32S[j*2]/scale,y:best.data32S[j*2+1]/scale});
         best.delete();
       }
     } finally {
@@ -1464,8 +1493,12 @@ function cvDetectDocumentCorners(imgEl){
 }
 function cvWarpCrop(imgEl,corners){
   return loadOpenCv().then(function(cv){
-    var src=cv.imread(imgEl);
-    var tl=corners[0],tr=corners[1],br=corners[2],bl=corners[3];
+    var ds=downscaledCanvas(imgEl,2000), scale=ds.scale;
+    var src=cv.imread(ds.canvas);
+    var tl={x:corners[0].x*scale,y:corners[0].y*scale};
+    var tr={x:corners[1].x*scale,y:corners[1].y*scale};
+    var br={x:corners[2].x*scale,y:corners[2].y*scale};
+    var bl={x:corners[3].x*scale,y:corners[3].y*scale};
     var widthA=Math.hypot(br.x-bl.x,br.y-bl.y), widthB=Math.hypot(tr.x-tl.x,tr.y-tl.y);
     var maxWidth=Math.max(widthA,widthB);
     var heightA=Math.hypot(tr.x-br.x,tr.y-br.y), heightB=Math.hypot(tl.x-bl.x,tl.y-bl.y);
@@ -6643,11 +6676,8 @@ function App(p){
       {x:img.naturalWidth*0.95,y:img.naturalHeight*0.95},
       {x:img.naturalWidth*0.05,y:img.naturalHeight*0.95}
     ];
-    cvDetectDocumentCorners(img).then(function(pts){
+    withTimeout(cvDetectDocumentCorners(img).catch(function(){return null;}),8000,null).then(function(pts){
       setScanCropCorners(pts||fallback);
-      setScanCropBusy(false);
-    }).catch(function(){
-      setScanCropCorners(fallback);
       setScanCropBusy(false);
     });
   }
