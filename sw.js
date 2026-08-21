@@ -1,5 +1,5 @@
 // Service Worker v16 - CDN-Scripts (React, Supabase) offline cachen
-const CACHE = 'kkm-v202';
+const CACHE = 'kkm-v203';
 const BASE = self.location.hostname === 'www.gross-apps.de' ? '/KM' : '';
 const STATIC = [BASE+'/index.html', BASE+'/manifest.json', BASE+'/icon.svg', BASE+'/logo.svg'];
 const CDN = [
@@ -8,12 +8,13 @@ const CDN = [
 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
 ];
-/* opencv.js, ort.wasm.min.js, ort-wasm-simd-threaded.(wasm|mjs) und
-   docaligner.onnx liegen selbst gehostet (nicht von fremden Servern
-   geladen) - bewusst NICHT in STATIC (waere sofortiges Vorabladen bei
-   jeder Installation), sondern nur ueber den generischen Cache-First-
-   Handler ganz unten erreichbar: werden beim ersten Scan angefordert
-   und danach automatisch gecacht. */
+/* opencv.js, ort.wasm.min.js, ort-wasm-simd-threaded.(wasm|mjs),
+   docaligner.onnx sowie pdf.min.js/pdf.worker.min.js (PDF-Viewer)
+   liegen selbst gehostet (nicht von fremden Servern geladen) -
+   bewusst NICHT in STATIC (waere sofortiges Vorabladen bei jeder
+   Installation), sondern nur ueber den generischen Cache-First-
+   Handler ganz unten erreichbar: werden beim ersten Scan bzw. beim
+   ersten Oeffnen einer PDF angefordert und danach automatisch gecacht. */
 
 self.addEventListener('install', function(e){
 self.skipWaiting();

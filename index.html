@@ -1230,6 +1230,77 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
    diesen Wert negativ verschieben schliesst die Luecke (nur Mobile -
    Desktop hat keinen eigenen Header, an den angeschlossen werden muss). */
 @media(max-width:767px){.lp-tabbar{top:-24px}}
+
+/* ---- PDF-Viewer — 1:1 aus der Design-Vorlage (docViewerOpen),
+   inkl. eigenem Logo-Lockup "PDF Viewer". Mobil: Top-Leiste (Zurueck/
+   Speichern) + umbrechende Werkzeugleiste unten. Desktop: keine Top-
+   Leiste, dafuer 300px Sidebar rechts mit Text/Markieren/Zoom. Zoom
+   wird rein per CSS-Variable multipliziert, damit die responsive
+   Basisbreite (Mobile 300px / Desktop 600px) unveraendert aus den
+   normalen Media Queries kommt statt aus JS-Geraete-Erkennung. */
+.lp-docv-ov{position:fixed;inset:0;z-index:1300;background:#0C0818;display:flex;flex-direction:column}
+.lp-docv-header{height:56px;flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:12px;
+  padding:0 16px;padding-top:env(safe-area-inset-top);border-bottom:1px solid rgba(255,255,255,0.06);background:#0F0A1E}
+.lp-docv-badge{width:32px;height:32px;border-radius:10px;border:1px solid rgba(124,58,237,.55);background:transparent;
+  box-shadow:0 0 14px rgba(124,58,237,.45),0 0 6px rgba(6,182,212,.3);display:flex;align-items:center;
+  justify-content:center;flex-shrink:0}
+.lp-docv-badge span{font-size:13px;font-weight:700;letter-spacing:-0.02em;background:var(--grad-brand);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.lp-docv-wordmark{display:flex;align-items:baseline}
+.lp-docv-wordmark .pdf{display:flex;flex-direction:column;align-items:center;gap:6px}
+.lp-docv-wordmark .pdf span{font-size:22px;font-weight:600;letter-spacing:-0.03em;line-height:1;color:#fff}
+.lp-docv-wordmark .pdf i{height:1.5px;width:36px;background:var(--grad-brand);border-radius:2px;display:block}
+.lp-docv-wordmark .viewer{font-size:22px;font-weight:600;letter-spacing:-0.03em;line-height:1;
+  background:var(--grad-brand);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.lp-docv-topbar{flex-shrink:0;display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:10px;
+  padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.06)}
+@media(min-width:768px){.lp-docv-topbar{display:none}}
+.lp-docv-close{width:32px;height:32px;flex-shrink:0;border-radius:50%;border:1px solid rgba(124,58,237,0.55);
+  background:rgba(255,255,255,0.06);box-shadow:0 0 14px rgba(124,58,237,0.45),0 0 6px rgba(6,182,212,0.3);
+  font-size:15px;display:flex;align-items:center;justify-content:center;line-height:1;color:#fff;cursor:pointer;
+  transition:box-shadow 200ms ease,border-color 200ms ease}
+.lp-docv-close:hover{border-color:rgba(124,58,237,0.9);box-shadow:0 0 26px rgba(124,58,237,0.75),0 0 14px rgba(6,182,212,0.55)}
+.lp-docv-body{flex:1;display:flex;min-height:0}
+.lp-docv-pages{flex:1;overflow-y:auto;background:#0C0818;display:flex;flex-direction:column;
+  align-items:center;gap:28px;padding:32px 16px}
+.lp-docv-pagelabel{font-family:var(--font-mono);font-size:10px;letter-spacing:0.08em;color:var(--color-violet-ghost)}
+.lp-docv-page{position:relative;width:calc(300px * var(--docv-zoom,1));flex-shrink:0;background:#F8F7FA;
+  border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,0.35)}
+@media(min-width:768px){.lp-docv-page{width:calc(600px * var(--docv-zoom,1))}}
+.lp-docv-page.marking{cursor:crosshair;touch-action:none}
+.lp-docv-page img{width:100%;display:block;pointer-events:none;border-radius:8px}
+.lp-docv-highlight{position:absolute;opacity:0.45;border-radius:2px;cursor:pointer}
+.lp-docv-dragrect{position:absolute;opacity:0.45;border-radius:2px;pointer-events:none}
+.lp-docv-field{position:absolute;min-width:60px;max-width:70%;padding:6px 8px;background:transparent;
+  border:1px dashed transparent;border-radius:6px;cursor:move;touch-action:none}
+.lp-docv-field.active{border-color:rgba(124,58,237,0.6)}
+.lp-docv-field-inner{outline:none;min-width:50px;color:#1a1a2e}
+.lp-docv-field-btn{position:absolute;top:-9px;width:18px;height:18px;border-radius:50%;color:#fff;
+  font-size:10px;line-height:18px;text-align:center;cursor:pointer}
+.lp-docv-field-remove{right:-9px;background:#EF4444}
+.lp-docv-field-done{right:13px;background:#22C55E}
+.lp-docv-sidebar{display:none}
+@media(min-width:768px){
+  .lp-docv-sidebar{width:300px;flex-shrink:0;height:100%;background:#0F0A1E;
+    border-left:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;
+    padding:24px 20px;gap:20px;overflow-y:auto}
+}
+.lp-docv-seclbl{font-size:11px;color:var(--color-violet-ghost);font-family:var(--font-mono)}
+.lp-docv-glowbtn{border:1px solid rgba(124,58,237,0.55);cursor:pointer;border-radius:10px;background:transparent;
+  box-shadow:0 0 14px rgba(124,58,237,0.45),0 0 6px rgba(6,182,212,0.3);color:#fff;font-family:var(--font-sans);
+  transition:box-shadow 200ms ease,border-color 200ms ease}
+.lp-docv-glowbtn:hover{border-color:rgba(124,58,237,0.9);box-shadow:0 0 26px rgba(124,58,237,0.75),0 0 14px rgba(6,182,212,0.55)}
+.lp-docv-glowbtn.active{background:rgba(124,58,237,0.35)}
+.lp-docv-glowbtn.ghost{background:rgba(255,255,255,0.05)}
+.lp-docv-glowlabel{background:var(--grad-brand);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;filter:drop-shadow(0 0 6px rgba(124,58,237,0.6))}
+.lp-docv-swatch{width:22px;height:22px;border-radius:50%;cursor:pointer;padding:0;flex-shrink:0;border:none}
+.lp-docv-bottombar{flex-shrink:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;
+  gap:8px 14px;padding:8px 14px;background:#0F0A1E;border-top:1px solid rgba(255,255,255,0.08)}
+@media(min-width:768px){.lp-docv-bottombar{display:none}}
+.lp-docv-divider{width:1px;height:20px;background:rgba(255,255,255,0.1);flex-shrink:0}
+.lp-docv-loading{flex:1;display:flex;align-items:center;justify-content:center;gap:10px;
+  color:rgba(255,255,255,0.5);font-size:13px}
 </style>
 </head>
 <body><!-- KKM-v1.2.45-AKTUELL -->
@@ -1243,7 +1314,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.5.3";
+var KKM_VERSION="1.6.0";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1388,6 +1459,55 @@ function buildPdfBlobFromImages(dataUrls){
       doc.addImage(im.url,'JPEG',0,0,pageW,pageH);
     });
     return doc.output('blob');
+  });
+}
+
+/* ---- PDF-Viewer: pdf.js selbst gehostet (wie opencv.js/onnxruntime),
+   nur bei erstem Oeffnen eines Dokuments nachgeladen. ---- */
+var _pdfJsPromise=null;
+function loadPdfJs(){
+  if(_pdfJsPromise) return _pdfJsPromise;
+  _pdfJsPromise=new Promise(function(resolve,reject){
+    if(window.pdfjsLib){resolve(window.pdfjsLib);return;}
+    var s=document.createElement('script');
+    s.src=new URL('pdf.min.js',document.baseURI).href;
+    s.onload=function(){
+      try{
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc=new URL('pdf.worker.min.js',document.baseURI).href;
+        resolve(window.pdfjsLib);
+      }catch(e){reject(e);}
+    };
+    s.onerror=function(){_pdfJsPromise=null;reject(new Error('pdfjs konnte nicht geladen werden'));};
+    document.head.appendChild(s);
+  });
+  return _pdfJsPromise;
+}
+function renderPdfPages(arrayBuffer){
+  return loadPdfJs().then(function(pdfjsLib){
+    return pdfjsLib.getDocument({data:arrayBuffer}).promise;
+  }).then(function(pdf){
+    var pages=[];
+    var chain=Promise.resolve();
+    var _loop=function(i){
+      chain=chain.then(function(){
+        return pdf.getPage(i).then(function(page){
+          var baseVp=page.getViewport({scale:1});
+          var scale=Math.min(3,1600/Math.max(baseVp.width,baseVp.height));
+          var vp=page.getViewport({scale:scale});
+          var canvas=document.createElement('canvas');
+          canvas.width=Math.round(vp.width); canvas.height=Math.round(vp.height);
+          var ctx=canvas.getContext('2d');
+          return page.render({canvasContext:ctx,viewport:vp}).promise.then(function(){
+            pages.push({index:i-1,url:canvas.toDataURL('image/jpeg',0.85),w:vp.width,h:vp.height});
+          });
+        });
+      });
+    };
+    for(var i=1;i<=pdf.numPages;i++) _loop(i);
+    return chain.then(function(){
+      pages.sort(function(a,b){return a.index-b.index;});
+      return pages;
+    });
   });
 }
 
@@ -6277,6 +6397,23 @@ function App(p){
   var scanCropImgRef=useRef(null);
   var scanCropDragRef=useRef(null);
   var docFileInputRef=useRef(null);
+  /* PDF-Viewer: docViewerFileId===null heisst geschlossen. Markierungen/
+     Textfelder werden lokal je Drive-Datei-ID gespeichert (kkm-docv-<id>),
+     nicht in Drive selbst - die PDF-Datei dort bleibt unangetastet. */
+  var dvfid=useState(null); var docViewerFileId=dvfid[0]; var setDocViewerFileId=dvfid[1];
+  var dvfn=useState(""); var docViewerFileName=dvfn[0]; var setDocViewerFileName=dvfn[1];
+  var dvld=useState(false); var docViewerLoading=dvld[0]; var setDocViewerLoading=dvld[1];
+  var dverr=useState(null); var docViewerError=dverr[0]; var setDocViewerError=dverr[1];
+  var dvpg=useState([]); var docViewerPages=dvpg[0]; var setDocViewerPages=dvpg[1];
+  var dvzm=useState(1); var docViewerZoom=dvzm[0]; var setDocViewerZoom=dvzm[1];
+  var dvfs=useState(14); var docViewerFontSize=dvfs[0]; var setDocViewerFontSize=dvfs[1];
+  var dvmm=useState(false); var docViewerMarkMode=dvmm[0]; var setDocViewerMarkMode=dvmm[1];
+  var dvhc=useState('#FDE68A'); var docViewerHighlightColor=dvhc[0]; var setDocViewerHighlightColor=dvhc[1];
+  var dvhl=useState([]); var docViewerHighlights=dvhl[0]; var setDocViewerHighlights=dvhl[1];
+  var dvtf=useState([]); var docViewerTextFields=dvtf[0]; var setDocViewerTextFields=dvtf[1];
+  var dvaf=useState(null); var docViewerActiveFieldId=dvaf[0]; var setDocViewerActiveFieldId=dvaf[1];
+  var dvdr=useState(null); var docViewerDrag=dvdr[0]; var setDocViewerDrag=dvdr[1];
+  var dvfd=useState(null); var docViewerFieldDragId=dvfd[0]; var setDocViewerFieldDragId=dvfd[1];
   var ums=useState(false); var showUsernameModal=ums[0]; var setShowUsernameModal=ums[1];
   var sus=useState(loadSocialUsername()); var socialUsername=sus[0]; var setSocialUsername=sus[1];
   var lscvs=useState(true); var lsContentVis=lscvs[0]; var setLsContentVis=lscvs[1];
@@ -7016,6 +7153,239 @@ function App(p){
     setScanCropOpen(false);setScanCropSrc(null);setScanCropCorners(null);
     setScanCropImgSize(null);setScanCropBusy(false);
   }
+  /* ---- PDF-Viewer ---- */
+  var docViewerDragRef=useRef(null);
+  function docViewerAnnotKey(id){ return 'kkm-docv-'+id; }
+  function openDocViewer(file){
+    setDocViewerFileId(file.id);setDocViewerFileName(file.name);
+    setDocViewerLoading(true);setDocViewerError(null);setDocViewerPages([]);
+    setDocViewerMarkMode(false);setDocViewerActiveFieldId(null);setDocViewerDrag(null);
+    setDocViewerFieldDragId(null);setDocViewerHighlightColor('#FDE68A');
+    var saved=null;
+    try{ var raw=localStorage.getItem(docViewerAnnotKey(file.id)); if(raw)saved=JSON.parse(raw); }catch(e){}
+    setDocViewerHighlights((saved&&saved.highlights)||[]);
+    setDocViewerTextFields((saved&&saved.textFields)||[]);
+    setDocViewerFontSize((saved&&saved.fontSize)||14);
+    setDocViewerZoom((saved&&saved.zoom)||1);
+    driveFetch('https://www.googleapis.com/drive/v3/files/'+file.id+'?alt=media')
+      .then(function(r){ if(!r.ok)throw new Error('Download fehlgeschlagen'); return r.arrayBuffer(); })
+      .then(renderPdfPages)
+      .then(function(pages){ setDocViewerPages(pages);setDocViewerLoading(false); })
+      .catch(function(e){
+        setDocViewerLoading(false);
+        setDocViewerError('PDF konnte nicht geladen werden.');
+        dbg("❌ PDF-Viewer-Fehler:",e.message);
+      });
+  }
+  function closeDocViewer(){
+    setDocViewerFileId(null);setDocViewerPages([]);setDocViewerHighlights([]);
+    setDocViewerTextFields([]);setDocViewerDrag(null);setDocViewerFieldDragId(null);
+    setDocViewerActiveFieldId(null);setDocViewerError(null);docViewerDragRef.current=null;
+  }
+  function saveDocViewer(){
+    if(docViewerFileId){
+      try{
+        localStorage.setItem(docViewerAnnotKey(docViewerFileId),JSON.stringify({
+          highlights:docViewerHighlights,textFields:docViewerTextFields,
+          fontSize:docViewerFontSize,zoom:docViewerZoom
+        }));
+      }catch(e){}
+    }
+    showToast("Gespeichert");
+    closeDocViewer();
+  }
+  function addDocTextField(){
+    var id='tf'+Date.now();
+    var n=docViewerTextFields.filter(function(f){return f.page===0;}).length;
+    setDocViewerTextFields(function(prev){
+      return prev.concat([{id:id,page:0,x:10+n*4,y:8+n*4,text:''}]);
+    });
+    setDocViewerActiveFieldId(id);
+  }
+  function setDocTextFieldText(id,text){
+    setDocViewerTextFields(function(prev){return prev.map(function(f){
+      return f.id===id?Object.assign({},f,{text:text}):f;
+    });});
+  }
+  function removeDocTextField(id){
+    setDocViewerTextFields(function(prev){return prev.filter(function(f){return f.id!==id;});});
+    setDocViewerActiveFieldId(function(cur){return cur===id?null:cur;});
+  }
+  function removeDocHighlight(idx){
+    setDocViewerHighlights(function(prev){return prev.filter(function(_,i){return i!==idx;});});
+  }
+  function toggleDocMarkMode(){ setDocViewerMarkMode(function(v){return !v;}); }
+  function setDocHighlightColor(color){ return function(){ setDocViewerHighlightColor(color); }; }
+  function incDocFontSize(){ setDocViewerFontSize(function(v){return Math.min(28,v+2);}); }
+  function decDocFontSize(){ setDocViewerFontSize(function(v){return Math.max(10,v-2);}); }
+  function zoomInDoc(){ setDocViewerZoom(function(v){return Math.min(2,Math.round((v+0.15)*100)/100);}); }
+  function zoomOutDoc(){ setDocViewerZoom(function(v){return Math.max(0.6,Math.round((v-0.15)*100)/100);}); }
+  function startDocFieldDrag(id,pageEl){
+    return function(e){
+      e.stopPropagation();
+      docViewerDragRef.current={type:'field',id:id,rect:pageEl.getBoundingClientRect()};
+      setDocViewerActiveFieldId(id);
+    };
+  }
+  function onDocPageDown(pageIndex){
+    return function(e){
+      if(!docViewerMarkMode)return;
+      var rect=e.currentTarget.getBoundingClientRect();
+      var x=Math.max(0,Math.min(100,(e.clientX-rect.left)/rect.width*100));
+      var y=Math.max(0,Math.min(100,(e.clientY-rect.top)/rect.height*100));
+      docViewerDragRef.current={type:'highlight',page:pageIndex,rect:rect,x:x,y:y};
+      setDocViewerDrag({page:pageIndex,x:x,y:y,w:0,h:0});
+    };
+  }
+  useEffect(function(){
+    function onMove(e){
+      var d=docViewerDragRef.current;
+      if(!d)return;
+      var x=Math.max(0,Math.min(100,(e.clientX-d.rect.left)/d.rect.width*100));
+      var y=Math.max(0,Math.min(100,(e.clientY-d.rect.top)/d.rect.height*100));
+      if(d.type==='highlight'){
+        setDocViewerDrag({page:d.page,x:d.x,y:d.y,w:x-d.x,h:y-d.y});
+      }else if(d.type==='field'){
+        setDocViewerTextFields(function(prev){return prev.map(function(f){
+          return f.id===d.id?Object.assign({},f,{x:Math.max(0,Math.min(94,x)),y:Math.max(0,Math.min(96,y))}):f;
+        });});
+      }
+    }
+    function onUp(){
+      var d=docViewerDragRef.current;
+      docViewerDragRef.current=null;
+      if(d&&d.type==='highlight'){
+        setDocViewerDrag(function(cur){
+          if(cur&&(Math.abs(cur.w)>1||Math.abs(cur.h)>1)){
+            setDocViewerHighlights(function(hs){return hs.concat([{
+              page:cur.page,x:cur.w<0?cur.x+cur.w:cur.x,y:cur.h<0?cur.y+cur.h:cur.y,
+              w:Math.abs(cur.w),h:Math.abs(cur.h),color:docViewerHighlightColor
+            }]);});
+          }
+          return null;
+        });
+      }
+    }
+    window.addEventListener("pointermove",onMove);
+    window.addEventListener("pointerup",onUp);
+    window.addEventListener("pointercancel",onUp);
+    return function(){
+      window.removeEventListener("pointermove",onMove);
+      window.removeEventListener("pointerup",onUp);
+      window.removeEventListener("pointercancel",onUp);
+    };
+  },[docViewerFileId,docViewerHighlightColor]);
+  function renderDocViewerOverlay(){
+    var markerColors=['#FDE68A','#67E8F9','#F9A8D4','#86EFAC'];
+    var drag=docViewerDrag;
+    return h("div",{className:"lp-docv-ov"},
+      h("div",{className:"lp-docv-header"},
+        h("div",{className:"lp-docv-badge"},h("span",null,"PV")),
+        h("div",{className:"lp-docv-wordmark"},
+          h("div",{className:"pdf"},h("span",null,"PDF"),h("i",null)),
+          h("span",{className:"viewer"}," Viewer"))),
+      h("div",{className:"lp-docv-topbar"},
+        h("button",{className:"lp-docv-close",title:"Zurück",onClick:closeDocViewer},"←"),
+        h("div",null),
+        h("button",{className:"lp-docv-glowbtn",style:{height:30,padding:"0 12px",fontSize:12},onClick:saveDocViewer},
+          h("span",{className:"lp-docv-glowlabel"},"Speichern"))),
+      docViewerLoading&&h("div",{className:"lp-docv-loading"},h("span",{className:"lp-spinner"}),"Lädt…"),
+      docViewerError&&h("div",{className:"lp-docv-loading"},docViewerError),
+      !docViewerLoading&&!docViewerError&&h("div",{className:"lp-docv-body",style:{"--docv-zoom":docViewerZoom}},
+        h("div",{className:"lp-docv-pages"},
+          docViewerPages.map(function(pg){
+            var pageHighlights=docViewerHighlights.map(function(hl,gi){return {hl:hl,gi:gi};})
+              .filter(function(o){return o.hl.page===pg.index;});
+            var pageFields=docViewerTextFields.filter(function(f){return f.page===pg.index;});
+            return h("div",{key:pg.index,style:{display:"flex",flexDirection:"column",alignItems:"center",gap:8}},
+              h("span",{className:"lp-docv-pagelabel"},"Seite "+(pg.index+1)+" / "+docViewerPages.length),
+              h("div",{className:"lp-docv-page"+(docViewerMarkMode?" marking":""),
+                  onPointerDown:onDocPageDown(pg.index)},
+                h("img",{src:pg.url,draggable:false}),
+                pageHighlights.map(function(o){
+                  return h("div",{key:o.gi,className:"lp-docv-highlight",title:"Klicken zum Entfernen",
+                    onPointerDown:function(e){e.stopPropagation();},
+                    onClick:function(){removeDocHighlight(o.gi);},
+                    style:{left:o.hl.x+"%",top:o.hl.y+"%",width:o.hl.w+"%",height:o.hl.h+"%",background:o.hl.color}});
+                }),
+                drag&&drag.page===pg.index&&h("div",{className:"lp-docv-dragrect",
+                  style:{left:(drag.w<0?drag.x+drag.w:drag.x)+"%",top:(drag.h<0?drag.y+drag.h:drag.y)+"%",
+                    width:Math.abs(drag.w)+"%",height:Math.abs(drag.h)+"%",background:docViewerHighlightColor}}),
+                pageFields.map(function(f){
+                  var isActive=docViewerActiveFieldId===f.id;
+                  return h("div",{key:f.id,className:"lp-docv-field"+(isActive?" active":""),
+                      style:{left:f.x+"%",top:f.y+"%"},
+                      onPointerDown:function(e){
+                        var pageEl=e.currentTarget.closest(".lp-docv-page");
+                        startDocFieldDrag(f.id,pageEl)(e);
+                      }},
+                    h("div",{className:"lp-docv-field-inner",contentEditable:true,suppressContentEditableWarning:true,
+                      style:{fontSize:docViewerFontSize},
+                      ref:function(el){ if(el&&!el._docvInit){ el._docvInit=true; el.textContent=f.text; } },
+                      onInput:function(e){setDocTextFieldText(f.id,e.target.textContent);},
+                      onPointerDown:function(e){e.stopPropagation();}}),
+                    isActive&&h("span",{className:"lp-docv-field-btn lp-docv-field-remove",title:"Entfernen",
+                      onPointerDown:function(e){e.stopPropagation();},
+                      onClick:function(e){e.stopPropagation();removeDocTextField(f.id);}},"✕"),
+                    isActive&&h("span",{className:"lp-docv-field-btn lp-docv-field-done",title:"Fertig",
+                      onPointerDown:function(e){e.stopPropagation();},
+                      onClick:function(e){e.stopPropagation();setDocViewerActiveFieldId(null);}},"✓"));
+                })));
+          })),
+        h("div",{className:"lp-docv-sidebar"},
+          h("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+            h("span",{className:"lp-docv-seclbl"},"TEXT"),
+            h("div",{style:{display:"flex",gap:8}},
+              h("button",{className:"lp-docv-glowbtn",style:{height:34,padding:"0 14px",fontSize:12,alignSelf:"flex-start"},
+                onClick:addDocTextField},"+ Text"),
+              h("button",{className:"lp-docv-glowbtn",style:{width:30,height:30,borderRadius:"50%",fontSize:14},
+                onClick:decDocFontSize},"A-"),
+              h("button",{className:"lp-docv-glowbtn",style:{width:30,height:30,borderRadius:"50%",fontSize:14},
+                onClick:incDocFontSize},"A+"))),
+          h("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+            h("span",{className:"lp-docv-seclbl"},"MARKIEREN"),
+            h("div",{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}},
+              h("button",{className:"lp-docv-glowbtn"+(docViewerMarkMode?" active":" ghost"),
+                style:{height:28,padding:"0 12px",fontSize:11},onClick:toggleDocMarkMode},"Markieren"),
+              markerColors.map(function(c){
+                return h("button",{key:c,className:"lp-docv-swatch",style:{background:c},onClick:setDocHighlightColor(c)});
+              }))),
+          h("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+            h("span",{className:"lp-docv-seclbl"},"ZOOM"),
+            h("div",{style:{display:"flex",alignItems:"center",gap:8}},
+              h("button",{className:"lp-docv-glowbtn",style:{width:30,height:30,borderRadius:"50%",fontSize:16,fontWeight:600},
+                title:"Verkleinern",onClick:zoomOutDoc},"−"),
+              h("span",{style:{fontSize:12,color:"var(--color-violet-ghost)",fontFamily:"var(--font-mono)",width:44,textAlign:"center"}},
+                Math.round(docViewerZoom*100)+"%"),
+              h("button",{className:"lp-docv-glowbtn",style:{width:30,height:30,borderRadius:"50%",fontSize:16,fontWeight:600},
+                title:"Vergrößern",onClick:zoomInDoc},"+"))),
+          h("div",{style:{flex:1}}),
+          h("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+            h("button",{className:"lp-docv-glowbtn",style:{height:40},onClick:saveDocViewer},
+              h("span",{className:"lp-docv-glowlabel"},"Speichern")),
+            h("button",{className:"lp-docv-glowbtn ghost",style:{height:38,padding:"0 16px",fontSize:13},
+              onClick:closeDocViewer},"Abbrechen")))),
+      !docViewerLoading&&!docViewerError&&h("div",{className:"lp-docv-bottombar"},
+        h("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
+          h("button",{className:"lp-docv-glowbtn",style:{height:26,padding:"0 10px",fontSize:11},onClick:addDocTextField},"+ Text"),
+          h("button",{className:"lp-docv-glowbtn",style:{width:26,height:26,borderRadius:"50%",fontSize:14},onClick:decDocFontSize},"A-"),
+          h("button",{className:"lp-docv-glowbtn",style:{width:26,height:26,borderRadius:"50%",fontSize:14},onClick:incDocFontSize},"A+")),
+        h("div",{className:"lp-docv-divider"}),
+        h("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
+          h("span",{className:"lp-docv-seclbl",style:{fontSize:10}},"ZOOM"),
+          h("button",{className:"lp-docv-glowbtn",style:{width:26,height:26,borderRadius:"50%",fontSize:15},
+            title:"Verkleinern",onClick:zoomOutDoc},"−"),
+          h("button",{className:"lp-docv-glowbtn",style:{width:26,height:26,borderRadius:"50%",fontSize:15},
+            title:"Vergrößern",onClick:zoomInDoc},"+")),
+        h("div",{style:{flexBasis:"100%",height:0}}),
+        h("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
+          h("span",{className:"lp-docv-seclbl",style:{fontSize:10}},"MARKER"),
+          markerColors.map(function(c){
+            return h("button",{key:c,className:"lp-docv-swatch",style:{width:20,height:20,background:c},onClick:setDocHighlightColor(c)});
+          }),
+          h("button",{className:"lp-docv-glowbtn"+(docViewerMarkMode?" active":" ghost"),
+            style:{height:26,padding:"0 10px",fontSize:11},onClick:toggleDocMarkMode},"Markieren"))));
+  }
   function docFileMeta(d){
     var kb=d.size?Math.round(d.size/1024):null;
     var when=d.modifiedTime?new Date(d.modifiedTime).toLocaleDateString("de-DE"):"";
@@ -7030,7 +7400,7 @@ function App(p){
         h("button",{className:"lp-section-link",style:{fontSize:14,marginTop:8},
           onClick:function(){switchNav('profil');}},"Zu den Einstellungen →"));
     }
-    return h("div",{style:{display:"flex",flexDirection:"column",gap:20,position:"relative"}},
+    var mainContent=h("div",{style:{display:"flex",flexDirection:"column",gap:20,position:"relative"}},
       h("input",{type:"file",accept:"image/*",capture:"environment",ref:docFileInputRef,
         onChange:handleCameraCapture,style:{display:"none"}}),
       h("div",{className:"lp-xp-sechdr"},
@@ -7083,7 +7453,7 @@ function App(p){
         docsFiles.map(function(d){
           return h("div",{key:d.id,style:{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",
               background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:14,cursor:"pointer"},
-              onClick:function(){if(d.webViewLink)window.open(d.webViewLink,"_blank");}},
+              onClick:function(){openDocViewer(d);}},
             h("div",{style:{fontSize:18}},"📄"),
             h("div",{style:{flex:1,minWidth:0}},
               h("div",{style:{fontSize:13,fontWeight:600,color:"#fff"}},d.name),
@@ -7184,6 +7554,7 @@ function App(p){
             h(DsButton,{variant:"primary",style:{flex:2},disabled:scanCropBusy||!scanCropCorners,onClick:confirmScanCrop},
               scanCropBusy&&h("span",{className:"lp-spinner"}),
               h("span",{className:"lp-btn-glow-label"},scanCropBusy?"Wird verarbeitet…":"Zuschnitt übernehmen")))),document.body)));
+    return docViewerFileId?h(R.Fragment,null,mainContent,ReactDOM.createPortal(renderDocViewerOverlay(),document.body)):mainContent;
   }
   function renderExplorer(){
     var q=xpQuery.trim().toLowerCase();
