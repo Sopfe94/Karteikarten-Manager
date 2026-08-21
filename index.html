@@ -1243,7 +1243,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.68";
+var KKM_VERSION="1.4.69";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1532,17 +1532,40 @@ function cvWorkerCall(type,payload,transferList){
   return new Promise(function(resolve,reject){
     var w=getCvWorker();
     var id=++_cvWorkerSeq;
-    function onMsg(e){
-      if(!e.data||e.data.id!==id)return;
+    var settled=false;
+    function cleanup(){
       w.removeEventListener('message',onMsg);
       w.removeEventListener('error',onErr);
+      clearTimeout(watchdog);
+    }
+    function onMsg(e){
+      if(!e.data||e.data.id!==id||settled)return;
+      settled=true;cleanup();
       if(e.data.error){reject(new Error(e.data.error));}else{resolve(e.data);}
     }
     function onErr(e){
-      w.removeEventListener('message',onMsg);
-      w.removeEventListener('error',onErr);
+      if(settled)return;
+      settled=true;cleanup();
+      /* Worker auf Fehler hin verwerfen, statt ihn fuer den Rest der
+         Sitzung wiederzuverwenden - schlaegt z.B. das Laden von
+         opencv.js wegen eines wackligen Mobilfunknetzes einmal fehl,
+         bekommt der naechste Scan-Versuch einen frischen Worker und
+         damit eine neue Chance, statt fuer immer im Fallback zu
+         landen. */
+      if(_cvWorker===w)_cvWorker=null;
       reject(new Error((e&&e.message)||'cv_worker_error'));
     }
+    /* Wachhund: falls die Nachricht ins Leere laeuft (z.B. ein Worker,
+       dessen Skript schon vor der onmessage-Registrierung synchron
+       abgestuerzt ist - dann kommt nie eine Antwort UND nie ein
+       error-Event) - ohne das wuerde der kaputte Worker fuer immer in
+       _cvWorker haengen bleiben. */
+    var watchdog=setTimeout(function(){
+      if(settled)return;
+      settled=true;cleanup();
+      if(_cvWorker===w)_cvWorker=null;
+      reject(new Error('cv_worker_timeout'));
+    },20000);
     w.addEventListener('message',onMsg);
     w.addEventListener('error',onErr);
     var msg={id:id,type:type};
@@ -6731,11 +6754,16 @@ function App(p){
   function onScanCropImageLoad(e){
     var img=e.target;
     setScanCropImgSize({w:img.naturalWidth,h:img.naturalHeight});
+    /* Fallback = das ganze Foto (keine Einrueckung): schlaegt die
+       Auto-Erkennung fehl oder braucht zu lange, soll der Nutzer das
+       volle Bild sehen und die 4 Punkte selbst auf die Kanten ziehen -
+       nicht einen willkuerlich eingerueckten Ausschnitt, der oben/unten
+       Hintergrundstreifen zeigt und nicht wie ein sauberer Scan aussieht. */
     var fallback=[
-      {x:img.naturalWidth*0.05,y:img.naturalHeight*0.05},
-      {x:img.naturalWidth*0.95,y:img.naturalHeight*0.05},
-      {x:img.naturalWidth*0.95,y:img.naturalHeight*0.95},
-      {x:img.naturalWidth*0.05,y:img.naturalHeight*0.95}
+      {x:0,y:0},
+      {x:img.naturalWidth,y:0},
+      {x:img.naturalWidth,y:img.naturalHeight},
+      {x:0,y:img.naturalHeight}
     ];
     /* Grosszuegiges Zeitlimit: der Worker muss beim allerersten Scan
        erst noch opencv.js laden+initialisieren (auf langsamem Mobilfunk
