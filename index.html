@@ -1243,7 +1243,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.4.66";
+var KKM_VERSION="1.4.67";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1455,7 +1455,9 @@ function downscaledCanvas(imgEl,maxSide){
 }
 function cvDetectDocumentCorners(imgEl){
   return loadOpenCv().then(function(cv){
-    var ds=downscaledCanvas(imgEl,1000), scale=ds.scale;
+    /* Kleiner arbeiten reicht fuers Ecken-Finden voellig und haelt die
+       Konturenzahl von vornherein niedriger. */
+    var ds=downscaledCanvas(imgEl,700), scale=ds.scale;
     var src=cv.imread(ds.canvas);
     var gray=new cv.Mat(),blurred=new cv.Mat(),edges=new cv.Mat(),dilated=new cv.Mat();
     var kernel=cv.Mat.ones(3,3,cv.CV_8U);
@@ -1466,22 +1468,47 @@ function cvDetectDocumentCorners(imgEl){
       cv.GaussianBlur(gray,blurred,new cv.Size(5,5),0);
       cv.Canny(blurred,edges,50,150);
       cv.dilate(edges,dilated,kernel);
-      cv.findContours(dilated,contours,hierarchy,cv.RETR_LIST,cv.CHAIN_APPROX_SIMPLE);
+      cv.findContours(dilated,contours,hierarchy,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE);
+      /* RETR_EXTERNAL statt RETR_LIST: liefert nur die aeusseren
+         Konturen, nicht jede einzelne verschachtelte Kante darin. Bei
+         detailreichen Vorlagen (z.B. Tabellen/Formulare mit vielen
+         Gitterlinien) lieferte RETR_LIST vorher zehntausende
+         Mini-Konturen - jede einzeln mit approxPolyDP zu pruefen
+         blockierte den Browser dadurch teils minutenlang komplett
+         (kein Timeout kann eine laufende synchrone Berechnung
+         unterbrechen). Zusaetzlich: billige boundingRect-Vorauswahl
+         der 25 groessten Kandidaten, bevor die teureren arcLength/
+         approxPolyDP-Aufrufe ueberhaupt laufen, plus eine harte
+         Obergrenze als letzte Absicherung. */
+      var n=contours.size();
+      var minArea=0.15*src.rows*src.cols;
       var best=null,bestArea=0;
-      for(var i=0;i<contours.size();i++){
-        var cnt=contours.get(i);
-        var peri=cv.arcLength(cnt,true);
-        var approx=new cv.Mat();
-        cv.approxPolyDP(cnt,approx,0.02*peri,true);
-        if(approx.rows===4&&cv.isContourConvex(approx)){
-          var area=cv.contourArea(approx);
-          if(area>bestArea&&area>0.15*src.rows*src.cols){
-            bestArea=area;
-            if(best)best.delete();
-            best=approx;
+      if(n>0&&n<=4000){
+        var candidates=[];
+        for(var i=0;i<n;i++){
+          var cnt=contours.get(i);
+          var rect=cv.boundingRect(cnt);
+          candidates.push({idx:i,area:rect.width*rect.height});
+          cnt.delete();
+        }
+        candidates.sort(function(a,b){return b.area-a.area;});
+        candidates=candidates.slice(0,25);
+        for(var k=0;k<candidates.length;k++){
+          if(candidates[k].area<minArea) break;
+          var cnt2=contours.get(candidates[k].idx);
+          var peri=cv.arcLength(cnt2,true);
+          var approx=new cv.Mat();
+          cv.approxPolyDP(cnt2,approx,0.02*peri,true);
+          if(approx.rows===4&&cv.isContourConvex(approx)){
+            var area=cv.contourArea(approx);
+            if(area>bestArea&&area>minArea){
+              bestArea=area;
+              if(best)best.delete();
+              best=approx;
+            }else{ approx.delete(); }
           }else{ approx.delete(); }
-        }else{ approx.delete(); }
-        cnt.delete();
+          cnt2.delete();
+        }
       }
       if(best){
         points=[];
