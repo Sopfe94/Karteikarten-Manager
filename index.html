@@ -1243,7 +1243,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.5.1";
+var KKM_VERSION="1.5.2";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1726,11 +1726,12 @@ function cvDetectDocumentCorners(imgEl){
     });
   });
 }
-/* Leichte Aufhellung/Kontrastverstaerkung + minimale Glaettung gegen
-   Bildrauschen, wie es auch andere Scan-Apps machen - macht den
-   Hintergrund des Blatts heller/weisser und Text besser lesbar. Sehr
-   kleiner Weichzeichner (0.4px), damit Text dabei nicht unscharf wird. */
-var DOC_ENHANCE_FILTER='brightness(1.12) contrast(1.15) saturate(0.9) blur(0.4px)';
+/* Leichte Aufhellung/Kontrastverstaerkung, wie es auch andere Scan-Apps
+   machen - macht den Hintergrund des Blatts heller/weisser und Text
+   besser lesbar. Kein Weichzeichner mehr (hat Text unnoetig unscharf
+   gemacht) - die eigentliche Detailschaerfe kommt von der hoeheren
+   Arbeitsaufloesung unten (3200 statt vorher 2000px). */
+var DOC_ENHANCE_FILTER='brightness(1.12) contrast(1.15) saturate(0.9)';
 function applyDocEnhance(srcCanvas){
   var out=document.createElement('canvas');
   out.width=srcCanvas.width;out.height=srcCanvas.height;
@@ -1740,13 +1741,17 @@ function applyDocEnhance(srcCanvas){
   return out;
 }
 function cvWarpCrop(imgEl,corners){
-  var d=downscaledImageData(imgEl,2000);
+  /* Hoehere Arbeitsaufloesung als bei der Erkennung (die braucht nur
+     grobe Kanten) - der eigentliche Zuschnitt/Perspektivausgleich ist
+     eine einzelne Matrix-Operation und dadurch auch bei hoeherer
+     Aufloesung schnell, im Gegensatz zur Konturenerkennung frueher. */
+  var d=downscaledImageData(imgEl,3200);
   var scaled=corners.map(function(c){return {x:c.x*d.scale,y:c.y*d.scale};});
   return cvWorkerCall('warp',{imageData:d.imageData,corners:scaled}).then(function(res){
     var raw=document.createElement('canvas');
     raw.width=res.width;raw.height=res.height;
     raw.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(res.data),res.width,res.height),0,0);
-    return applyDocEnhance(raw).toDataURL('image/jpeg',0.92);
+    return applyDocEnhance(raw).toDataURL('image/jpeg',0.95);
   });
 }
 /* Fallback ohne OpenCV (z.B. Laden fehlgeschlagen): einfacher
@@ -1761,7 +1766,7 @@ function plainBoundingCrop(imgEl,corners){
   var ctx=canvas.getContext('2d');
   ctx.filter=DOC_ENHANCE_FILTER;
   ctx.drawImage(imgEl,minX,minY,w,h,0,0,w,h);
-  return canvas.toDataURL('image/jpeg',0.92);
+  return canvas.toDataURL('image/jpeg',0.95);
 }
 
 var _syncUser=null; var _syncTimeout=null; var _realtimeChannel=null; var _applyingRemote=false; var _preloadedLsData=null; var _unCache={};
@@ -6252,6 +6257,9 @@ function App(p){
   var scmo=useState(null); var scanMode=scmo[0]; var setScanMode=scmo[1];
   var scp=useState([]); var scanPages=scp[0]; var setScanPages=scp[1];
   var scbs=useState(false); var scanBusy=scbs[0]; var setScanBusy=scbs[1];
+  var scnm=useState(false); var scanNameModalOpen=scnm[0]; var setScanNameModalOpen=scnm[1];
+  var scnp=useState(null); var scanNamePending=scnp[0]; var setScanNamePending=scnp[1];
+  var scfn=useState(""); var scanFileName=scfn[0]; var setScanFileName=scfn[1];
   /* Zuschnitt-Schritt nach der Aufnahme: scanCropCorners sind 4 Punkte
      {x,y} in Original-Pixel-Koordinaten des Fotos (nicht Anzeige-
      Groesse) - so bleibt die Umrechnung beim Ziehen unabhaengig von
@@ -6868,12 +6876,30 @@ function App(p){
   function scanChooseSingle(){ setScanMode("single");triggerCameraCapture(); }
   function scanChooseMulti(){ setScanMode("multi");triggerCameraCapture(); }
   function addAnotherScanPage(){ triggerCameraCapture(); }
+  /* Vor dem Hochladen erst nach einem Namen fragen, statt automatisch
+     einen Zeitstempel-Dateinamen zu vergeben - Sophie moechte selbst
+     entscheiden wie die Datei in Drive heisst (z.B. "Debeka
+     Unfallversicherung" statt "Scan_2026-08-21T...pdf"). */
   function finishScanWithPages(pages){
     if(!pages.length)return;
+    var today=new Date();
+    var dd=String(today.getDate()).padStart(2,"0"), mm=String(today.getMonth()+1).padStart(2,"0");
+    setScanNamePending(pages);
+    setScanFileName("Scan "+dd+"."+mm+"."+today.getFullYear());
+    setScanNameModalOpen(true);
+  }
+  function finishMultiScan(){ finishScanWithPages(scanPages); }
+  function cancelScanName(){ setScanNameModalOpen(false);setScanNamePending(null); }
+  function confirmScanName(){
+    var pages=scanNamePending;
+    if(!pages||!pages.length)return;
+    var name=scanFileName.trim().replace(/[\\/:*?"<>|]/g,"-");
+    if(!name)name="Scan";
+    if(!/\.pdf$/i.test(name))name+=".pdf";
+    setScanNameModalOpen(false);setScanNamePending(null);
     setScanBusy(true);
     buildPdfBlobFromImages(pages).then(function(blob){
-      var stamp=new Date().toISOString().replace(/[:.]/g,"-");
-      return driveUploadPdf(blob,"Scan_"+stamp+".pdf",docsFolderId);
+      return driveUploadPdf(blob,name,docsFolderId);
     }).then(function(){
       setScanBusy(false);setScanModalOpen(false);setScanMode(null);setScanPages([]);
       loadDocsFolder(docsFolderId);
@@ -6884,7 +6910,6 @@ function App(p){
       dbg("❌ Scan-Upload-Fehler:",e.message);
     });
   }
-  function finishMultiScan(){ finishScanWithPages(scanPages); }
   function handleCameraCapture(e){
     var file=e.target.files&&e.target.files[0];
     e.target.value="";
@@ -7080,6 +7105,19 @@ function App(p){
             h(DsButton,{variant:"danger",onClick:closeNewDocFolderModal},"Abbrechen"),
             h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:saveNewDocFolder},
               h("span",{className:"lp-btn-glow-label"},"Erstellen"))))),
+
+      scanNameModalOpen&&h("div",{className:"lp-modal-ov",style:{zIndex:1200},onClick:cancelScanName},
+        h("div",{className:"lp-modal-box",onClick:function(e){e.stopPropagation();}},
+          h("div",{className:"lp-modal-title grad"},"Name für die Datei"),
+          h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Dateiname"),
+            h("input",{className:"lp-dark-input",value:scanFileName,autoFocus:true,
+              onInput:function(e){setScanFileName(e.target.value);},
+              onKeyDown:function(e){if(e.key==="Enter")confirmScanName();},
+              placeholder:"z.B. Debeka Unfallversicherung"})),
+          h("div",{className:"lp-modal-actions"},
+            h(DsButton,{variant:"danger",onClick:cancelScanName},"Abbrechen"),
+            h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:confirmScanName},
+              h("span",{className:"lp-btn-glow-label"},"Speichern"))))),
 
       scanModalOpen&&h("div",{className:"lp-modal-ov",onClick:scanBusy?undefined:closeScanModal},
         h("div",{className:"lp-modal-box",onClick:function(e){e.stopPropagation();}},
