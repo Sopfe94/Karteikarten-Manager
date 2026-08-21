@@ -1243,7 +1243,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.5.0";
+var KKM_VERSION="1.5.1";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1380,10 +1380,12 @@ function buildPdfBlobFromImages(dataUrls){
     var pageW=doc.internal.pageSize.getWidth(), pageH=doc.internal.pageSize.getHeight();
     imgs.forEach(function(im,i){
       if(i>0) doc.addPage();
-      var scale=Math.min(pageW/im.w,pageH/im.h);
-      var w=im.w*scale, h=im.h*scale;
-      var x=(pageW-w)/2, y=(pageH-h)/2;
-      doc.addImage(im.url,'JPEG',x,y,w,h);
+      /* Bewusst auf die volle Seite strecken (nicht proportional
+         einpassen) - sonst bleibt oben/unten ein grosser weisser Rand,
+         weil das zugeschnittene Foto selten exakt das A4-Seitenverhaeltnis
+         hat. Der Zuschnitt ist ja bereits exakt auf das Blatt gesetzt,
+         eine minimale Streckung faellt beim Lesen nicht auf. */
+      doc.addImage(im.url,'JPEG',0,0,pageW,pageH);
     });
     return doc.output('blob');
   });
@@ -1724,14 +1726,27 @@ function cvDetectDocumentCorners(imgEl){
     });
   });
 }
+/* Leichte Aufhellung/Kontrastverstaerkung + minimale Glaettung gegen
+   Bildrauschen, wie es auch andere Scan-Apps machen - macht den
+   Hintergrund des Blatts heller/weisser und Text besser lesbar. Sehr
+   kleiner Weichzeichner (0.4px), damit Text dabei nicht unscharf wird. */
+var DOC_ENHANCE_FILTER='brightness(1.12) contrast(1.15) saturate(0.9) blur(0.4px)';
+function applyDocEnhance(srcCanvas){
+  var out=document.createElement('canvas');
+  out.width=srcCanvas.width;out.height=srcCanvas.height;
+  var ctx=out.getContext('2d');
+  ctx.filter=DOC_ENHANCE_FILTER;
+  ctx.drawImage(srcCanvas,0,0);
+  return out;
+}
 function cvWarpCrop(imgEl,corners){
   var d=downscaledImageData(imgEl,2000);
   var scaled=corners.map(function(c){return {x:c.x*d.scale,y:c.y*d.scale};});
   return cvWorkerCall('warp',{imageData:d.imageData,corners:scaled}).then(function(res){
-    var canvas=document.createElement('canvas');
-    canvas.width=res.width;canvas.height=res.height;
-    canvas.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(res.data),res.width,res.height),0,0);
-    return canvas.toDataURL('image/jpeg',0.92);
+    var raw=document.createElement('canvas');
+    raw.width=res.width;raw.height=res.height;
+    raw.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(res.data),res.width,res.height),0,0);
+    return applyDocEnhance(raw).toDataURL('image/jpeg',0.92);
   });
 }
 /* Fallback ohne OpenCV (z.B. Laden fehlgeschlagen): einfacher
@@ -1743,7 +1758,9 @@ function plainBoundingCrop(imgEl,corners){
   var minY=Math.max(0,Math.min.apply(null,ys)), maxY=Math.min(imgEl.naturalHeight,Math.max.apply(null,ys));
   var w=Math.max(1,maxX-minX), h=Math.max(1,maxY-minY);
   var canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
-  canvas.getContext('2d').drawImage(imgEl,minX,minY,w,h,0,0,w,h);
+  var ctx=canvas.getContext('2d');
+  ctx.filter=DOC_ENHANCE_FILTER;
+  ctx.drawImage(imgEl,minX,minY,w,h,0,0,w,h);
   return canvas.toDataURL('image/jpeg',0.92);
 }
 
@@ -7104,9 +7121,12 @@ function App(p){
               scanCropCorners&&scanCropImgSize&&h("svg",{
                   style:{position:"absolute",top:0,left:0,width:"100%",height:"100%",pointerEvents:"none"},
                   viewBox:"0 0 "+scanCropImgSize.w+" "+scanCropImgSize.h,preserveAspectRatio:"none"},
+                h("defs",null,h("linearGradient",{id:"scanCropGrad",x1:"0",y1:"0",x2:"1",y2:"0"},
+                  h("stop",{offset:"0%",stopColor:"#7C3AED"}),
+                  h("stop",{offset:"100%",stopColor:"#06B6D4"}))),
                 h("polygon",{points:scanCropCorners.map(function(c){return c.x+","+c.y;}).join(" "),
-                  fill:"rgba(124,58,237,0.18)",stroke:"#7C3AED",
-                  strokeWidth:Math.max(2,scanCropImgSize.w*0.004),vectorEffect:"non-scaling-stroke"})),
+                  fill:"rgba(124,58,237,0.12)",stroke:"url(#scanCropGrad)",
+                  strokeWidth:Math.max(1.5,scanCropImgSize.w*0.0015),vectorEffect:"non-scaling-stroke"})),
               scanCropCorners&&scanCropImgSize&&scanCropCorners.map(function(c,idx){
                 return h("div",{key:idx,onPointerDown:startScanCornerDrag(idx),
                   style:{position:"absolute",
