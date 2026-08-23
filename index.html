@@ -1324,7 +1324,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.0";
+var KKM_VERSION="1.8.1";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -7566,7 +7566,7 @@ function App(p){
               onClick:function(e){e.stopPropagation();deleteDocFolder(fo);}},"×"));
         })),
 
-      !docsError&&!docsLoading&&docsPath.length>0&&docsFiles.length>0&&h("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+      !docsError&&!docsLoading&&docsFiles.length>0&&h("div",{style:{display:"flex",flexDirection:"column",gap:8}},
         docsFiles.map(function(d){
           var isDragging=docsDragFileId===d.id;
           return h("div",{key:d.id,style:{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",
@@ -7591,12 +7591,10 @@ function App(p){
                 color:"rgba(255,255,255,0.5)",fontSize:12,cursor:"pointer",lineHeight:1}},"×"));
         })),
 
-      !docsError&&!docsLoading&&docsFolders.length===0&&(docsPath.length===0||docsFiles.length===0)&&
+      !docsError&&!docsLoading&&docsFolders.length===0&&docsFiles.length===0&&
         h("div",{style:{padding:"32px 20px",textAlign:"center",color:"rgba(255,255,255,0.35)",fontSize:13,
             border:"1px dashed rgba(255,255,255,0.1)",borderRadius:16}},
-          docsPath.length===0
-            ?"Noch keine Ordner hier — leg deinen ersten Ordner an."
-            :"Noch keine Unterordner oder Dokumente hier — leg einen Ordner an oder scanne dein erstes Dokument."),
+          "Noch keine Ordner oder Dokumente hier — leg einen Ordner an oder scanne dein erstes Dokument."),
 
       newDocFolderModalOpen&&h("div",{className:"lp-modal-ov",onClick:closeNewDocFolderModal},
         h("div",{className:"lp-modal-box",onClick:function(e){e.stopPropagation();}},
