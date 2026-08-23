@@ -1163,6 +1163,12 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
   border:none;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:13px;
   cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center}
 .lp-xp-topic-x:hover{background:rgba(239,68,68,0.2);color:#EF4444}
+/* Ordner-Kachel in den Unterlagen: transparent mit violettem Glow-Rand
+   (genau wie DsButton variant="primary", z.B. der "+ Ordner"-Button),
+   das Ordner-Icon selbst ist eine SVG mit dem Marken-Farbverlauf als
+   Fuellung statt eines Emojis in einer vollflaechigen Farbbox. */
+.lp-docfolder-tile{background:transparent;border:1px solid rgba(124,58,237,0.55);
+  box-shadow:0 0 14px rgba(124,58,237,0.45),0 0 6px rgba(6,182,212,0.3)}
 .lp-xp-cardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
 @media(min-width:768px){
   .lp-deck-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
@@ -1314,7 +1320,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.7.0";
+var KKM_VERSION="1.7.1";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1428,6 +1434,12 @@ function driveListChildren(folderId){
 }
 function driveDeleteFile(id){
   return driveFetch('https://www.googleapis.com/drive/v3/files/'+id,{method:'DELETE'});
+}
+function driveCountFiles(folderId){
+  var q="'"+folderId+"' in parents and trashed=false and mimeType!='"+DRIVE_FOLDER_MIME+"'";
+  return driveFetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id)')
+    .then(function(r){return r.json();})
+    .then(function(d){return (d.files||[]).length;});
 }
 function driveUploadPdf(blob,filename,parentId,pageCount){
   var metadata={name:filename,mimeType:'application/pdf',parents:parentId?[parentId]:undefined,
@@ -6375,6 +6387,7 @@ function App(p){
   var dpth=useState([]); var docsPath=dpth[0]; var setDocsPath=dpth[1];
   var dfol=useState([]); var docsFolders=dfol[0]; var setDocsFolders=dfol[1];
   var dfil=useState([]); var docsFiles=dfil[0]; var setDocsFiles=dfil[1];
+  var dfcnt=useState({}); var docsFolderCounts=dfcnt[0]; var setDocsFolderCounts=dfcnt[1];
   var dld=useState(false); var docsLoading=dld[0]; var setDocsLoading=dld[1];
   var derr=useState(null); var docsError=derr[0]; var setDocsError=derr[1];
   var nfm=useState(false); var newDocFolderModalOpen=nfm[0]; var setNewDocFolderModalOpen=nfm[1];
@@ -6956,6 +6969,19 @@ function App(p){
                 onClick:function(e){e.stopPropagation();delFolder(f.id);}},"×"));
           })));
   }
+  /* Anzahl Dokumente je Ordner separat nachladen (eine schlanke Zaehl-
+     Anfrage pro Ordner, parallel) - fuer die Ordner-Cards auf der
+     Unterlagen-Startseite. Laeuft unabhaengig von docsFolders/docsFiles,
+     damit die Ordner-Liste nicht auf die (langsameren) Zaehl-Anfragen
+     warten muss. */
+  function loadDocFolderCounts(folders){
+    Promise.all(folders.map(function(f){
+      return driveCountFiles(f.id).then(function(c){return [f.id,c];});
+    })).then(function(pairs){
+      var m={}; pairs.forEach(function(p){m[p[0]]=p[1];});
+      setDocsFolderCounts(m);
+    }).catch(function(){});
+  }
   /* Unterlagen: Root-Ordner ermitteln/anlegen sobald der Tab zum
      ersten Mal geoeffnet wird, danach dessen Inhalt laden. */
   useEffect(function(){
@@ -6965,9 +6991,11 @@ function App(p){
       setDocsRootId(id);setDocsFolderId(id);setDocsPath([]);
       return driveListChildren(id);
     }).then(function(children){
-      setDocsFolders(children.filter(function(c){return c.mimeType===DRIVE_FOLDER_MIME;}));
+      var folders=children.filter(function(c){return c.mimeType===DRIVE_FOLDER_MIME;});
+      setDocsFolders(folders);
       setDocsFiles(children.filter(function(c){return c.mimeType!==DRIVE_FOLDER_MIME;}));
       setDocsLoading(false);
+      setDocsFolderCounts({});loadDocFolderCounts(folders);
     }).catch(function(e){
       setDocsError("Verbindung zu Google Drive fehlgeschlagen.");setDocsLoading(false);
       dbg("❌ Drive-Fehler:",e.message);
@@ -6976,9 +7004,11 @@ function App(p){
   function loadDocsFolder(id){
     setDocsLoading(true);setDocsError(null);
     driveListChildren(id).then(function(children){
-      setDocsFolders(children.filter(function(c){return c.mimeType===DRIVE_FOLDER_MIME;}));
+      var folders=children.filter(function(c){return c.mimeType===DRIVE_FOLDER_MIME;});
+      setDocsFolders(folders);
       setDocsFiles(children.filter(function(c){return c.mimeType!==DRIVE_FOLDER_MIME;}));
       setDocsLoading(false);
+      setDocsFolderCounts({});loadDocFolderCounts(folders);
     }).catch(function(e){
       setDocsError("Verbindung zu Google Drive fehlgeschlagen.");setDocsLoading(false);
       dbg("❌ Drive-Fehler:",e.message);
@@ -7440,17 +7470,25 @@ function App(p){
 
       !docsError&&!docsLoading&&docsFolders.length>0&&h("div",{className:"lp-xp-topicgrid"},
         docsFolders.map(function(fo){
+          var cnt=docsFolderCounts[fo.id];
           return h("div",{key:fo.id,className:"lp-xp-topic lp-hover-glow",
               onClick:function(){openDocFolder(fo);}},
-            h("div",{className:"lp-xp-topic-tile",style:{background:"var(--grad-brand-135)"}},"📁"),
+            h("div",{className:"lp-xp-topic-tile lp-docfolder-tile"},
+              h("svg",{width:20,height:20,viewBox:"0 0 24 24"},
+                h("defs",null,h("linearGradient",{id:"docFolderGrad-"+fo.id,x1:"0",y1:"0",x2:"1",y2:"0"},
+                  h("stop",{offset:"0%",stopColor:"#7C3AED"}),
+                  h("stop",{offset:"100%",stopColor:"#06B6D4"}))),
+                h("path",{d:"M3 6a2 2 0 0 1 2-2h4.17a2 2 0 0 1 1.41.59L12 6h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z",
+                  fill:"url(#docFolderGrad-"+fo.id+")"}))),
             h("div",{style:{minWidth:0,flex:1}},
               h("div",{className:"lp-xp-topic-name",
-                style:{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},fo.name)),
+                style:{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},fo.name),
+              cnt!==undefined&&h("div",{className:"lp-xp-topic-count"},cnt+(cnt===1?" Dokument":" Dokumente"))),
             h("button",{className:"lp-xp-topic-x",title:"Ordner löschen",
               onClick:function(e){e.stopPropagation();deleteDocFolder(fo);}},"×"));
         })),
 
-      !docsError&&!docsLoading&&docsFiles.length>0&&h("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+      !docsError&&!docsLoading&&docsPath.length>0&&docsFiles.length>0&&h("div",{style:{display:"flex",flexDirection:"column",gap:8}},
         docsFiles.map(function(d){
           return h("div",{key:d.id,style:{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",
               background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:14,cursor:"pointer"},
@@ -7464,10 +7502,12 @@ function App(p){
                 color:"rgba(255,255,255,0.5)",fontSize:12,cursor:"pointer",lineHeight:1}},"×"));
         })),
 
-      !docsError&&!docsLoading&&docsFolders.length===0&&docsFiles.length===0&&
+      !docsError&&!docsLoading&&docsFolders.length===0&&(docsPath.length===0||docsFiles.length===0)&&
         h("div",{style:{padding:"32px 20px",textAlign:"center",color:"rgba(255,255,255,0.35)",fontSize:13,
             border:"1px dashed rgba(255,255,255,0.1)",borderRadius:16}},
-          "Noch keine Ordner oder Dokumente hier — leg einen Ordner an oder scanne dein erstes Dokument."),
+          docsPath.length===0
+            ?"Noch keine Ordner hier — leg deinen ersten Ordner an."
+            :"Noch keine Unterordner oder Dokumente hier — leg einen Ordner an oder scanne dein erstes Dokument."),
 
       newDocFolderModalOpen&&h("div",{className:"lp-modal-ov",onClick:closeNewDocFolderModal},
         h("div",{className:"lp-modal-box",onClick:function(e){e.stopPropagation();}},
