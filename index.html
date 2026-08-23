@@ -1324,7 +1324,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.3";
+var KKM_VERSION="1.8.4";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3945,7 +3945,7 @@ function ProfilView(p){
           h('div',{className:'lp-settings-row',style:{borderBottom:'none'}},
             h('div',null,
               h('div',{style:{display:'inline-block',fontSize:22,fontWeight:600,letterSpacing:'-0.02em',background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}},'Unterlagen im Hintergrund laden'),
-              h('div',{style:{fontSize:13,color:'rgba(255,255,255,.35)',marginTop:4,maxWidth:260}},'Bereitet sichtbare PDFs schon vor dem Antippen im Hintergrund vor, damit sie sofort aufgehen. Verbraucht dabei mobile Daten, auch fuer Dateien, die du am Ende nicht oeffnest.')),
+              h('div',{style:{fontSize:13,color:'rgba(255,255,255,.35)',marginTop:4,maxWidth:260}},'Bereitet sichtbare PDFs schon vor dem Antippen im Hintergrund vor, damit sie sofort aufgehen. Verbraucht dabei mobile Daten, auch für Dateien, die du am Ende nicht öffnest.')),
             h('button',{className:'lp-switch',style:{background:p.docPrefetchEnabled?'var(--grad-brand)':'rgba(255,255,255,.14)'},
               onClick:p.onToggleDocPrefetch},
               h('span',{className:'lp-switch-knob',style:{left:p.docPrefetchEnabled?21:3}}))),
