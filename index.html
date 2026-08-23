@@ -1324,7 +1324,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.7";
+var KKM_VERSION="1.8.8";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -7702,22 +7702,21 @@ function App(p){
               onClick:function(e){e.stopPropagation();deleteDocFolder(fo);}},"×"));
         })),
 
-      !docsError&&!docsLoading&&shownFiles.length>0&&h("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+      !docsError&&!docsLoading&&shownFiles.length>0&&h("div",{className:"lp-xp-topicgrid"},
         shownFiles.map(function(d){
           var isDragging=docsDragFileId===d.id;
-          return h("div",{key:d.id,style:{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",
-              background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:14,
-              cursor:"pointer",touchAction:"pan-y",userSelect:"none",
-              opacity:isDragging?0.45:1,transition:"opacity 150ms ease"},
+          return h("div",{key:d.id,className:"lp-xp-topic lp-hover-glow",
+              style:{touchAction:"pan-y",userSelect:"none",
+                opacity:isDragging?0.45:1,transition:"opacity 150ms ease"},
               onPointerDown:onDocFilePointerDown(d)},
-            docFileIcon(d.id,26),
-            h("div",{style:{flex:1,minWidth:0}},
-              h("div",{style:{fontSize:13,fontWeight:600,color:"#fff"}},d.name),
-              h("div",{style:{fontSize:11,color:"var(--color-violet-ghost)",fontFamily:"var(--font-mono)"}},docFileMeta(d))),
-            h("button",{title:"Löschen",onPointerDown:function(e){e.stopPropagation();},
-              onClick:function(e){e.stopPropagation();deleteDocFile(d);},
-              style:{width:26,height:26,borderRadius:"50%",border:"none",background:"rgba(255,255,255,0.06)",
-                color:"rgba(255,255,255,0.5)",fontSize:12,cursor:"pointer",lineHeight:1}},"×"));
+            h("div",{style:{width:40,height:40,display:"flex",alignItems:"center",
+                justifyContent:"center",flexShrink:0}},docFileIcon(d.id,26)),
+            h("div",{style:{minWidth:0,flex:1}},
+              h("div",{className:"lp-xp-topic-name",
+                style:{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},d.name),
+              h("div",{className:"lp-xp-topic-count"},docFileMeta(d))),
+            h("button",{className:"lp-xp-topic-x",title:"Löschen",onPointerDown:function(e){e.stopPropagation();},
+              onClick:function(e){e.stopPropagation();deleteDocFile(d);}},"×"));
         })),
 
       !docsError&&!docsLoading&&shownFolders.length===0&&shownFiles.length===0&&
@@ -7832,7 +7831,7 @@ function App(p){
           onSubmit:function(){}})),
       h("div",{className:"lp-tabbar"},tabs.map(function(t){
         return h("button",{key:t[0],className:"lp-tab"+(xpTab===t[0]?" active":""),
-          onClick:function(){setXpTab(t[0]);}},t[1]);
+          onClick:function(){setXpTab(t[0]);setXpQuery("");}},t[1]);
       })),
       xpTab==="overview"&&renderXpOverview(q,allDecks),
       xpTab==="stapel"&&renderXpStapel(q,allDecks),
