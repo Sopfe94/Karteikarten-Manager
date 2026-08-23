@@ -1314,7 +1314,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.6.4";
+var KKM_VERSION="1.7.0";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1422,15 +1422,16 @@ function driveEnsureRootFolder(){
 }
 function driveListChildren(folderId){
   var q="'"+folderId+"' in parents and trashed=false";
-  return driveFetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id,name,mimeType,modifiedTime,size,webViewLink)&orderBy=folder,name')
+  return driveFetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id,name,mimeType,modifiedTime,size,webViewLink,appProperties)&orderBy=folder,name')
     .then(function(r){return r.json();})
     .then(function(d){return d.files||[];});
 }
 function driveDeleteFile(id){
   return driveFetch('https://www.googleapis.com/drive/v3/files/'+id,{method:'DELETE'});
 }
-function driveUploadPdf(blob,filename,parentId){
-  var metadata={name:filename,mimeType:'application/pdf',parents:parentId?[parentId]:undefined};
+function driveUploadPdf(blob,filename,parentId,pageCount){
+  var metadata={name:filename,mimeType:'application/pdf',parents:parentId?[parentId]:undefined,
+    appProperties:pageCount?{pages:String(pageCount)}:undefined};
   var form=new FormData();
   form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));
   form.append('file',blob);
@@ -7041,7 +7042,7 @@ function App(p){
     setScanNameModalOpen(false);setScanNamePending(null);
     setScanBusy(true);
     buildPdfBlobFromImages(pages).then(function(blob){
-      return driveUploadPdf(blob,name,docsFolderId);
+      return driveUploadPdf(blob,name,docsFolderId,pages.length);
     }).then(function(){
       setScanBusy(false);setScanModalOpen(false);setScanMode(null);setScanPages([]);
       loadDocsFolder(docsFolderId);
@@ -7387,9 +7388,10 @@ function App(p){
             style:{height:26,padding:"0 10px",fontSize:11},onClick:toggleDocMarkMode},"Markieren"))));
   }
   function docFileMeta(d){
+    var pages=d.appProperties&&d.appProperties.pages;
     var kb=d.size?Math.round(d.size/1024):null;
     var when=d.modifiedTime?new Date(d.modifiedTime).toLocaleDateString("de-DE"):"";
-    return (kb?kb+" KB · ":"")+when;
+    return (pages?pages+(pages==="1"?" Seite · ":" Seiten · "):"")+(kb?kb+" KB · ":"")+when;
   }
   function renderXpUnterlagen(){
     if(!googleUser){
@@ -7421,7 +7423,7 @@ function App(p){
 
       docsPath.length>0&&h("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",
           fontSize:12,color:"rgba(255,255,255,0.4)"}},
-        h("span",{style:{cursor:"pointer",color:"var(--color-violet-light)"},onClick:goToDocRoot},"Alle Unterlagen"),
+        h("span",{style:{cursor:"pointer",color:"var(--color-violet-light)"},onClick:goToDocRoot},"Startseite"),
         docsPath.map(function(p,i){
           return h(R.Fragment,{key:p.id},
             h("span",null,"/"),
@@ -7436,17 +7438,16 @@ function App(p){
 
       !docsError&&docsLoading&&h("div",{style:{textAlign:"center",padding:"32px 0",color:"rgba(255,255,255,0.4)",fontSize:13}},"Lädt…"),
 
-      !docsError&&!docsLoading&&docsFolders.length>0&&h("div",{style:{display:"flex",flexWrap:"wrap",gap:10}},
+      !docsError&&!docsLoading&&docsFolders.length>0&&h("div",{className:"lp-xp-topicgrid"},
         docsFolders.map(function(fo){
-          return h("div",{key:fo.id,style:{position:"relative",display:"inline-flex",alignItems:"center",gap:8,
-              background:"var(--grad-brand)",border:"none",boxShadow:"0 4px 16px rgba(124,58,237,0.3)",
-              borderRadius:8,padding:"8px 36px 8px 14px",width:"fit-content",cursor:"pointer"},
+          return h("div",{key:fo.id,className:"lp-xp-topic lp-hover-glow",
               onClick:function(){openDocFolder(fo);}},
-            h("span",{style:{fontSize:13,fontWeight:600,color:"#fff"}},fo.name),
-            h("button",{title:"Ordner löschen",onClick:function(e){e.stopPropagation();deleteDocFolder(fo);},
-              style:{position:"absolute",top:"50%",right:8,transform:"translateY(-50%)",width:18,height:18,
-                borderRadius:"50%",border:"none",background:"rgba(255,255,255,0.2)",color:"#fff",
-                fontSize:11,cursor:"pointer",lineHeight:1}},"×"));
+            h("div",{className:"lp-xp-topic-tile",style:{background:"var(--grad-brand-135)"}},"📁"),
+            h("div",{style:{minWidth:0,flex:1}},
+              h("div",{className:"lp-xp-topic-name",
+                style:{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},fo.name)),
+            h("button",{className:"lp-xp-topic-x",title:"Ordner löschen",
+              onClick:function(e){e.stopPropagation();deleteDocFolder(fo);}},"×"));
         })),
 
       !docsError&&!docsLoading&&docsFiles.length>0&&h("div",{style:{display:"flex",flexDirection:"column",gap:8}},
