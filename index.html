@@ -1324,7 +1324,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.4";
+var KKM_VERSION="1.8.5";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -7101,6 +7101,16 @@ function App(p){
       dbg("❌ Drive-Fehler:",e.message);
     });
   },[xpTab,googleUser,docsRootId]);
+  /* Sobald der Unterlagen-Tab nicht mehr sichtbar ist (anderer Tab
+     oder ganz aus dem Explorer heraus navigiert), Ordner-Navigation
+     zuruecksetzen - beim naechsten Oeffnen startet man dann immer
+     wieder auf der Startseite statt im zuletzt besuchten Unterordner. */
+  useEffect(function(){
+    var unterlagenVisible=(view==="decks"&&deckListMode==="manage"&&xpTab==="unterlagen");
+    if(!unterlagenVisible&&docsRootId&&(docsFolderId!==docsRootId||docsPath.length>0)){
+      goToDocRoot();
+    }
+  },[view,deckListMode,xpTab]);
   function loadDocsFolder(id){
     var cached=loadDocsCache(id);
     if(cached){
