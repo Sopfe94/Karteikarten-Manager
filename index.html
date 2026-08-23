@@ -1324,7 +1324,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.2";
+var KKM_VERSION="1.8.3";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1444,6 +1444,31 @@ function driveCountFiles(folderId){
   return driveFetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id)')
     .then(function(r){return r.json();})
     .then(function(d){return (d.files||[]).length;});
+}
+/* Lokaler Cache der Ordner-/Datei-Listen (Name, Groesse, Datum,
+   Seitenzahl, Dokumentenzahl) je Drive-Ordner-ID - beim erneuten
+   Oeffnen eines Ordners wird sofort dieser Stand angezeigt (keine
+   Wartezeit), waehrend im Hintergrund bei Drive nachgefragt wird, ob
+   sich etwas geaendert hat. Enthaelt nur Metadaten, keine PDF-Inhalte. */
+function docsCacheKey(id){ return 'kkm-docs-cache-'+id; }
+function loadDocsCache(id){
+  try{
+    var raw=localStorage.getItem(docsCacheKey(id));
+    return raw?JSON.parse(raw):null;
+  }catch(e){ return null; }
+}
+function saveDocsCache(id,data){
+  try{ localStorage.setItem(docsCacheKey(id),JSON.stringify(data)); }catch(e){}
+}
+/* Geraete-lokale Einstellung (nicht Teil des Cloud-Sync-Settings-
+   Objekts, da rein an den mobilen-Datenverbrauch dieses Geraets
+   gebunden): sollen sichtbare PDFs im Hintergrund vorgeladen werden,
+   damit sie beim Antippen sofort aufgehen? Standard: aus. */
+function loadDocPrefetchPref(){
+  try{ return localStorage.getItem('kkm-doc-prefetch')==='1'; }catch(e){ return false; }
+}
+function saveDocPrefetchPref(v){
+  try{ localStorage.setItem('kkm-doc-prefetch',v?'1':'0'); }catch(e){}
 }
 function driveMoveFile(fileId,addParentId,removeParentId){
   return driveFetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?addParents='+addParentId+'&removeParents='+removeParentId+'&fields=id,parents',{method:'PATCH'})
@@ -3916,6 +3941,14 @@ function ProfilView(p){
             h('button',{className:'lp-switch',style:{background:p.presenceOn?'var(--grad-brand)':'rgba(255,255,255,.14)'},
               onClick:p.onTogglePresence},
               h('span',{className:'lp-switch-knob',style:{left:p.presenceOn?21:3}}))),
+
+          h('div',{className:'lp-settings-row',style:{borderBottom:'none'}},
+            h('div',null,
+              h('div',{style:{display:'inline-block',fontSize:22,fontWeight:600,letterSpacing:'-0.02em',background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}},'Unterlagen im Hintergrund laden'),
+              h('div',{style:{fontSize:13,color:'rgba(255,255,255,.35)',marginTop:4,maxWidth:260}},'Bereitet sichtbare PDFs schon vor dem Antippen im Hintergrund vor, damit sie sofort aufgehen. Verbraucht dabei mobile Daten, auch fuer Dateien, die du am Ende nicht oeffnest.')),
+            h('button',{className:'lp-switch',style:{background:p.docPrefetchEnabled?'var(--grad-brand)':'rgba(255,255,255,.14)'},
+              onClick:p.onToggleDocPrefetch},
+              h('span',{className:'lp-switch-knob',style:{left:p.docPrefetchEnabled?21:3}}))),
 
           h('div',{style:{display:'flex',flexDirection:'column',gap:12,padding:'20px 4px 4px'}},
             h('div',{style:{display:'flex',justifyContent:'center',gap:8}},
@@ -6396,6 +6429,46 @@ function App(p){
   var dfol=useState([]); var docsFolders=dfol[0]; var setDocsFolders=dfol[1];
   var dfil=useState([]); var docsFiles=dfil[0]; var setDocsFiles=dfil[1];
   var dfcnt=useState({}); var docsFolderCounts=dfcnt[0]; var setDocsFolderCounts=dfcnt[1];
+  var dpf=useState(loadDocPrefetchPref()); var docPrefetchEnabled=dpf[0]; var setDocPrefetchEnabled=dpf[1];
+  function toggleDocPrefetch(){
+    setDocPrefetchEnabled(function(v){ var nv=!v; saveDocPrefetchPref(nv); return nv; });
+  }
+  /* In-Memory-Cache bereits geladener PDF-Seiten je Datei-ID (nur fuer
+     die laufende Sitzung, nicht persistiert - waere als Bilddaten viel
+     zu gross fuer localStorage). {promise, pages} je Datei: pages bleibt
+     null bis die Promise aufgeloest ist, damit openDocViewer sofort
+     erkennt, ob eine Datei bereits fertig vorgeladen ist. */
+  var docPfCacheRef=useRef({});
+  function prefetchDocFile(file){
+    var entry=docPfCacheRef.current[file.id];
+    if(entry)return entry.promise;
+    var p=driveFetch('https://www.googleapis.com/drive/v3/files/'+file.id+'?alt=media')
+      .then(function(r){ if(!r.ok)throw new Error('Download fehlgeschlagen'); return r.arrayBuffer(); })
+      .then(renderPdfPages)
+      .then(function(pages){
+        if(docPfCacheRef.current[file.id])docPfCacheRef.current[file.id].pages=pages;
+        return pages;
+      })
+      .catch(function(e){ delete docPfCacheRef.current[file.id]; throw e; });
+    docPfCacheRef.current[file.id]={promise:p,pages:null};
+    return p;
+  }
+  /* Wenn der Schalter "Unterlagen im Hintergrund laden" an ist: alle
+     gerade sichtbaren PDFs nacheinander (nicht parallel, schont mobile
+     Daten/Speicher) im Hintergrund vorladen, damit sie beim Antippen
+     sofort offen sind. */
+  useEffect(function(){
+    if(!docPrefetchEnabled||!docsFiles.length)return;
+    var cancelled=false;
+    var chain=Promise.resolve();
+    docsFiles.forEach(function(file){
+      chain=chain.then(function(){
+        if(cancelled||docPfCacheRef.current[file.id])return;
+        return prefetchDocFile(file).catch(function(){});
+      });
+    });
+    return function(){ cancelled=true; };
+  },[docsFiles,docPrefetchEnabled]);
   /* Dokumente per Long-Press-Drag (Pointer Events, funktioniert mit Maus
      UND Touch) auf eine Ordner-Card verschieben. docDragRef haelt den
      transienten Zustand waehrend der Geste; erst nach ~380ms ohne
@@ -6991,12 +7064,14 @@ function App(p){
      Unterlagen-Startseite. Laeuft unabhaengig von docsFolders/docsFiles,
      damit die Ordner-Liste nicht auf die (langsameren) Zaehl-Anfragen
      warten muss. */
-  function loadDocFolderCounts(folders){
+  function loadDocFolderCounts(parentId,folders){
     Promise.all(folders.map(function(f){
       return driveCountFiles(f.id).then(function(c){return [f.id,c];});
     })).then(function(pairs){
       var m={}; pairs.forEach(function(p){m[p[0]]=p[1];});
       setDocsFolderCounts(m);
+      var existing=loadDocsCache(parentId)||{};
+      saveDocsCache(parentId,Object.assign({},existing,{counts:m}));
     }).catch(function(){});
   }
   /* Unterlagen: Root-Ordner ermitteln/anlegen sobald der Tab zum
@@ -7006,28 +7081,45 @@ function App(p){
     setDocsLoading(true);setDocsError(null);
     driveEnsureRootFolder().then(function(id){
       setDocsRootId(id);setDocsFolderId(id);setDocsPath([]);
-      return driveListChildren(id);
-    }).then(function(children){
-      var folders=children.filter(function(c){return c.mimeType===DRIVE_FOLDER_MIME;});
-      setDocsFolders(folders);
-      setDocsFiles(children.filter(function(c){return c.mimeType!==DRIVE_FOLDER_MIME;}));
-      setDocsLoading(false);
-      setDocsFolderCounts({});loadDocFolderCounts(folders);
+      var cached=loadDocsCache(id);
+      if(cached){
+        setDocsFolders(cached.folders||[]);setDocsFiles(cached.files||[]);
+        setDocsFolderCounts(cached.counts||{});setDocsLoading(false);
+      }
+      return driveListChildren(id).then(function(children){
+        var folders=children.filter(function(c){return c.mimeType===DRIVE_FOLDER_MIME;});
+        var files=children.filter(function(c){return c.mimeType!==DRIVE_FOLDER_MIME;});
+        setDocsFolders(folders);setDocsFiles(files);setDocsLoading(false);
+        saveDocsCache(id,{folders:folders,files:files,counts:(loadDocsCache(id)||{}).counts||{}});
+        loadDocFolderCounts(id,folders);
+      }).catch(function(e){
+        if(!cached){setDocsError("Verbindung zu Google Drive fehlgeschlagen.");setDocsLoading(false);}
+        dbg("❌ Drive-Fehler:",e.message);
+      });
     }).catch(function(e){
       setDocsError("Verbindung zu Google Drive fehlgeschlagen.");setDocsLoading(false);
       dbg("❌ Drive-Fehler:",e.message);
     });
   },[xpTab,googleUser,docsRootId]);
   function loadDocsFolder(id){
-    setDocsLoading(true);setDocsError(null);
+    var cached=loadDocsCache(id);
+    if(cached){
+      setDocsFolders(cached.folders||[]);setDocsFiles(cached.files||[]);
+      setDocsFolderCounts(cached.counts||{});setDocsLoading(false);
+    }else{
+      setDocsLoading(true);setDocsFolderCounts({});
+    }
+    setDocsError(null);
     driveListChildren(id).then(function(children){
       var folders=children.filter(function(c){return c.mimeType===DRIVE_FOLDER_MIME;});
+      var files=children.filter(function(c){return c.mimeType!==DRIVE_FOLDER_MIME;});
       setDocsFolders(folders);
-      setDocsFiles(children.filter(function(c){return c.mimeType!==DRIVE_FOLDER_MIME;}));
+      setDocsFiles(files);
       setDocsLoading(false);
-      setDocsFolderCounts({});loadDocFolderCounts(folders);
+      saveDocsCache(id,{folders:folders,files:files,counts:(loadDocsCache(id)||{}).counts||{}});
+      loadDocFolderCounts(id,folders);
     }).catch(function(e){
-      setDocsError("Verbindung zu Google Drive fehlgeschlagen.");setDocsLoading(false);
+      if(!cached){setDocsError("Verbindung zu Google Drive fehlgeschlagen.");setDocsLoading(false);}
       dbg("❌ Drive-Fehler:",e.message);
     });
   }
@@ -7265,7 +7357,6 @@ function App(p){
   function docViewerAnnotKey(id){ return 'kkm-docv-'+id; }
   function openDocViewer(file){
     setDocViewerFileId(file.id);setDocViewerFileName(file.name);
-    setDocViewerLoading(true);setDocViewerError(null);setDocViewerPages([]);
     setDocViewerMarkMode(false);setDocViewerActiveFieldId(null);setDocViewerDrag(null);
     setDocViewerFieldDragId(null);setDocViewerHighlightColor('#FDE68A');
     var saved=null;
@@ -7274,9 +7365,13 @@ function App(p){
     setDocViewerTextFields((saved&&saved.textFields)||[]);
     setDocViewerFontSize((saved&&saved.fontSize)||14);
     setDocViewerZoom((saved&&saved.zoom)||1);
-    driveFetch('https://www.googleapis.com/drive/v3/files/'+file.id+'?alt=media')
-      .then(function(r){ if(!r.ok)throw new Error('Download fehlgeschlagen'); return r.arrayBuffer(); })
-      .then(renderPdfPages)
+    var cached=docPfCacheRef.current[file.id];
+    if(cached&&cached.pages){
+      setDocViewerError(null);setDocViewerLoading(false);setDocViewerPages(cached.pages);
+      return;
+    }
+    setDocViewerLoading(true);setDocViewerError(null);setDocViewerPages([]);
+    prefetchDocFile(file)
       .then(function(pages){ setDocViewerPages(pages);setDocViewerLoading(false); })
       .catch(function(e){
         setDocViewerLoading(false);
@@ -7812,7 +7907,7 @@ function App(p){
           view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,isPro:proUser,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck,onStudyingChange:setIsStudying,onEdit:function(){setEditDeck(activeDeck);},onDelete:function(){delDeck(activeDeck.id);}}),
           qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs,onProgress:saveQsProgress}),
           view==="editor"&&!qsStep&&h(LpCardEditor,{key:"editor-"+editorResetKey,initialFrontElements:[],initialBackElements:[],deckPicker:decks,showToast:showToast,isPro:proUser,onCancel:function(){switchNav('explorer');},onSave:saveCardFromEditorEntry}),
-          view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,presenceVisible:lsConsent&&presenceOn,presenceOn:presenceOn,onTogglePresence:togglePresence,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onForceRestore:handleForceRestore,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast})),
+          view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,presenceVisible:lsConsent&&presenceOn,presenceOn:presenceOn,onTogglePresence:togglePresence,docPrefetchEnabled:docPrefetchEnabled,onToggleDocPrefetch:toggleDocPrefetch,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onForceRestore:handleForceRestore,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast})),
           view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,googleUser:googleUser,presence:presence,presenceVisible:lsConsent&&presenceOn,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},onGroupDecksForHome:onGroupDecksForHome})),
           view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}})),
           view==="updates"&&!qsStep&&h(UpdatesView,{onBack:function(){setView("decks");setDeckListMode("home");},onShowImp:function(){setShowImp(true);},onShowDat:function(){setShowDat(true);}}))),
