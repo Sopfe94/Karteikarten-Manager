@@ -1324,7 +1324,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.5";
+var KKM_VERSION="1.8.6";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -7534,8 +7534,7 @@ function App(p){
                     h("div",{className:"lp-docv-field-inner",contentEditable:true,suppressContentEditableWarning:true,
                       style:{fontSize:docViewerFontSize},
                       ref:function(el){ if(el&&!el._docvInit){ el._docvInit=true; el.textContent=f.text; } },
-                      onInput:function(e){setDocTextFieldText(f.id,e.target.textContent);},
-                      onPointerDown:function(e){e.stopPropagation();}}),
+                      onInput:function(e){setDocTextFieldText(f.id,e.target.textContent);}}),
                     isActive&&h("span",{className:"lp-docv-field-btn lp-docv-field-remove",title:"Entfernen",
                       onPointerDown:function(e){e.stopPropagation();},
                       onClick:function(e){e.stopPropagation();removeDocTextField(f.id);}},"✕"),
