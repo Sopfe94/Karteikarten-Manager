@@ -1169,6 +1169,10 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
    Fuellung statt eines Emojis in einer vollflaechigen Farbbox. */
 .lp-docfolder-tile{background:transparent;border:1px solid rgba(124,58,237,0.55);
   box-shadow:0 0 14px rgba(124,58,237,0.45),0 0 6px rgba(6,182,212,0.3)}
+/* Aktives Drop-Ziel beim Verschieben eines Dokuments per Long-Press-Drag */
+.lp-docfolder-dropover{border-color:rgba(6,182,212,0.9)!important;
+  box-shadow:0 0 0 2px rgba(6,182,212,0.6),0 0 28px rgba(6,182,212,0.5)!important;
+  transform:scale(1.03);transition:transform 120ms ease,box-shadow 120ms ease}
 .lp-xp-cardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
 @media(min-width:768px){
   .lp-deck-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
@@ -1320,7 +1324,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.7.1";
+var KKM_VERSION="1.8.0";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1440,6 +1444,10 @@ function driveCountFiles(folderId){
   return driveFetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id)')
     .then(function(r){return r.json();})
     .then(function(d){return (d.files||[]).length;});
+}
+function driveMoveFile(fileId,addParentId,removeParentId){
+  return driveFetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?addParents='+addParentId+'&removeParents='+removeParentId+'&fields=id,parents',{method:'PATCH'})
+    .then(function(r){return r.json();});
 }
 function driveUploadPdf(blob,filename,parentId,pageCount){
   var metadata={name:filename,mimeType:'application/pdf',parents:parentId?[parentId]:undefined,
@@ -6388,6 +6396,15 @@ function App(p){
   var dfol=useState([]); var docsFolders=dfol[0]; var setDocsFolders=dfol[1];
   var dfil=useState([]); var docsFiles=dfil[0]; var setDocsFiles=dfil[1];
   var dfcnt=useState({}); var docsFolderCounts=dfcnt[0]; var setDocsFolderCounts=dfcnt[1];
+  /* Dokumente per Long-Press-Drag (Pointer Events, funktioniert mit Maus
+     UND Touch) auf eine Ordner-Card verschieben. docDragRef haelt den
+     transienten Zustand waehrend der Geste; erst nach ~380ms ohne
+     nennenswerte Bewegung wird wirklich "gegriffen" (sonst wuerde ein
+     normaler Scroll-Wisch auf der Handy-Liste faelschlich als Drag
+     interpretiert). */
+  var dgf=useState(null); var docsDragFileId=dgf[0]; var setDocsDragFileId=dgf[1];
+  var dgo=useState(null); var docsDragOverFolderId=dgo[0]; var setDocsDragOverFolderId=dgo[1];
+  var docDragRef=useRef(null);
   var dld=useState(false); var docsLoading=dld[0]; var setDocsLoading=dld[1];
   var derr=useState(null); var docsError=derr[0]; var setDocsError=derr[1];
   var nfm=useState(false); var newDocFolderModalOpen=nfm[0]; var setNewDocFolderModalOpen=nfm[1];
@@ -7043,6 +7060,65 @@ function App(p){
     driveDeleteFile(d.id).then(function(){ loadDocsFolder(docsFolderId); })
       .catch(function(){ showToast("Löschen fehlgeschlagen."); });
   }
+  function moveDocFile(fileId,newParentId){
+    driveMoveFile(fileId,newParentId,docsFolderId).then(function(){
+      showToast("Verschoben.");
+      loadDocsFolder(docsFolderId);
+    }).catch(function(){ showToast("Verschieben fehlgeschlagen."); });
+  }
+  function onDocFilePointerDown(d){
+    return function(e){
+      if(e.pointerType==="mouse"&&e.button!==0)return;
+      var st={id:d.id,startX:e.clientX,startY:e.clientY,active:false,cancelled:false};
+      docDragRef.current=st;
+      st.timer=setTimeout(function(){
+        if(docDragRef.current!==st||st.cancelled)return;
+        st.active=true;
+        setDocsDragFileId(d.id);
+      },380);
+    };
+  }
+  useEffect(function(){
+    function findFolderTarget(x,y){
+      var el=document.elementFromPoint(x,y);
+      var folderEl=el&&el.closest?el.closest('[data-doc-folder-id]'):null;
+      return folderEl?folderEl.getAttribute('data-doc-folder-id'):null;
+    }
+    function onMove(e){
+      var st=docDragRef.current;
+      if(!st)return;
+      if(!st.active){
+        var dx=e.clientX-st.startX, dy=e.clientY-st.startY;
+        if(Math.sqrt(dx*dx+dy*dy)>10){
+          clearTimeout(st.timer);st.cancelled=true;docDragRef.current=null;
+        }
+        return;
+      }
+      setDocsDragOverFolderId(findFolderTarget(e.clientX,e.clientY));
+    }
+    function onUp(e){
+      var st=docDragRef.current;
+      if(!st)return;
+      clearTimeout(st.timer);
+      docDragRef.current=null;
+      if(st.active){
+        var targetId=findFolderTarget(e.clientX,e.clientY);
+        setDocsDragFileId(null);setDocsDragOverFolderId(null);
+        if(targetId)moveDocFile(st.id,targetId);
+      }else if(!st.cancelled){
+        var file=docsFiles.find(function(x){return x.id===st.id;});
+        if(file)openDocViewer(file);
+      }
+    }
+    window.addEventListener("pointermove",onMove);
+    window.addEventListener("pointerup",onUp);
+    window.addEventListener("pointercancel",onUp);
+    return function(){
+      window.removeEventListener("pointermove",onMove);
+      window.removeEventListener("pointerup",onUp);
+      window.removeEventListener("pointercancel",onUp);
+    };
+  },[docsFiles]);
   function openScanModal(){ setScanMode(null);setScanPages([]);setScanModalOpen(true); }
   function closeScanModal(){ setScanModalOpen(false);setScanMode(null);setScanPages([]); }
   function triggerCameraCapture(){ if(docFileInputRef.current)docFileInputRef.current.click(); }
@@ -7471,7 +7547,9 @@ function App(p){
       !docsError&&!docsLoading&&docsFolders.length>0&&h("div",{className:"lp-xp-topicgrid"},
         docsFolders.map(function(fo){
           var cnt=docsFolderCounts[fo.id];
-          return h("div",{key:fo.id,className:"lp-xp-topic lp-hover-glow",
+          var isDropTarget=docsDragOverFolderId===fo.id;
+          return h("div",{key:fo.id,className:"lp-xp-topic lp-hover-glow"+(isDropTarget?" lp-docfolder-dropover":""),
+              "data-doc-folder-id":fo.id,
               onClick:function(){openDocFolder(fo);}},
             h("div",{className:"lp-xp-topic-tile lp-docfolder-tile"},
               h("svg",{width:20,height:20,viewBox:"0 0 24 24"},
@@ -7490,14 +7568,25 @@ function App(p){
 
       !docsError&&!docsLoading&&docsPath.length>0&&docsFiles.length>0&&h("div",{style:{display:"flex",flexDirection:"column",gap:8}},
         docsFiles.map(function(d){
+          var isDragging=docsDragFileId===d.id;
           return h("div",{key:d.id,style:{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",
-              background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:14,cursor:"pointer"},
-              onClick:function(){openDocViewer(d);}},
-            h("div",{style:{fontSize:18}},"📄"),
+              background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:14,
+              cursor:"pointer",touchAction:"pan-y",userSelect:"none",
+              opacity:isDragging?0.45:1,transition:"opacity 150ms ease"},
+              onPointerDown:onDocFilePointerDown(d)},
+            h("div",{className:"lp-xp-topic-tile lp-docfolder-tile",style:{width:36,height:36}},
+              h("svg",{width:16,height:16,viewBox:"0 0 24 24"},
+                h("defs",null,h("linearGradient",{id:"docFileGrad-"+d.id,x1:"0",y1:"0",x2:"1",y2:"0"},
+                  h("stop",{offset:"0%",stopColor:"#7C3AED"}),
+                  h("stop",{offset:"100%",stopColor:"#06B6D4"}))),
+                h("path",{d:"M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z",
+                  fill:"url(#docFileGrad-"+d.id+")"}),
+                h("path",{d:"M14 2v5h5",fill:"none",stroke:"#0D0A1A",strokeWidth:"1.5"}))),
             h("div",{style:{flex:1,minWidth:0}},
               h("div",{style:{fontSize:13,fontWeight:600,color:"#fff"}},d.name),
               h("div",{style:{fontSize:11,color:"var(--color-violet-ghost)",fontFamily:"var(--font-mono)"}},docFileMeta(d))),
-            h("button",{title:"Löschen",onClick:function(e){e.stopPropagation();deleteDocFile(d);},
+            h("button",{title:"Löschen",onPointerDown:function(e){e.stopPropagation();},
+              onClick:function(e){e.stopPropagation();deleteDocFile(d);},
               style:{width:26,height:26,borderRadius:"50%",border:"none",background:"rgba(255,255,255,0.06)",
                 color:"rgba(255,255,255,0.5)",fontSize:12,cursor:"pointer",lineHeight:1}},"×"));
         })),
