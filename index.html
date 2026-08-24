@@ -1280,7 +1280,7 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
 .lp-docv-page.marking{cursor:crosshair;touch-action:none}
 .lp-docv-page img{width:100%;display:block;pointer-events:none;border-radius:8px}
 .lp-docv-highlight{position:absolute;opacity:0.45;border-radius:2px;cursor:pointer}
-.lp-docv-studyhl{background:rgba(103,232,249,0.3);border:2px solid #67E8F9;border-radius:4px;
+.lp-docv-studyhl{background:transparent;border:2px solid #67E8F9;border-radius:4px;
   opacity:1;cursor:default;pointer-events:none;animation:lp-docv-studypulse 1.6s ease-in-out infinite}
 @keyframes lp-docv-studypulse{0%,100%{box-shadow:0 0 0 0 rgba(103,232,249,0.55)}50%{box-shadow:0 0 0 8px rgba(103,232,249,0)}}
 .lp-docv-dragrect{position:absolute;opacity:0.45;border-radius:2px;pointer-events:none}
@@ -1327,7 +1327,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.15";
+var KKM_VERSION="1.8.16";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
