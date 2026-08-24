@@ -1280,6 +1280,9 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
 .lp-docv-page.marking{cursor:crosshair;touch-action:none}
 .lp-docv-page img{width:100%;display:block;pointer-events:none;border-radius:8px}
 .lp-docv-highlight{position:absolute;opacity:0.45;border-radius:2px;cursor:pointer}
+.lp-docv-studyhl{background:rgba(103,232,249,0.3);border:2px solid #67E8F9;border-radius:4px;
+  opacity:1;cursor:default;pointer-events:none;animation:lp-docv-studypulse 1.6s ease-in-out infinite}
+@keyframes lp-docv-studypulse{0%,100%{box-shadow:0 0 0 0 rgba(103,232,249,0.55)}50%{box-shadow:0 0 0 8px rgba(103,232,249,0)}}
 .lp-docv-dragrect{position:absolute;opacity:0.45;border-radius:2px;pointer-events:none}
 .lp-docv-field{position:absolute;min-width:60px;max-width:70%;padding:6px 8px;background:transparent;
   border:1px dashed transparent;border-radius:6px;cursor:move;touch-action:none}
@@ -1324,7 +1327,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.11";
+var KKM_VERSION="1.8.12";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2692,6 +2695,7 @@ function LpCardEditor(p){
   var isPro=!!p.isPro; // kommt aus der pro_user-Tabelle in Supabase (App-Komponente)
   var fe=useState(p.initialFrontElements||[]); var frontEls=fe[0]; var setFrontEls=fe[1];
   var be=useState(p.initialBackElements||[]); var backEls=be[0]; var setBackEls=be[1];
+  var pdl=useState(p.initialPdfLink||null); var pdfLink=pdl[0]; var setPdfLink=pdl[1];
   var sd=useState("front"); var side=sd[0]; var setSide=sd[1];
   var fd=useState(0); var flipDeg=fd[0]; var setFlipDeg=fd[1];
   var fan=useState(true); var flipAnim=fan[0]; var setFlipAnim=fan[1];
@@ -3094,7 +3098,7 @@ function LpCardEditor(p){
       if(p.showToast)p.showToast("Rückseite braucht mindestens Text oder ein Bild");
       return;
     }
-    var result={front:frontText,back:backText,frontElements:ffront,backElements:fback};
+    var result={front:frontText,back:backText,frontElements:ffront,backElements:fback,pdfLink:pdfLink};
     if(p.deckPicker){
       if(!p.deckPicker.length){
         if(p.showToast)p.showToast("Erstelle zuerst einen Stapel, um Karten zu speichern.");
@@ -3127,8 +3131,14 @@ function LpCardEditor(p){
       h(DsButton,{key:"save",variant:"primary",size:"sm",onClick:saveCard},h("span",{className:"lp-btn-glow-label"},"Speichern"))
     ];
   }
-  var pdfButton=h("button",{className:"lp-editor-toolbar-btn lp-editor-pro-lock",style:proLock,disabled:!isPro,type:"button"},
-    "🔗 Mit PDF verknüpfen",h("span",{className:"lp-editor-pro-badge"},"PRO"));
+  var pdfButton=pdfLink
+    ?h("div",{className:"lp-editor-toolbar-btn",style:{display:"flex",alignItems:"center",gap:8,cursor:"default"}},
+        "📄 "+(pdfLink.fileName||"PDF")+" · Seite "+(pdfLink.page+1),
+        h("span",{onClick:function(){setPdfLink(null);},title:"Verknüpfung entfernen",
+          style:{cursor:"pointer",opacity:.6,fontWeight:700}},"✕"))
+    :h("button",{className:"lp-editor-toolbar-btn lp-editor-pro-lock",style:proLock,disabled:!isPro,type:"button",
+        onClick:function(){ if(isPro&&p.onRequestPdfLink)p.onRequestPdfLink(function(link){ setPdfLink(link); }); }},
+        "🔗 Mit PDF verknüpfen",h("span",{className:"lp-editor-pro-badge"},"PRO"));
 
   var alignIcon={
     left:h("svg",{width:16,height:12,viewBox:"0 0 16 12",fill:"none"},h("line",{x1:1,y1:1,x2:15,y2:1,stroke:"currentColor",strokeWidth:1.6,strokeLinecap:"round"}),h("line",{x1:1,y1:6,x2:10,y2:6,stroke:"currentColor",strokeWidth:1.6,strokeLinecap:"round"}),h("line",{x1:1,y1:11,x2:13,y2:11,stroke:"currentColor",strokeWidth:1.6,strokeLinecap:"round"})),
@@ -3392,10 +3402,17 @@ function StudyView(p){
   var rs=useState({k:0,m:0}); var res=rs[0]; var setRes=rs[1];
   var ds=useState(false); var done=ds[0]; var setDone=ds[1];
   var us=useState({}); var upd=us[0]; var setUpd=us[1];
+  var rr=useState(false); var pendingReread=rr[0]; var setPendingReread=rr[1];
   if(!queue.length) return h(LpStudyDone,{title:"Alles erledigt!",sub:"Keine f\u00e4lligen Karten.",onExit:function(){p.onFinish();},exitLabel:"Zur\u00fcck"});
   if(done) return h(LpStudyDone,{title:"Fertig!",sub:"Du hast alle "+queue.length+" Karten gelernt.",correct:res.k,wrong:res.m,onExit:function(){p.onFinish(upd);},exitLabel:"Zur\u00fcck zum Stapel"});
   var card=queue[idx];
-  function ans(knew){ recordReview(p.deck.id); var updatedCard=advance(card,knew); var u=Object.assign({},upd); u[card.id]=updatedCard; setUpd(u); setRes({k:res.k+(knew?1:0),m:res.m+(knew?0:1)}); if(idx+1>=queue.length)setDone(true); else{setIdx(idx+1);setFlip(false);} }
+  function advanceAfterAnswer(knew){
+    recordReview(p.deck.id); var updatedCard=advance(card,knew); var u=Object.assign({},upd); u[card.id]=updatedCard; setUpd(u); setRes({k:res.k+(knew?1:0),m:res.m+(knew?0:1)}); if(idx+1>=queue.length)setDone(true); else{setIdx(idx+1);setFlip(false);}
+  }
+  function ans(knew){
+    if(!knew&&card.pdfLink&&p.suggestPdfReread!==false){ setPendingReread(true); return; }
+    advanceAfterAnswer(knew);
+  }
   return h("div",null,
     h("button",{className:"back-btn",onClick:function(){p.onFinish();}},"\u2190 Beenden"),
     h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}},
@@ -3407,7 +3424,18 @@ function StudyView(p){
       flip?h("div",{style:{display:"flex",gap:16}},
         h(DsButton,{variant:"danger",style:{height:48,padding:"0 20px"},onClick:function(){ans(false);}},"\u2717 Noch \u00fcben"),
         h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 20px",height:48},onClick:function(){ans(true);}},h("span",{className:"lp-btn-glow-label"},"\u2713 Gewusst")))
-        :h("div",{style:{height:48}})));
+        :h("div",{style:{height:48}})),
+    pendingReread&&h("div",{className:"lp-modal-ov"},
+      h("div",{className:"lp-modal-box",onClick:function(e){e.stopPropagation();}},
+        h("div",{className:"lp-modal-title grad"},"Textstelle nochmal durchlesen?"),
+        h("p",{style:{fontSize:14,color:"rgba(255,255,255,.65)",lineHeight:1.5}},
+          "Zu dieser Karte ist eine Textstelle in \u201e"+(card.pdfLink.fileName||"einem Dokument")+"\u201c verkn\u00fcpft."),
+        h("div",{className:"lp-modal-actions"},
+          h(DsButton,{variant:"ghost",onClick:function(){setPendingReread(false);advanceAfterAnswer(false);}},"Nein"),
+          h(DsButton,{variant:"primary",onClick:function(){
+            setPendingReread(false);
+            p.onOpenPdfLink&&p.onOpenPdfLink(card.pdfLink,function(){advanceAfterAnswer(false);});
+          }},h("span",{className:"lp-btn-glow-label"},"Ja"))))));
 }
 
 /* Wie StudyView: Kartenbewertungen werden erst beim vollstaendigen
@@ -3424,10 +3452,17 @@ function MultiStudyView(p){
   var rs=useState({k:0,m:0}); var res=rs[0]; var setRes=rs[1];
   var ds=useState(false); var done=ds[0]; var setDone=ds[1];
   var us=useState({}); var upd=us[0]; var setUpd=us[1];
+  var rr=useState(false); var pendingReread=rr[0]; var setPendingReread=rr[1];
   if(!queue.length) return h(LpStudyDone,{title:"Keine Karten",onExit:function(){p.onFinish();},exitLabel:"Zur\u00fcck"});
   if(done) return h(LpStudyDone,{title:"Fertig!",sub:queue.length+" Karten aus "+p.decks.length+" Stapeln",correct:res.k,wrong:res.m,onExit:function(){p.onFinish(upd);},exitLabel:"Fertig"});
   var card=queue[idx];
-  function ans(knew){ recordReview(card._did||"unknown"); var updatedCard=advance(card,knew); var u=Object.assign({},upd); u[card.id]=updatedCard; setUpd(u); setRes({k:res.k+(knew?1:0),m:res.m+(knew?0:1)}); if(idx+1>=queue.length)setDone(true); else{setIdx(idx+1);setFlip(false);} }
+  function advanceAfterAnswer(knew){
+    recordReview(card._did||"unknown"); var updatedCard=advance(card,knew); var u=Object.assign({},upd); u[card.id]=updatedCard; setUpd(u); setRes({k:res.k+(knew?1:0),m:res.m+(knew?0:1)}); if(idx+1>=queue.length)setDone(true); else{setIdx(idx+1);setFlip(false);}
+  }
+  function ans(knew){
+    if(!knew&&card.pdfLink&&p.suggestPdfReread!==false){ setPendingReread(true); return; }
+    advanceAfterAnswer(knew);
+  }
   return h("div",null,
     h("button",{className:"back-btn",onClick:function(){p.onFinish();}},"\u2190 Beenden"),
     h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}},
@@ -3439,7 +3474,18 @@ function MultiStudyView(p){
       flip?h("div",{style:{display:"flex",gap:16}},
         h(DsButton,{variant:"danger",style:{height:48,padding:"0 20px"},onClick:function(){ans(false);}},"\u2717 Noch \u00fcben"),
         h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 20px",height:48},onClick:function(){ans(true);}},h("span",{className:"lp-btn-glow-label"},"\u2713 Gewusst")))
-        :h("div",{style:{height:48}})));
+        :h("div",{style:{height:48}})),
+    pendingReread&&h("div",{className:"lp-modal-ov"},
+      h("div",{className:"lp-modal-box",onClick:function(e){e.stopPropagation();}},
+        h("div",{className:"lp-modal-title grad"},"Textstelle nochmal durchlesen?"),
+        h("p",{style:{fontSize:14,color:"rgba(255,255,255,.65)",lineHeight:1.5}},
+          "Zu dieser Karte ist eine Textstelle in \u201e"+(card.pdfLink.fileName||"einem Dokument")+"\u201c verkn\u00fcpft."),
+        h("div",{className:"lp-modal-actions"},
+          h(DsButton,{variant:"ghost",onClick:function(){setPendingReread(false);advanceAfterAnswer(false);}},"Nein"),
+          h(DsButton,{variant:"primary",onClick:function(){
+            setPendingReread(false);
+            p.onOpenPdfLink&&p.onOpenPdfLink(card.pdfLink,function(){advanceAfterAnswer(false);});
+          }},h("span",{className:"lp-btn-glow-label"},"Ja"))))));
 }
 
 function SingleCardView(p){
@@ -3496,15 +3542,17 @@ function DeckDetail(p){
     }));
   }
 
-  if(study) return h(StudyView,{deck:p.deck,onFinish:finish});
+  if(study) return h(StudyView,{deck:p.deck,onFinish:finish,onOpenPdfLink:p.onOpenPdfLink,suggestPdfReread:p.suggestPdfReread});
   if(viewCard) return h(SingleCardView,{card:viewCard,onBack:function(){setViewCard(null);},backLabel:'Zur\u00fcck zu den Karteikarten'});
   if(editorSeed) return h(LpCardEditor,{
     initialFrontElements:editorSeed.frontElements||[],
     initialBackElements:editorSeed.backElements||[],
+    initialPdfLink:editorSeed.pdfLink||null,
     showToast:showToast,
     isPro:p.isPro,
     onCancel:function(){setEditorSeed(null);},
-    onSave:saveCardFromEditor
+    onSave:saveCardFromEditor,
+    onRequestPdfLink:p.onRequestPdfLink
   });
 
   function collapseBtn(id){
@@ -3596,7 +3644,7 @@ function DeckDetail(p){
       :renderCards(p.deck.cards),
 
     showAdd&&h(CardModal,{folders:deckFolders,onSave:addCard,onClose:function(){setShowAdd(false);},onOpenEditor:function(seed){setShowAdd(false);setEditorSeed({cardId:null,folderId:seed.folderId,frontElements:seed.frontElements,backElements:seed.backElements});}}),
-    editC&&h(CardModal,{card:editC,folders:deckFolders,onSave:saveCard,onClose:function(){setEditC(null);},onOpenEditor:function(seed){var cid=editC.id;setEditC(null);setEditorSeed({cardId:cid,folderId:seed.folderId,frontElements:seed.frontElements,backElements:seed.backElements});}}),
+    editC&&h(CardModal,{card:editC,folders:deckFolders,onSave:saveCard,onClose:function(){setEditC(null);},onOpenEditor:function(seed){var cid=editC.id;var pl=editC.pdfLink;setEditC(null);setEditorSeed({cardId:cid,folderId:seed.folderId,frontElements:seed.frontElements,backElements:seed.backElements,pdfLink:pl});}}),
     showNewFolder&&h(FolderModal,{onSave:addFolder,onClose:function(){setShowNewFolder(false);}}),
     editFolderItem&&h(FolderModal,{folder:editFolderItem,onSave:saveFolder,onClose:function(){setEditFolderItem(null);}}),
     showShare&&h(ShareModal,{deck:p.deck,onClose:function(){setShowShare(false);}}),
@@ -3807,6 +3855,8 @@ function ProfilView(p){
   var email=p.googleUser?p.googleUser.email:'Gast-Modus – nicht angemeldet';
   var avatarLetter=(name||'?').charAt(0).toUpperCase();
 
+  var suggestPdfReread=sets.suggestPdfReread!==false;
+  function toggleSuggestPdfReread(){ p.onChange(Object.assign({},sets,{suggestPdfReread:!suggestPdfReread})); }
   function toggleArt(art){
     var cur=sets.lernArten||[];
     var next=cur.includes(art)?cur.filter(function(a){return a!==art;}):[].concat(cur,[art]);
@@ -3883,9 +3933,11 @@ function ProfilView(p){
               h('span',{style:{fontSize:15,fontWeight:600,minWidth:64,textAlign:'center',color:'#fff'}},dailyGoal+' Karten'),
               h('button',{className:'lp-stepper-btn',onClick:function(){stepGoal(5);}},'+'))),
 
-          h('div',{className:'lp-settings-row',style:{opacity:.4}},
-            h('span',{style:{fontSize:15,maxWidth:240,lineHeight:1.4,color:'#fff'}},'Bei nicht gewusster Karteikarte die passende Textstelle zum erneuten Lesen vorschlagen ',h('span',{style:{fontFamily:'var(--font-mono)',fontSize:11,color:'rgba(255,255,255,.4)'}},'(kommt mit Unterlagen)')),
-            h('div',{className:'lp-switch',style:{background:'rgba(255,255,255,.12)',cursor:'default'}},h('span',{className:'lp-switch-knob',style:{left:3}}))),
+          h('div',{className:'lp-settings-row'},
+            h('span',{style:{fontSize:15,maxWidth:240,lineHeight:1.4,color:'#fff'}},'Bei nicht gewusster Karteikarte die passende Textstelle zum erneuten Lesen vorschlagen'),
+            h('button',{className:'lp-switch',style:{background:suggestPdfReread?'var(--grad-brand)':'rgba(255,255,255,.14)'},
+              onClick:toggleSuggestPdfReread},
+              h('span',{className:'lp-switch-knob',style:{left:suggestPdfReread?21:3}}))),
 
           h('div',{style:{display:'inline-block',alignSelf:'flex-start',fontSize:22,fontWeight:600,letterSpacing:'-0.02em',background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text',margin:'16px 0 4px'}},'Lernempfehlung'),
           h('div',{className:'lp-settings-row',style:{flexDirection:'column',alignItems:'stretch',gap:12}},
@@ -6489,6 +6541,20 @@ function App(p){
   var dvaf=useState(null); var docViewerActiveFieldId=dvaf[0]; var setDocViewerActiveFieldId=dvaf[1];
   var dvdr=useState(null); var docViewerDrag=dvdr[0]; var setDocViewerDrag=dvdr[1];
   var dvfd=useState(null); var docViewerFieldDragId=dvfd[0]; var setDocViewerFieldDragId=dvfd[1];
+  /* PDF-Verknüpfung (Karteikarte <-> Textstelle im Dokument):
+     docViewerLinkMode=true heisst, der Viewer wird gerade aus dem
+     Karteikarten-Editor heraus geoeffnet, um EINEN Rahmen um eine
+     Textstelle zu ziehen (statt normal zu markieren/annotieren).
+     docViewerStudyContext ist gesetzt, wenn der Viewer waehrend einer
+     Lernsitzung geoeffnet wurde, weil eine Karte mit "Noch üben"
+     beantwortet wurde und die verknuepfte Textstelle nochmal gezeigt
+     werden soll - nur dann ist die Markierung sichtbar und der
+     "Weiter lernen"-Button vorhanden. */
+  var dvlm=useState(false); var docViewerLinkMode=dvlm[0]; var setDocViewerLinkMode=dvlm[1];
+  var dvlr=useState(null); var pdfLinkPickRect=dvlr[0]; var setPdfLinkPickRect=dvlr[1];
+  var dvlo=useRef(null); // onPicked-Callback fuer den Editor
+  var dvsc=useState(null); var docViewerStudyContext=dvsc[0]; var setDocViewerStudyContext=dvsc[1];
+  var lpo=useState(false); var linkPickerOpen=lpo[0]; var setLinkPickerOpen=lpo[1];
   var ums=useState(false); var showUsernameModal=ums[0]; var setShowUsernameModal=ums[1];
   var sus=useState(loadSocialUsername()); var socialUsername=sus[0]; var setSocialUsername=sus[1];
   var lscvs=useState(true); var lsContentVis=lscvs[0]; var setLsContentVis=lscvs[1];
@@ -6824,7 +6890,7 @@ function App(p){
   function saveCardFromEditorEntry(result){
     var deck=decks.find(function(d){return d.id===result.deckId;});
     if(!deck)return;
-    updateDeck(Object.assign({},deck,{cards:deck.cards.concat([Object.assign({id:uid(),folderId:result.folderId||null,lvl:0,nextReview:todayStr()},{front:result.front,back:result.back,frontElements:result.frontElements,backElements:result.backElements})])}));
+    updateDeck(Object.assign({},deck,{cards:deck.cards.concat([Object.assign({id:uid(),folderId:result.folderId||null,lvl:0,nextReview:todayStr()},{front:result.front,back:result.back,frontElements:result.frontElements,backElements:result.backElements,pdfLink:result.pdfLink||null})])}));
     showToast('Karte gespeichert!');
     setEditorResetKey(function(k){return k+1;});
   }
@@ -7055,7 +7121,7 @@ function App(p){
   /* Unterlagen: Root-Ordner ermitteln/anlegen sobald der Tab zum
      ersten Mal geoeffnet wird, danach dessen Inhalt laden. */
   useEffect(function(){
-    if(xpTab!=="unterlagen"||!googleUser||docsRootId)return;
+    if((xpTab!=="unterlagen"&&!linkPickerOpen)||!googleUser||docsRootId)return;
     setDocsLoading(true);setDocsError(null);
     driveEnsureRootFolder().then(function(id){
       setDocsRootId(id);setDocsFolderId(id);setDocsPath([]);
@@ -7078,7 +7144,7 @@ function App(p){
       setDocsError("Verbindung zu Google Drive fehlgeschlagen.");setDocsLoading(false);
       dbg("❌ Drive-Fehler:",e.message);
     });
-  },[xpTab,googleUser,docsRootId]);
+  },[xpTab,googleUser,docsRootId,linkPickerOpen]);
   /* Sobald der Unterlagen-Tab nicht mehr sichtbar ist (anderer Tab
      oder ganz aus dem Explorer heraus navigiert), Ordner-Navigation
      zuruecksetzen - beim naechsten Oeffnen startet man dann immer
@@ -7343,10 +7409,14 @@ function App(p){
   /* ---- PDF-Viewer ---- */
   var docViewerDragRef=useRef(null);
   function docViewerAnnotKey(id){ return 'kkm-docv-'+id; }
-  function openDocViewer(file){
+  function openDocViewer(file,opts){
+    opts=opts||{};
     setDocViewerFileId(file.id);setDocViewerFileName(file.name);
     setDocViewerMarkMode(false);setDocViewerActiveFieldId(null);setDocViewerDrag(null);
     setDocViewerFieldDragId(null);setDocViewerHighlightColor('#FDE68A');
+    setDocViewerLinkMode(!!opts.linkMode);setPdfLinkPickRect(null);
+    dvlo.current=opts.onPicked||null;
+    setDocViewerStudyContext(opts.studyHighlight?{highlight:opts.studyHighlight,onContinue:opts.onContinue}:null);
     var saved=null;
     try{ var raw=localStorage.getItem(docViewerAnnotKey(file.id)); if(raw)saved=JSON.parse(raw); }catch(e){}
     setDocViewerHighlights((saved&&saved.highlights)||[]);
@@ -7371,6 +7441,17 @@ function App(p){
     setDocViewerFileId(null);setDocViewerPages([]);setDocViewerHighlights([]);
     setDocViewerTextFields([]);setDocViewerDrag(null);setDocViewerFieldDragId(null);
     setDocViewerActiveFieldId(null);setDocViewerError(null);docViewerDragRef.current=null;
+    setDocViewerLinkMode(false);setPdfLinkPickRect(null);dvlo.current=null;
+    setDocViewerStudyContext(null);
+  }
+  /* Verlassen des Viewers waehrend einer Lernsitzung ("←" oder
+     "Weiter lernen") soll die Lernsitzung immer fortsetzen - beide
+     Wege fuehren zum selben Ergebnis, "Weiter lernen" ist nur die
+     deutlichere Beschriftung dafuer. */
+  function backFromDocViewer(){
+    var ctx=docViewerStudyContext;
+    closeDocViewer();
+    if(ctx&&ctx.onContinue)ctx.onContinue();
   }
   function saveDocViewer(){
     if(docViewerFileId){
@@ -7382,7 +7463,73 @@ function App(p){
       }catch(e){}
     }
     showToast("Gespeichert");
+    backFromDocViewer();
+  }
+  /* Vom Karteikarten-Editor aus: Auswahl eines PDFs + Rahmen um eine
+     Textstelle ziehen. onPicked wird mit {fileId,fileName,page,x,y,w,h}
+     aufgerufen, sobald bestaetigt wird. */
+  function requestPdfLink(onPicked){
+    setLinkPickerOpen(true);
+    dvlo.current=onPicked;
+  }
+  function pickPdfForLink(file){
+    setLinkPickerOpen(false);
+    openDocViewer(file,{linkMode:true,onPicked:dvlo.current});
+  }
+  function confirmPdfLinkPick(){
+    if(!pdfLinkPickRect||!dvlo.current)return;
+    var cb=dvlo.current;
+    cb({fileId:docViewerFileId,fileName:docViewerFileName,page:pdfLinkPickRect.page,
+      x:pdfLinkPickRect.x,y:pdfLinkPickRect.y,w:pdfLinkPickRect.w,h:pdfLinkPickRect.h});
     closeDocViewer();
+  }
+  /* Beim Lernen: Karte mit "Noch üben" beantwortet und Nutzer will die
+     verknuepfte Textstelle nochmal sehen. onContinue setzt die
+     Lernsitzung fort, sobald der Viewer wieder verlassen wird. */
+  function openPdfLinkForStudy(link,onContinue){
+    if(!link||!link.fileId){ onContinue&&onContinue(); return; }
+    openDocViewer({id:link.fileId,name:link.fileName||'Dokument'},{
+      studyHighlight:{page:link.page,x:link.x,y:link.y,w:link.w,h:link.h},
+      onContinue:onContinue
+    });
+  }
+  /* Schritt 1 der PDF-Verknuepfung (vom Editor aus): PDF aus den
+     Unterlagen auswaehlen. Nutzt dieselben Ordner/Datei-States wie der
+     Unterlagen-Tab, unabhaengig davon, ob dieser gerade sichtbar ist. */
+  function renderPdfLinkPicker(){
+    return h("div",{className:"lp-modal-ov",onClick:function(){setLinkPickerOpen(false);}},
+      h("div",{className:"lp-modal-box",style:{maxWidth:440,width:"100%",maxHeight:"80vh",display:"flex",flexDirection:"column"},
+          onClick:function(e){e.stopPropagation();}},
+        h("div",{className:"lp-modal-title grad"},"PDF auswählen"),
+        !googleUser&&h("p",{style:{fontSize:14,color:"rgba(255,255,255,.6)"}},
+          "Diese Funktion steht nur mit Google-Anmeldung zur Verfügung."),
+        googleUser&&h(R.Fragment,null,
+          docsPath.length>0&&h("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",
+              fontSize:12,color:"rgba(255,255,255,0.4)",marginBottom:4}},
+            h("span",{style:{cursor:"pointer",color:"var(--color-violet-light)"},onClick:goToDocRoot},"Startseite"),
+            docsPath.map(function(pp,i){
+              return h(R.Fragment,{key:pp.id},
+                h("span",null,"/"),
+                h("span",{style:{color:"#fff",cursor:i<docsPath.length-1?"pointer":"default"},
+                  onClick:i<docsPath.length-1?function(){goToDocPathIndex(i);}:undefined},pp.name));
+            })),
+          h("div",{style:{overflowY:"auto",display:"flex",flexDirection:"column",gap:4,minHeight:120}},
+            docsLoading&&h("div",{style:{textAlign:"center",padding:"24px 0",color:"rgba(255,255,255,0.4)",fontSize:13}},"Lädt…"),
+            docsError&&h("div",{style:{padding:"16px 0",color:"rgba(255,255,255,0.5)",fontSize:13}},docsError),
+            !docsLoading&&!docsError&&docsFolders.length===0&&docsFiles.length===0&&
+              h("div",{style:{padding:"24px 0",textAlign:"center",color:"rgba(255,255,255,0.35)",fontSize:13}},"Keine Ordner oder Dokumente hier."),
+            !docsLoading&&docsFolders.map(function(fo){
+              return h("button",{key:fo.id,className:"lp-row lp-hover-glow",style:{textAlign:"left",cursor:"pointer",fontFamily:"var(--font-sans)"},
+                onClick:function(){openDocFolder(fo);}},
+                h("span",{style:{marginRight:8}},"📁"),h("span",{className:"lp-row-title"},fo.name));
+            }),
+            !docsLoading&&docsFiles.map(function(d){
+              return h("button",{key:d.id,className:"lp-row lp-hover-glow",style:{textAlign:"left",cursor:"pointer",fontFamily:"var(--font-sans)"},
+                onClick:function(){pickPdfForLink(d);}},
+                docFileIcon(d.id,18),h("span",{className:"lp-row-title",style:{marginLeft:8}},d.name));
+            }))),
+        h("div",{className:"lp-modal-actions"},
+          h(DsButton,{variant:"ghost",onClick:function(){setLinkPickerOpen(false);}},"Abbrechen"))));
   }
   function addDocTextField(){
     var id='tf'+Date.now();
@@ -7419,7 +7566,7 @@ function App(p){
   }
   function onDocPageDown(pageIndex){
     return function(e){
-      if(!docViewerMarkMode)return;
+      if(!docViewerMarkMode&&!docViewerLinkMode)return;
       var rect=e.currentTarget.getBoundingClientRect();
       var x=Math.max(0,Math.min(100,(e.clientX-rect.left)/rect.width*100));
       var y=Math.max(0,Math.min(100,(e.clientY-rect.top)/rect.height*100));
@@ -7447,10 +7594,13 @@ function App(p){
       if(d&&d.type==='highlight'){
         setDocViewerDrag(function(cur){
           if(cur&&(Math.abs(cur.w)>1||Math.abs(cur.h)>1)){
-            setDocViewerHighlights(function(hs){return hs.concat([{
-              page:cur.page,x:cur.w<0?cur.x+cur.w:cur.x,y:cur.h<0?cur.y+cur.h:cur.y,
-              w:Math.abs(cur.w),h:Math.abs(cur.h),color:docViewerHighlightColor
-            }]);});
+            var rect={page:cur.page,x:cur.w<0?cur.x+cur.w:cur.x,y:cur.h<0?cur.y+cur.h:cur.y,
+              w:Math.abs(cur.w),h:Math.abs(cur.h)};
+            if(docViewerLinkMode){
+              setPdfLinkPickRect(rect);
+            }else{
+              setDocViewerHighlights(function(hs){return hs.concat([Object.assign({},rect,{color:docViewerHighlightColor})]);});
+            }
           }
           return null;
         });
@@ -7464,7 +7614,7 @@ function App(p){
       window.removeEventListener("pointerup",onUp);
       window.removeEventListener("pointercancel",onUp);
     };
-  },[docViewerFileId,docViewerHighlightColor]);
+  },[docViewerFileId,docViewerHighlightColor,docViewerLinkMode]);
   function renderDocViewerOverlay(){
     var markerColors=['#FDE68A','#67E8F9','#F9A8D4','#86EFAC'];
     var drag=docViewerDrag;
@@ -7475,10 +7625,17 @@ function App(p){
           h("div",{className:"pdf"},h("span",null,"PDF"),h("i",null)),
           h("span",{className:"viewer"}," Viewer"))),
       h("div",{className:"lp-docv-topbar"},
-        h("button",{className:"lp-docv-close",title:"Zurück",onClick:closeDocViewer},"←"),
-        h("div",null),
-        h("button",{className:"lp-docv-glowbtn",style:{height:30,padding:"0 12px",fontSize:12},onClick:saveDocViewer},
-          h("span",{className:"lp-docv-glowlabel"},"Speichern"))),
+        h("button",{className:"lp-docv-close",title:"Zurück",onClick:backFromDocViewer},"←"),
+        docViewerLinkMode?h("span",{style:{fontSize:12,color:"rgba(255,255,255,.55)"}},"Rahmen um die Textstelle ziehen"):h("div",null),
+        docViewerLinkMode
+          ?h("button",{className:"lp-docv-glowbtn",style:{height:30,padding:"0 12px",fontSize:12,opacity:pdfLinkPickRect?1:.4},
+              disabled:!pdfLinkPickRect,onClick:confirmPdfLinkPick},
+              h("span",{className:"lp-docv-glowlabel"},"Übernehmen"))
+          :docViewerStudyContext
+            ?h("button",{className:"lp-docv-glowbtn",style:{height:30,padding:"0 12px",fontSize:12},onClick:saveDocViewer},
+                h("span",{className:"lp-docv-glowlabel"},"✓ Weiter lernen"))
+            :h("button",{className:"lp-docv-glowbtn",style:{height:30,padding:"0 12px",fontSize:12},onClick:saveDocViewer},
+                h("span",{className:"lp-docv-glowlabel"},"Speichern"))),
       docViewerLoading&&h("div",{className:"lp-docv-loading"},h("span",{className:"lp-spinner"}),"Lädt…"),
       docViewerError&&h("div",{className:"lp-docv-loading"},docViewerError),
       !docViewerLoading&&!docViewerError&&h("div",{className:"lp-docv-body",style:{"--docv-zoom":docViewerZoom}},
@@ -7487,9 +7644,11 @@ function App(p){
             var pageHighlights=docViewerHighlights.map(function(hl,gi){return {hl:hl,gi:gi};})
               .filter(function(o){return o.hl.page===pg.index;});
             var pageFields=docViewerTextFields.filter(function(f){return f.page===pg.index;});
+            var studyHl=docViewerStudyContext&&docViewerStudyContext.highlight.page===pg.index?docViewerStudyContext.highlight:null;
+            var pickHl=docViewerLinkMode&&pdfLinkPickRect&&pdfLinkPickRect.page===pg.index?pdfLinkPickRect:null;
             return h("div",{key:pg.index,style:{display:"flex",flexDirection:"column",alignItems:"center",gap:8}},
               h("span",{className:"lp-docv-pagelabel"},"Seite "+(pg.index+1)+" / "+docViewerPages.length),
-              h("div",{className:"lp-docv-page"+(docViewerMarkMode?" marking":""),
+              h("div",{className:"lp-docv-page"+((docViewerMarkMode||docViewerLinkMode)?" marking":""),
                   onPointerDown:onDocPageDown(pg.index)},
                 h("img",{src:pg.url,draggable:false}),
                 pageHighlights.map(function(o){
@@ -7498,10 +7657,17 @@ function App(p){
                     onClick:function(){removeDocHighlight(o.gi);},
                     style:{left:o.hl.x+"%",top:o.hl.y+"%",width:o.hl.w+"%",height:o.hl.h+"%",background:o.hl.color}});
                 }),
+                studyHl&&h("div",{className:"lp-docv-highlight lp-docv-studyhl",
+                  ref:function(el){ if(el)el.scrollIntoView({behavior:"smooth",block:"center"}); },
+                  style:{left:studyHl.x+"%",top:studyHl.y+"%",width:studyHl.w+"%",height:studyHl.h+"%"}}),
+                pickHl&&h("div",{className:"lp-docv-highlight",
+                  style:{left:pickHl.x+"%",top:pickHl.y+"%",width:pickHl.w+"%",height:pickHl.h+"%",
+                    background:"rgba(103,232,249,0.35)",border:"2px solid #06B6D4"}}),
                 drag&&drag.page===pg.index&&h("div",{className:"lp-docv-dragrect",
                   style:{left:(drag.w<0?drag.x+drag.w:drag.x)+"%",top:(drag.h<0?drag.y+drag.h:drag.y)+"%",
-                    width:Math.abs(drag.w)+"%",height:Math.abs(drag.h)+"%",background:docViewerHighlightColor}}),
-                pageFields.map(function(f){
+                    width:Math.abs(drag.w)+"%",height:Math.abs(drag.h)+"%",
+                    background:docViewerLinkMode?"rgba(103,232,249,0.35)":docViewerHighlightColor}}),
+                !docViewerLinkMode&&pageFields.map(function(f){
                   var isActive=docViewerActiveFieldId===f.id;
                   return h("div",{key:f.id,className:"lp-docv-field"+(isActive?" active":""),
                       style:{left:f.x+"%",top:f.y+"%"},
@@ -7522,7 +7688,11 @@ function App(p){
                 })));
           })),
         h("div",{className:"lp-docv-sidebar"},
-          h("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+          docViewerLinkMode&&h("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+            h("span",{className:"lp-docv-seclbl"},"VERKNÜPFUNG"),
+            h("p",{style:{fontSize:12,color:"rgba(255,255,255,.5)",lineHeight:1.5,margin:0}},
+              "Ziehe mit dem Finger/der Maus einen Rahmen um die Textstelle, die zu dieser Karte gehört.")),
+          !docViewerLinkMode&&h("div",{style:{display:"flex",flexDirection:"column",gap:8}},
             h("span",{className:"lp-docv-seclbl"},"TEXT"),
             h("div",{style:{display:"flex",gap:8}},
               h("button",{className:"lp-docv-glowbtn",style:{height:34,padding:"0 14px",fontSize:12,alignSelf:"flex-start"},
@@ -7531,7 +7701,7 @@ function App(p){
                 onClick:decDocFontSize},"A-"),
               h("button",{className:"lp-docv-glowbtn",style:{width:30,height:30,borderRadius:"50%",fontSize:14},
                 onClick:incDocFontSize},"A+"))),
-          h("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+          !docViewerLinkMode&&h("div",{style:{display:"flex",flexDirection:"column",gap:8}},
             h("span",{className:"lp-docv-seclbl"},"MARKIEREN"),
             h("div",{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}},
               h("button",{className:"lp-docv-glowbtn"+(docViewerMarkMode?" active":" ghost"),
@@ -7550,16 +7720,23 @@ function App(p){
                 title:"Vergrößern",onClick:zoomInDoc},"+"))),
           h("div",{style:{flex:1}}),
           h("div",{style:{display:"flex",flexDirection:"column",gap:8}},
-            h("button",{className:"lp-docv-glowbtn",style:{height:40},onClick:saveDocViewer},
-              h("span",{className:"lp-docv-glowlabel"},"Speichern")),
+            docViewerLinkMode
+              ?h("button",{className:"lp-docv-glowbtn",style:{height:40,opacity:pdfLinkPickRect?1:.4},
+                  disabled:!pdfLinkPickRect,onClick:confirmPdfLinkPick},
+                  h("span",{className:"lp-docv-glowlabel"},"Übernehmen"))
+              :docViewerStudyContext
+                ?h("button",{className:"lp-docv-glowbtn",style:{height:40},onClick:saveDocViewer},
+                    h("span",{className:"lp-docv-glowlabel"},"✓ Weiter lernen"))
+                :h("button",{className:"lp-docv-glowbtn",style:{height:40},onClick:saveDocViewer},
+                    h("span",{className:"lp-docv-glowlabel"},"Speichern")),
             h("button",{className:"lp-docv-glowbtn ghost",style:{height:38,padding:"0 16px",fontSize:13},
-              onClick:closeDocViewer},"Abbrechen")))),
+              onClick:docViewerLinkMode?closeDocViewer:backFromDocViewer},"Abbrechen")))),
       !docViewerLoading&&!docViewerError&&h("div",{className:"lp-docv-bottombar"},
-        h("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
+        !docViewerLinkMode&&h("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
           h("button",{className:"lp-docv-glowbtn",style:{height:26,padding:"0 10px",fontSize:11},onClick:addDocTextField},"+ Text"),
           h("button",{className:"lp-docv-glowbtn",style:{width:26,height:26,borderRadius:"50%",fontSize:14},onClick:decDocFontSize},"A-"),
           h("button",{className:"lp-docv-glowbtn",style:{width:26,height:26,borderRadius:"50%",fontSize:14},onClick:incDocFontSize},"A+")),
-        h("div",{className:"lp-docv-divider"}),
+        !docViewerLinkMode&&h("div",{className:"lp-docv-divider"}),
         h("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
           h("span",{className:"lp-docv-seclbl",style:{fontSize:10}},"ZOOM"),
           h("button",{className:"lp-docv-glowbtn",style:{width:26,height:26,borderRadius:"50%",fontSize:15},
@@ -7567,13 +7744,16 @@ function App(p){
           h("button",{className:"lp-docv-glowbtn",style:{width:26,height:26,borderRadius:"50%",fontSize:15},
             title:"Vergrößern",onClick:zoomInDoc},"+")),
         h("div",{style:{flexBasis:"100%",height:0}}),
-        h("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
+        !docViewerLinkMode&&h("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
           h("span",{className:"lp-docv-seclbl",style:{fontSize:10}},"MARKER"),
           markerColors.map(function(c){
             return h("button",{key:c,className:"lp-docv-swatch",style:{width:20,height:20,background:c},onClick:setDocHighlightColor(c)});
           }),
           h("button",{className:"lp-docv-glowbtn"+(docViewerMarkMode?" active":" ghost"),
-            style:{height:26,padding:"0 10px",fontSize:11},onClick:toggleDocMarkMode},"Markieren"))));
+            style:{height:26,padding:"0 10px",fontSize:11},onClick:toggleDocMarkMode},"Markieren")),
+        docViewerLinkMode&&h("button",{className:"lp-docv-glowbtn",style:{height:26,padding:"0 12px",fontSize:11,opacity:pdfLinkPickRect?1:.4},
+          disabled:!pdfLinkPickRect,onClick:confirmPdfLinkPick},
+          h("span",{className:"lp-docv-glowlabel"},"Übernehmen"))));
   }
   function docFileMeta(d){
     var pages=d.appProperties&&d.appProperties.pages;
@@ -7788,7 +7968,7 @@ function App(p){
       xpTab==="stapel"&&renderXpStapel(q,allDecks),
       xpTab==="faecher"&&renderXpFaecher(q),
       xpTab==="unterlagen"&&renderXpUnterlagen(q));
-    return docViewerFileId?h(R.Fragment,null,explorerContent,ReactDOM.createPortal(renderDocViewerOverlay(),document.body)):explorerContent;
+    return explorerContent;
   }
 
   var _le=lernEmpf;
@@ -7892,9 +8072,9 @@ function App(p){
             lpLernSpaceOn&&h(DashboardFriends,{onNav:switchNav,state:dashFriends,presence:presence})),
 
           view==="decks"&&!activeDeck&&!qsStep&&deckListMode==="manage"&&renderExplorer(),
-          view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,isPro:proUser,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck,onStudyingChange:setIsStudying,onEdit:function(){setEditDeck(activeDeck);},onDelete:function(){delDeck(activeDeck.id);}}),
-          qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs}),
-          view==="editor"&&!qsStep&&h(LpCardEditor,{key:"editor-"+editorResetKey,initialFrontElements:[],initialBackElements:[],deckPicker:decks,showToast:showToast,isPro:proUser,onCancel:function(){switchNav('explorer');},onSave:saveCardFromEditorEntry}),
+          view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,isPro:proUser,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck,onStudyingChange:setIsStudying,onEdit:function(){setEditDeck(activeDeck);},onDelete:function(){delDeck(activeDeck.id);},onRequestPdfLink:requestPdfLink,onOpenPdfLink:openPdfLinkForStudy,suggestPdfReread:data.settings&&data.settings.suggestPdfReread!==false}),
+          qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs,onOpenPdfLink:openPdfLinkForStudy,suggestPdfReread:data.settings&&data.settings.suggestPdfReread!==false}),
+          view==="editor"&&!qsStep&&h(LpCardEditor,{key:"editor-"+editorResetKey,initialFrontElements:[],initialBackElements:[],deckPicker:decks,showToast:showToast,isPro:proUser,onCancel:function(){switchNav('explorer');},onSave:saveCardFromEditorEntry,onRequestPdfLink:requestPdfLink}),
           view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,presenceVisible:lsConsent&&presenceOn,presenceOn:presenceOn,onTogglePresence:togglePresence,docPrefetchEnabled:docPrefetchEnabled,onToggleDocPrefetch:toggleDocPrefetch,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onForceRestore:handleForceRestore,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast})),
           view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,googleUser:googleUser,presence:presence,presenceVisible:lsConsent&&presenceOn,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},onGroupDecksForHome:onGroupDecksForHome})),
           view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}})),
@@ -7920,6 +8100,10 @@ function App(p){
         h("div",{className:"lp-modal-actions"},
           h(DsButton,{variant:"ghost",onClick:function(){setShowSessionExpired(false);}},"Als Gast fortfahren"),
           h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:function(){setShowSessionExpired(false);handleGoogleLogin();}},h("span",{className:"lp-btn-glow-label"},"Jetzt anmelden"))))),
+    /* App-weit (nicht nur im Explorer) - so kann der PDF-Viewer auch
+       waehrend einer laufenden Lernsitzung geoeffnet werden. */
+    docViewerFileId&&ReactDOM.createPortal(renderDocViewerOverlay(),document.body),
+    linkPickerOpen&&renderPdfLinkPicker(),
     h(Toast,{msg:toast}));
 }
 
