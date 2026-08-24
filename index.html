@@ -1327,7 +1327,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.12";
+var KKM_VERSION="1.8.13";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2070,11 +2070,29 @@ function backfillDsgvoAcceptedIfMissing(){
 function uid(){ return Math.random().toString(36).slice(2,10); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function addDays(s,n){ var d=new Date(s); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
-function getDue(deck){ var t=todayStr(); return deck.cards.filter(function(c){ return !c.nextReview||c.nextReview<=t; }); }
+/* roundPending: Karte wurde in der aktuellen Lernrunde bereits mit
+   "Noch üben" beantwortet und wartet darauf, dass die Runde komplett
+   durchgelernt ist, bevor sie erneut als fällig zählt (siehe
+   rolloverPendingCards). Karten mit roundPending zählen bewusst NICHT
+   als fällig - sonst würde die Fällig-Zahl schon waehrend einer
+   laufenden/abgebrochenen Runde wieder hochspringen. */
+function getDue(deck){ var t=todayStr(); return deck.cards.filter(function(c){ return !c.roundPending&&(!c.nextReview||c.nextReview<=t); }); }
 function advance(card,knew){
-  if(!knew) return Object.assign({},card,{lvl:0,nextReview:todayStr()});
+  if(!knew) return Object.assign({},card,{lvl:0,roundPending:true});
   var lvl = Math.min((card.lvl||0)+1, SRS_DAYS.length-1);
-  return Object.assign({},card,{lvl:lvl, nextReview:addDays(todayStr(),SRS_DAYS[lvl])});
+  return Object.assign({},card,{lvl:lvl, nextReview:addDays(todayStr(),SRS_DAYS[lvl]),roundPending:false});
+}
+/* Sobald keine Karte des Stapels mehr "regulaer" faellig ist (also die
+   Runde komplett durchgelernt wurde), werden alle mit roundPending
+   markierten Karten (die "Noch üben" waren) wieder auf heute faellig
+   gesetzt - sie starten damit die naechste Runde. Wird nach jeder
+   Kartenaktualisierung eines Stapels aufgerufen (siehe updateDeck). */
+function rolloverPendingCards(cards){
+  var t=todayStr();
+  var anyStillDue=cards.some(function(c){ return !c.roundPending&&(!c.nextReview||c.nextReview<=t); });
+  var anyPending=cards.some(function(c){ return c.roundPending; });
+  if(anyStillDue||!anyPending) return cards;
+  return cards.map(function(c){ return c.roundPending?Object.assign({},c,{roundPending:false,nextReview:t}):c; });
 }
 function loadStore(){
   try{
@@ -3388,12 +3406,12 @@ function LpStudyDone(p){
       h(DsButton,{variant:"ghost",style:{height:48,padding:"0 24px"},onClick:p.onExit},p.exitLabel||"Zur\u00fcck"),
       p.onRestart&&h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:48},onClick:p.onRestart},h("span",{className:"lp-btn-glow-label"},"Nochmal"))));
 }
-/* Kartenbewertungen (upd) werden bewusst NICHT sofort gespeichert,
-   sondern nur lokal gesammelt und erst uebergeben, wenn die Runde
-   komplett durchgelernt wurde (done-Zweig unten). Verlaesst man ueber
-   "Beenden" vorzeitig, wird kein upd uebergeben - der Stapel bleibt
-   unveraendert und "fällig"-Zahlen springen nicht schon bei einer
-   Teilrunde herum. */
+/* Jede Kartenbewertung wird SOFORT gespeichert (p.onProgress), auch
+   wenn man ueber "Beenden" vorzeitig aussteigt - der Lernfortschritt
+   geht dadurch nie verloren. Karten, die "Noch ueben" waren, zaehlen
+   dank roundPending (siehe advance/getDue) trotzdem nicht sofort
+   wieder als faellig, sondern erst wenn die ganze Runde durchgelernt
+   wurde (rolloverPendingCards in updateDeck). */
 function StudyView(p){
   var due=getDue(p.deck);
   var qs=useState(function(){return due.slice().sort(function(){return Math.random()-.5;});}); var queue=qs[0];
@@ -3401,13 +3419,12 @@ function StudyView(p){
   var fs=useState(false); var flip=fs[0]; var setFlip=fs[1];
   var rs=useState({k:0,m:0}); var res=rs[0]; var setRes=rs[1];
   var ds=useState(false); var done=ds[0]; var setDone=ds[1];
-  var us=useState({}); var upd=us[0]; var setUpd=us[1];
   var rr=useState(false); var pendingReread=rr[0]; var setPendingReread=rr[1];
   if(!queue.length) return h(LpStudyDone,{title:"Alles erledigt!",sub:"Keine f\u00e4lligen Karten.",onExit:function(){p.onFinish();},exitLabel:"Zur\u00fcck"});
-  if(done) return h(LpStudyDone,{title:"Fertig!",sub:"Du hast alle "+queue.length+" Karten gelernt.",correct:res.k,wrong:res.m,onExit:function(){p.onFinish(upd);},exitLabel:"Zur\u00fcck zum Stapel"});
+  if(done) return h(LpStudyDone,{title:"Fertig!",sub:"Du hast alle "+queue.length+" Karten gelernt.",correct:res.k,wrong:res.m,onExit:function(){p.onFinish();},exitLabel:"Zur\u00fcck zum Stapel"});
   var card=queue[idx];
   function advanceAfterAnswer(knew){
-    recordReview(p.deck.id); var updatedCard=advance(card,knew); var u=Object.assign({},upd); u[card.id]=updatedCard; setUpd(u); setRes({k:res.k+(knew?1:0),m:res.m+(knew?0:1)}); if(idx+1>=queue.length)setDone(true); else{setIdx(idx+1);setFlip(false);}
+    recordReview(p.deck.id); var updatedCard=advance(card,knew); if(p.onProgress)p.onProgress(updatedCard); setRes({k:res.k+(knew?1:0),m:res.m+(knew?0:1)}); if(idx+1>=queue.length)setDone(true); else{setIdx(idx+1);setFlip(false);}
   }
   function ans(knew){
     if(!knew&&card.pdfLink&&p.suggestPdfReread!==false){ setPendingReread(true); return; }
@@ -3438,9 +3455,9 @@ function StudyView(p){
           }},h("span",{className:"lp-btn-glow-label"},"Ja"))))));
 }
 
-/* Wie StudyView: Kartenbewertungen werden erst beim vollstaendigen
-   Durchlernen aller ausgewaehlten Stapel gespeichert, nicht schon bei
-   jeder einzelnen Antwort. */
+/* Wie StudyView: jede Kartenbewertung wird sofort gespeichert
+   (p.onProgress), unabhaengig davon, welcher der ausgewaehlten Stapel
+   die Karte gehoert. */
 function MultiStudyView(p){
   var qs=useState(function(){
     if(p.config.mode==="mixed"){ var all=[]; p.decks.forEach(function(d){d.cards.forEach(function(c){all.push(Object.assign({},c,{_dn:d.name,_did:d.id}));});}); return all.sort(function(){return Math.random()-.5;}); }
@@ -3451,13 +3468,12 @@ function MultiStudyView(p){
   var fs=useState(false); var flip=fs[0]; var setFlip=fs[1];
   var rs=useState({k:0,m:0}); var res=rs[0]; var setRes=rs[1];
   var ds=useState(false); var done=ds[0]; var setDone=ds[1];
-  var us=useState({}); var upd=us[0]; var setUpd=us[1];
   var rr=useState(false); var pendingReread=rr[0]; var setPendingReread=rr[1];
   if(!queue.length) return h(LpStudyDone,{title:"Keine Karten",onExit:function(){p.onFinish();},exitLabel:"Zur\u00fcck"});
-  if(done) return h(LpStudyDone,{title:"Fertig!",sub:queue.length+" Karten aus "+p.decks.length+" Stapeln",correct:res.k,wrong:res.m,onExit:function(){p.onFinish(upd);},exitLabel:"Fertig"});
+  if(done) return h(LpStudyDone,{title:"Fertig!",sub:queue.length+" Karten aus "+p.decks.length+" Stapeln",correct:res.k,wrong:res.m,onExit:function(){p.onFinish();},exitLabel:"Fertig"});
   var card=queue[idx];
   function advanceAfterAnswer(knew){
-    recordReview(card._did||"unknown"); var updatedCard=advance(card,knew); var u=Object.assign({},upd); u[card.id]=updatedCard; setUpd(u); setRes({k:res.k+(knew?1:0),m:res.m+(knew?0:1)}); if(idx+1>=queue.length)setDone(true); else{setIdx(idx+1);setFlip(false);}
+    recordReview(card._did||"unknown"); var updatedCard=advance(card,knew); if(p.onProgress&&card._did)p.onProgress(card._did,updatedCard); setRes({k:res.k+(knew?1:0),m:res.m+(knew?0:1)}); if(idx+1>=queue.length)setDone(true); else{setIdx(idx+1);setFlip(false);}
   }
   function ans(knew){
     if(!knew&&card.pdfLink&&p.suggestPdfReread!==false){ setPendingReread(true); return; }
@@ -3531,7 +3547,13 @@ function DeckDetail(p){
     setEditorSeed(null);
   }
   function delCard(id){ if(!confirm("Karte l\u00f6schen?"))return; p.onUpdate(Object.assign({},p.deck,{cards:p.deck.cards.filter(function(c){return c.id!==id;})})); }
-  function finish(upd){ if(upd)p.onUpdate(Object.assign({},p.deck,{cards:p.deck.cards.map(function(c){return upd[c.id]||c;}),updatedAt:new Date().toISOString()})); setStudy(false); }
+  function finish(){ setStudy(false); }
+  /* Speichert eine einzelne Kartenbewertung SOFORT ueber p.onUpdate
+     (updateDeck uebernimmt dabei auch den Rollover-Check fuer
+     roundPending-Karten) - verlaesst man die Sitzung ueber die
+     Bottom-Navigation statt ueber "Beenden"/"Fertig", geht so kein
+     Fortschritt verloren. */
+  function saveProgress(updatedCard){ p.onUpdate(Object.assign({},p.deck,{cards:p.deck.cards.map(function(c){return c.id===updatedCard.id?updatedCard:c;}),updatedAt:new Date().toISOString()})); }
   function addFolder(d){ p.onUpdate(Object.assign({},p.deck,{folders:(deckFolders).concat([Object.assign({id:uid()},d)])})); setShowNewFolder(false); showToast("Fach erstellt!"); }
   function saveFolder(d){ p.onUpdate(Object.assign({},p.deck,{folders:deckFolders.map(function(f){return f.id===editFolderItem.id?Object.assign({},f,d):f;})})); setEditFolderItem(null); }
   function delFolder(id){
@@ -3542,7 +3564,7 @@ function DeckDetail(p){
     }));
   }
 
-  if(study) return h(StudyView,{deck:p.deck,onFinish:finish,onOpenPdfLink:p.onOpenPdfLink,suggestPdfReread:p.suggestPdfReread});
+  if(study) return h(StudyView,{deck:p.deck,onFinish:finish,onProgress:saveProgress,onOpenPdfLink:p.onOpenPdfLink,suggestPdfReread:p.suggestPdfReread});
   if(viewCard) return h(SingleCardView,{card:viewCard,onBack:function(){setViewCard(null);},backLabel:'Zur\u00fcck zu den Karteikarten'});
   if(editorSeed) return h(LpCardEditor,{
     initialFrontElements:editorSeed.frontElements||[],
@@ -3566,7 +3588,7 @@ function DeckDetail(p){
     if(!cards.length) return null;
     return h("div",{style:{display:"flex",flexDirection:"column",gap:8}},cards.map(function(c){
       var folder=deckFolders.find(function(f){return f.id===c.folderId;});
-      var isDue=c.nextReview<=todayStr();
+      var isDue=!c.roundPending&&c.nextReview<=todayStr();
       return h("div",{className:"lp-row clickable",key:c.id,onClick:function(){setViewCard(c);}},
         h("div",{style:{flex:1,minWidth:0}},
           h("div",{className:"lp-row-title",style:{whiteSpace:"nowrap",overflow:"hidden",
@@ -5545,7 +5567,7 @@ function LernSpaceView(p){
     if(groupStackPage==='deck-detail'&&selectedGroupDeck){
       var deck=selectedGroupDeck;
       var cards=deck.cards||[];
-      var due=cards.filter(function(c){return !c.nextReview||c.nextReview<=todayStr();});
+      var due=getDue(deck);
       return h('div',null,
         h('button',{className:'ls-back-inline',onClick:function(){setGroupStackPage('list');setGroupTab('stacks');}},'\u2190 Zur\u00FCck zu den Stapeln'),
         h('div',{className:'ls-gd-deck ls-gd-deck-centered'},
@@ -6931,19 +6953,23 @@ function App(p){
   function saveEditDeck(d){patch({decks:decks.map(function(dk){return dk.id===editDeck.id?Object.assign({},dk,d,{updatedAt:new Date().toISOString()}):dk;})});setEditDeck(null);}
   function delDeck(id){if(!confirm("Stapel l\u00f6schen?"))return;patch({decks:decks.filter(function(d){return d.id!==id;})});if(deckId===id)setDeckId(null);}
   function updateDeck(u){
-    if(u._groupId){
-      patch({groupDecks:(data.groupDecks||[]).map(function(d){return d.id===u.id?Object.assign({},u,{updatedAt:new Date().toISOString()}):d;})});
+    var uu=u.cards?Object.assign({},u,{cards:rolloverPendingCards(u.cards)}):u;
+    if(uu._groupId){
+      patch({groupDecks:(data.groupDecks||[]).map(function(d){return d.id===uu.id?Object.assign({},uu,{updatedAt:new Date().toISOString()}):d;})});
     }else{
-      patch({decks:decks.map(function(d){return d.id===u.id?Object.assign({},u,{updatedAt:new Date().toISOString()}):d;})});
+      patch({decks:decks.map(function(d){return d.id===uu.id?Object.assign({},uu,{updatedAt:new Date().toISOString()}):d;})});
     }
   }
-  function finishQs(upd){
-    if(upd){
-      var now=new Date().toISOString();
-      var nd=decks.map(function(d){var qd=qsDecks.find(function(x){return x.id===d.id;});if(!qd)return d;return Object.assign({},d,{cards:d.cards.map(function(c){return upd[c.id]||c;}),updatedAt:now});});
-      var ng=(data.groupDecks||[]).map(function(d){var qd=qsDecks.find(function(x){return x.id===d.id;});if(!qd)return d;return Object.assign({},d,{cards:d.cards.map(function(c){return upd[c.id]||c;}),updatedAt:now});});
-      patch({decks:nd,groupDecks:ng});
-    }
+  /* Speichert eine einzelne Kartenbewertung beim Schnelllernen (mehrere
+     Stapel) sofort ueber updateDeck (inkl. Rollover-Check), statt erst
+     beim Verlassen der Sitzung zu sammeln - deckt auch das Verlassen
+     ueber die Bottom-Navigation ab. */
+  function saveQsProgress(deckId,updatedCard){
+    var d=decks.find(function(x){return x.id===deckId;})||(data.groupDecks||[]).find(function(x){return x.id===deckId;});
+    if(!d)return;
+    updateDeck(Object.assign({},d,{cards:d.cards.map(function(c){return c.id===updatedCard.id?updatedCard:c;})}));
+  }
+  function finishQs(){
     setQsStep(null);setQsConfig(null);setQsDecks([]);
   }
   function addFolder(d){patch({folders:folders.concat([Object.assign({id:uid()},d)])});setShowNewFolder(false);showToast("Fach erstellt!");}
@@ -8073,7 +8099,7 @@ function App(p){
 
           view==="decks"&&!activeDeck&&!qsStep&&deckListMode==="manage"&&renderExplorer(),
           view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,isPro:proUser,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck,onStudyingChange:setIsStudying,onEdit:function(){setEditDeck(activeDeck);},onDelete:function(){delDeck(activeDeck.id);},onRequestPdfLink:requestPdfLink,onOpenPdfLink:openPdfLinkForStudy,suggestPdfReread:data.settings&&data.settings.suggestPdfReread!==false}),
-          qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs,onOpenPdfLink:openPdfLinkForStudy,suggestPdfReread:data.settings&&data.settings.suggestPdfReread!==false}),
+          qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs,onProgress:saveQsProgress,onOpenPdfLink:openPdfLinkForStudy,suggestPdfReread:data.settings&&data.settings.suggestPdfReread!==false}),
           view==="editor"&&!qsStep&&h(LpCardEditor,{key:"editor-"+editorResetKey,initialFrontElements:[],initialBackElements:[],deckPicker:decks,showToast:showToast,isPro:proUser,onCancel:function(){switchNav('explorer');},onSave:saveCardFromEditorEntry,onRequestPdfLink:requestPdfLink}),
           view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,presenceVisible:lsConsent&&presenceOn,presenceOn:presenceOn,onTogglePresence:togglePresence,docPrefetchEnabled:docPrefetchEnabled,onToggleDocPrefetch:toggleDocPrefetch,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onForceRestore:handleForceRestore,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast})),
           view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,googleUser:googleUser,presence:presence,presenceVisible:lsConsent&&presenceOn,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},onGroupDecksForHome:onGroupDecksForHome})),
