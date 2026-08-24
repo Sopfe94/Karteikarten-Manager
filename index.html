@@ -1327,7 +1327,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.16";
+var KKM_VERSION="1.8.17";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -7457,7 +7457,34 @@ function App(p){
   }
   /* ---- PDF-Viewer ---- */
   var docViewerDragRef=useRef(null);
+  var docViewerStudyHlRef=useRef(null);
   function docViewerAnnotKey(id){ return 'kkm-docv-'+id; }
+  /* Scrollt erst zur markierten Textstelle, wenn alle Seitenbilder
+     fertig geladen sind - direkt beim Einhaengen des Rahmens ist die
+     Seite oft noch ohne Hoehe (Bild laedt asynchron), wodurch
+     scrollIntoView die Position falsch/gar nicht berechnet. */
+  useEffect(function(){
+    if(!docViewerStudyContext||docViewerLoading||!docViewerPages.length)return;
+    var cancelled=false;
+    function doScroll(){
+      if(cancelled)return;
+      var el=docViewerStudyHlRef.current;
+      if(el)el.scrollIntoView({behavior:"smooth",block:"center"});
+    }
+    var imgs=document.querySelectorAll(".lp-docv-pages img");
+    var pending=[];
+    imgs.forEach(function(img){
+      if(!img.complete){
+        pending.push(new Promise(function(res){
+          img.addEventListener("load",res,{once:true});
+          img.addEventListener("error",res,{once:true});
+        }));
+      }
+    });
+    if(pending.length)Promise.all(pending).then(function(){ if(!cancelled)requestAnimationFrame(doScroll); });
+    else requestAnimationFrame(doScroll);
+    return function(){ cancelled=true; };
+  },[docViewerStudyContext,docViewerLoading,docViewerPages]);
   function openDocViewer(file,opts){
     opts=opts||{};
     setDocViewerFileId(file.id);setDocViewerFileName(file.name);
@@ -7707,7 +7734,7 @@ function App(p){
                     style:{left:o.hl.x+"%",top:o.hl.y+"%",width:o.hl.w+"%",height:o.hl.h+"%",background:o.hl.color}});
                 }),
                 studyHl&&h("div",{className:"lp-docv-highlight lp-docv-studyhl",
-                  ref:function(el){ if(el)el.scrollIntoView({behavior:"smooth",block:"center"}); },
+                  ref:docViewerStudyHlRef,
                   style:{left:studyHl.x+"%",top:studyHl.y+"%",width:studyHl.w+"%",height:studyHl.h+"%"}}),
                 pickHl&&h("div",{className:"lp-docv-highlight",
                   style:{left:pickHl.x+"%",top:pickHl.y+"%",width:pickHl.w+"%",height:pickHl.h+"%",
