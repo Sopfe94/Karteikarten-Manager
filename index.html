@@ -1327,7 +1327,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.13";
+var KKM_VERSION="1.8.14";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2319,7 +2319,13 @@ function deckStatusTag(pct){
 function deckPct(deck){
   var cards=deck.cards||[];
   if(cards.length===0)return 0;
-  var learned=cards.filter(function(c){return c.lvl>0;}).length;
+  /* roundPending zaehlt bewusst mit: die Karte wurde in der laufenden
+     Runde schon durchgearbeitet (nur eben nicht gewusst) - der Balken
+     soll zeigen, wie weit man durch den Stapel durch ist, nicht nur
+     wie viele Karten wirklich gemeistert sind. Faellt zurueck auf 0,
+     sobald die Runde komplett ist und roundPending wieder geloescht
+     wird (rolloverPendingCards). */
+  var learned=cards.filter(function(c){return c.lvl>0||c.roundPending;}).length;
   return Math.round(learned/cards.length*100);
 }
 function formatDashDate(){
