@@ -1327,7 +1327,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.14";
+var KKM_VERSION="1.8.15";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3426,9 +3426,12 @@ function StudyView(p){
   var rs=useState({k:0,m:0}); var res=rs[0]; var setRes=rs[1];
   var ds=useState(false); var done=ds[0]; var setDone=ds[1];
   var rr=useState(false); var pendingReread=rr[0]; var setPendingReread=rr[1];
+  var card=queue.length?queue[idx]:null;
+  useEffect(function(){
+    if(card&&card.pdfLink&&p.onPrefetchPdf)p.onPrefetchPdf(card.pdfLink);
+  },[card&&card.id]);
   if(!queue.length) return h(LpStudyDone,{title:"Alles erledigt!",sub:"Keine f\u00e4lligen Karten.",onExit:function(){p.onFinish();},exitLabel:"Zur\u00fcck"});
   if(done) return h(LpStudyDone,{title:"Fertig!",sub:"Du hast alle "+queue.length+" Karten gelernt.",correct:res.k,wrong:res.m,onExit:function(){p.onFinish();},exitLabel:"Zur\u00fcck zum Stapel"});
-  var card=queue[idx];
   function advanceAfterAnswer(knew){
     recordReview(p.deck.id); var updatedCard=advance(card,knew); if(p.onProgress)p.onProgress(updatedCard); setRes({k:res.k+(knew?1:0),m:res.m+(knew?0:1)}); if(idx+1>=queue.length)setDone(true); else{setIdx(idx+1);setFlip(false);}
   }
@@ -3475,9 +3478,12 @@ function MultiStudyView(p){
   var rs=useState({k:0,m:0}); var res=rs[0]; var setRes=rs[1];
   var ds=useState(false); var done=ds[0]; var setDone=ds[1];
   var rr=useState(false); var pendingReread=rr[0]; var setPendingReread=rr[1];
+  var card=queue.length?queue[idx]:null;
+  useEffect(function(){
+    if(card&&card.pdfLink&&p.onPrefetchPdf)p.onPrefetchPdf(card.pdfLink);
+  },[card&&card.id]);
   if(!queue.length) return h(LpStudyDone,{title:"Keine Karten",onExit:function(){p.onFinish();},exitLabel:"Zur\u00fcck"});
   if(done) return h(LpStudyDone,{title:"Fertig!",sub:queue.length+" Karten aus "+p.decks.length+" Stapeln",correct:res.k,wrong:res.m,onExit:function(){p.onFinish();},exitLabel:"Fertig"});
-  var card=queue[idx];
   function advanceAfterAnswer(knew){
     recordReview(card._did||"unknown"); var updatedCard=advance(card,knew); if(p.onProgress&&card._did)p.onProgress(card._did,updatedCard); setRes({k:res.k+(knew?1:0),m:res.m+(knew?0:1)}); if(idx+1>=queue.length)setDone(true); else{setIdx(idx+1);setFlip(false);}
   }
@@ -3513,6 +3519,9 @@ function MultiStudyView(p){
 function SingleCardView(p){
   var fs=useState(false);var flip=fs[0];var setFlip=fs[1];
   var card=p.card;
+  useEffect(function(){
+    if(card.pdfLink&&p.onPrefetchPdf)p.onPrefetchPdf(card.pdfLink);
+  },[card.id]);
   return h('div',null,
     h('button',{className:'back-btn',onClick:p.onBack},'\u2190 '+(p.backLabel||'Zur\u00fcck')),
     h('div',{style:{display:"flex",justifyContent:"center"}},
@@ -3570,8 +3579,8 @@ function DeckDetail(p){
     }));
   }
 
-  if(study) return h(StudyView,{deck:p.deck,onFinish:finish,onProgress:saveProgress,onOpenPdfLink:p.onOpenPdfLink,suggestPdfReread:p.suggestPdfReread});
-  if(viewCard) return h(SingleCardView,{card:viewCard,onBack:function(){setViewCard(null);},backLabel:'Zur\u00fcck zu den Karteikarten'});
+  if(study) return h(StudyView,{deck:p.deck,onFinish:finish,onProgress:saveProgress,onOpenPdfLink:p.onOpenPdfLink,suggestPdfReread:p.suggestPdfReread,onPrefetchPdf:p.onPrefetchPdf});
+  if(viewCard) return h(SingleCardView,{card:viewCard,onBack:function(){setViewCard(null);},backLabel:'Zur\u00fcck zu den Karteikarten',onPrefetchPdf:p.onPrefetchPdf});
   if(editorSeed) return h(LpCardEditor,{
     initialFrontElements:editorSeed.frontElements||[],
     initialBackElements:editorSeed.backElements||[],
@@ -6504,6 +6513,14 @@ function App(p){
     docPfCacheRef.current[file.id]={promise:p,pages:null};
     return p;
   }
+  /* Wenn eine Karteikarte mit PDF-Verknuepfung geoeffnet wird (Einzel-
+     ansicht oder Lernen) und "Unterlagen im Hintergrund laden" an ist:
+     das verknuepfte PDF direkt mit vorbereiten, damit es beim "Weiter
+     lernen"/Betrachten sofort offen ist. */
+  function prefetchCardPdfLink(link){
+    if(!docPrefetchEnabled||!link||!link.fileId)return;
+    prefetchDocFile({id:link.fileId,name:link.fileName||'Dokument'}).catch(function(){});
+  }
   /* Wenn der Schalter "Unterlagen im Hintergrund laden" an ist: alle
      gerade sichtbaren PDFs nacheinander (nicht parallel, schont mobile
      Daten/Speicher) im Hintergrund vorladen, damit sie beim Antippen
@@ -7694,11 +7711,13 @@ function App(p){
                   style:{left:studyHl.x+"%",top:studyHl.y+"%",width:studyHl.w+"%",height:studyHl.h+"%"}}),
                 pickHl&&h("div",{className:"lp-docv-highlight",
                   style:{left:pickHl.x+"%",top:pickHl.y+"%",width:pickHl.w+"%",height:pickHl.h+"%",
-                    background:"rgba(103,232,249,0.35)",border:"2px solid #06B6D4"}}),
+                    background:"transparent",border:"2px solid #06B6D4",opacity:1}}),
                 drag&&drag.page===pg.index&&h("div",{className:"lp-docv-dragrect",
                   style:{left:(drag.w<0?drag.x+drag.w:drag.x)+"%",top:(drag.h<0?drag.y+drag.h:drag.y)+"%",
                     width:Math.abs(drag.w)+"%",height:Math.abs(drag.h)+"%",
-                    background:docViewerLinkMode?"rgba(103,232,249,0.35)":docViewerHighlightColor}}),
+                    background:docViewerLinkMode?"transparent":docViewerHighlightColor,
+                    border:docViewerLinkMode?"2px solid #06B6D4":"none",
+                    opacity:docViewerLinkMode?1:undefined}}),
                 !docViewerLinkMode&&pageFields.map(function(f){
                   var isActive=docViewerActiveFieldId===f.id;
                   return h("div",{key:f.id,className:"lp-docv-field"+(isActive?" active":""),
@@ -8104,8 +8123,8 @@ function App(p){
             lpLernSpaceOn&&h(DashboardFriends,{onNav:switchNav,state:dashFriends,presence:presence})),
 
           view==="decks"&&!activeDeck&&!qsStep&&deckListMode==="manage"&&renderExplorer(),
-          view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,isPro:proUser,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck,onStudyingChange:setIsStudying,onEdit:function(){setEditDeck(activeDeck);},onDelete:function(){delDeck(activeDeck.id);},onRequestPdfLink:requestPdfLink,onOpenPdfLink:openPdfLinkForStudy,suggestPdfReread:data.settings&&data.settings.suggestPdfReread!==false}),
-          qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs,onProgress:saveQsProgress,onOpenPdfLink:openPdfLinkForStudy,suggestPdfReread:data.settings&&data.settings.suggestPdfReread!==false}),
+          view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,isPro:proUser,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck,onStudyingChange:setIsStudying,onEdit:function(){setEditDeck(activeDeck);},onDelete:function(){delDeck(activeDeck.id);},onRequestPdfLink:requestPdfLink,onOpenPdfLink:openPdfLinkForStudy,suggestPdfReread:data.settings&&data.settings.suggestPdfReread!==false,onPrefetchPdf:prefetchCardPdfLink}),
+          qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs,onProgress:saveQsProgress,onOpenPdfLink:openPdfLinkForStudy,suggestPdfReread:data.settings&&data.settings.suggestPdfReread!==false,onPrefetchPdf:prefetchCardPdfLink}),
           view==="editor"&&!qsStep&&h(LpCardEditor,{key:"editor-"+editorResetKey,initialFrontElements:[],initialBackElements:[],deckPicker:decks,showToast:showToast,isPro:proUser,onCancel:function(){switchNav('explorer');},onSave:saveCardFromEditorEntry,onRequestPdfLink:requestPdfLink}),
           view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,presenceVisible:lsConsent&&presenceOn,presenceOn:presenceOn,onTogglePresence:togglePresence,docPrefetchEnabled:docPrefetchEnabled,onToggleDocPrefetch:toggleDocPrefetch,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onForceRestore:handleForceRestore,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast})),
           view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,googleUser:googleUser,presence:presence,presenceVisible:lsConsent&&presenceOn,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},onGroupDecksForHome:onGroupDecksForHome})),
