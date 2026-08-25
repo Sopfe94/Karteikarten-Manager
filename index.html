@@ -1335,7 +1335,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.23";
+var KKM_VERSION="1.8.24";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2031,8 +2031,9 @@ function syncAppData(d){
            anderen Geraets stillschweigend loeschen). Stattdessen den
            neueren Cloud-Stand uebernehmen und sichtbar informieren. */
         _applyingRemote=true;
-        saveStore(remote);
-        if(_syncSetData)_syncSetData(remote);
+        var remoteClean=applyRemoteExtras(remote);
+        saveStore(remoteClean);
+        if(_syncSetData)_syncSetData(remoteClean);
         if(_syncShowToast)_syncShowToast('Ein anderes Gerät hatte neuere Änderungen – dein Stand wurde aktualisiert.');
         dbg('🔄 App-Sync: Cloud war neuer, lokal uebernommen statt ueberschrieben');
         setTimeout(function(){_applyingRemote=false;},200);
@@ -2262,6 +2263,21 @@ function loadTodayLog(){
   }catch(e){ return {logDb:{},today:todayStr(),todayLog:{totalSeconds:0,cardCount:0,decks:[],lastTimestamp:null}}; }
 }
 function saveLogDb(logDb){ try{localStorage.setItem(LEARN_LOG_KEY,JSON.stringify(logDb));}catch(e){} }
+/* Lern-Log (Tagesstreak/gelernte-Karten-Zaehler) UND das Streak-Reset-
+   Datum lagen bisher rein geraete-lokal in eigenen localStorage-Keys,
+   komplett ausserhalb von syncAppData()/data - dadurch synchronisierte
+   sich der Streak nie geraeteuebergreifend, obwohl Stapel/Einstellungen
+   ueber denselben Weg schon liefen. Werden jetzt beim Hoch-/Runterladen
+   in den app_data-Sync-Payload mit hinein- bzw. wieder herausgezogen,
+   damit sie denselben Weg wie alles andere nehmen. */
+function applyRemoteExtras(remote){
+  if(remote.learnLog)saveLogDb(remote.learnLog);
+  if(remote.streakResetDate!==undefined){
+    try{ if(remote.streakResetDate)localStorage.setItem(STREAK_RESET_KEY,remote.streakResetDate); else localStorage.removeItem(STREAK_RESET_KEY); }catch(e){}
+  }
+  var clean=Object.assign({},remote); delete clean.learnLog; delete clean.streakResetDate;
+  return clean;
+}
 function recordReview(deckId){
   var nav=loadTodayLog(); var logDb=nav.logDb; var today=nav.today; var log=nav.todayLog;
   var now=Date.now();
@@ -6844,7 +6860,7 @@ function App(p){
           var localTs=loadStore()._syncedAt||0;
           if(remoteTs>localTs){
             _applyingRemote=true;
-            var restored=res.data.app_data;
+            var restored=applyRemoteExtras(res.data.app_data);
             saveStore(restored);
             setData(restored);
             showToast('Karteikarten wiederhergestellt!');
@@ -6943,7 +6959,7 @@ function App(p){
   },[]);
   useEffect(function(){
     saveStore(data);
-    syncAppData(data);
+    syncAppData(Object.assign({},data,{learnLog:getLogDb(),streakResetDate:localStorage.getItem(STREAK_RESET_KEY)||null}));
     var due=(data.decks||[]).reduce(function(s,d){return s+getDue(d).length;},0);
     swMsg({type:"UPDATE_DUE",dueCount:due});
   },[data]);
@@ -8175,7 +8191,7 @@ function App(p){
                   h(DsButton,{variant:"primary",size:"md",onClick:function(){setShowNew(true);}},
                     h("span",{className:"lp-btn-glow-label"},"+ Neuer Stapel")))
               : h(R.Fragment,null,
-                  h(DsButton,{variant:"primary",size:"lg",fullWidth:true,style:{marginBottom:16},
+                  h(DsButton,{variant:"primary",size:"md",style:{marginBottom:16},
                     onClick:function(){setQsStep("select");}},
                     h("span",{className:"lp-btn-glow-label"},"Stapel lernen!")),
                   h("div",{className:"lp-deck-grid"},
