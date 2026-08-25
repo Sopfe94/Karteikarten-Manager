@@ -944,7 +944,7 @@ body.ls-stars-on div:has(>.hdr){background:transparent!important;position:relati
   .lp-editor-actions-bottom{display:flex}
   .lp-editor-pdf-row{display:flex;align-items:center;justify-content:center;padding:8px 24px}
 }
-.lp-editor-canvas-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:32px 24px 24px;gap:16px;overflow-y:auto}
+.lp-editor-canvas-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:32px 0 24px;gap:16px;overflow-y:auto}
 .lp-editor-flip-scene{width:100%;max-width:480px;perspective:1000px}
 .lp-editor-side-label{font-family:var(--font-sans);font-size:15px;font-weight:600;color:#fff}
 .lp-editor-card-surface{width:100%;max-width:480px;aspect-ratio:3/2;background:#0D0A1A;border:1px solid rgba(124,58,237,.55);box-shadow:0 0 14px rgba(124,58,237,.45),0 0 6px rgba(6,182,212,.3);border-radius:24px;position:relative;overflow:hidden}
@@ -1327,7 +1327,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.20";
+var KKM_VERSION="1.8.21";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2891,10 +2891,19 @@ function LpCardEditor(p){
     function onMove(e){
       if(resizeRef.current){
         var r=resizeRef.current;
-        var dx=e.clientX-r.startX;
+        /* Die Elemente werden ueber LpCardScaledLayer relativ zur festen
+           Referenzgroesse (LP_CARD_REF_W) skaliert dargestellt, damit die
+           Vorschau exakt der Lernansicht entspricht - besonders auf
+           schmalen Handy-Bildschirmen ist die Oberflaeche dann kleiner als
+           480px. Die reale Zeigerbewegung in Bildschirm-Pixeln muss daher
+           durch den aktuellen Skalierungsfaktor geteilt werden, damit der
+           Ziehpunkt weiterhin exakt unter dem Finger/Cursor bleibt. */
+        var surfaceRectNow=surfaceRef.current?surfaceRef.current.getBoundingClientRect():null;
+        var scaleNow=surfaceRectNow&&surfaceRectNow.width?surfaceRectNow.width/LP_CARD_REF_W:1;
+        var dx=(e.clientX-r.startX)/scaleNow;
         var w=Math.max(30,Math.min(1600,r.startW+dx));
         if(r.type==="text"){
-          var dy=e.clientY-r.startY;
+          var dy=(e.clientY-r.startY)/scaleNow;
           var hgt=Math.max(30,Math.min(1200,r.startH+dy));
           updateElement(r.id,{width:w,height:hgt},true);
         }else{
@@ -3256,17 +3265,18 @@ function LpCardEditor(p){
     h("div",{className:"lp-editor-canvas-wrap"},
       h("span",{className:"lp-editor-side-label"},side==="front"?"Vorderseite":"Rückseite"),
       h("div",{className:"lp-editor-flip-scene"},
-        h("div",{ref:surfaceRef,className:"lp-editor-card-surface",style:{transform:"rotateY("+flipDeg+"deg)",transition:flipAnim?"transform .28s cubic-bezier(.25,.46,.45,.94)":"none"},onMouseDown:function(e){if(e.target===e.currentTarget)setSelected(null);}},
-          curEls.map(function(el){
-            return h(LpEditorElement,{
-              key:el.id,el:el,selected:selected===el.id,moveMode:moveMode,
-              onDragStart:onDragStart(el.id),onResizeStart:onResizeStart(el.id),
-              onInput:onFieldInput,onBlurField:onFieldBlur,
-              onSelectionCheck:checkSelectionForField(el.id),
-              onSelect:function(){setSelected(el.id);},
-              registerNode:registerNode
-            });
-          }))),
+        h("div",{ref:surfaceRef,className:"lp-editor-card-surface",style:{transform:"rotateY("+flipDeg+"deg)",transition:flipAnim?"transform .28s cubic-bezier(.25,.46,.45,.94)":"none"},onMouseDown:function(e){if(e.target===e.currentTarget||e.target.classList.contains("lp-card-scaled-layer"))setSelected(null);}},
+          h(LpCardScaledLayer,{containerRef:surfaceRef},
+            curEls.map(function(el){
+              return h(LpEditorElement,{
+                key:el.id,el:el,selected:selected===el.id,moveMode:moveMode,
+                onDragStart:onDragStart(el.id),onResizeStart:onResizeStart(el.id),
+                onInput:onFieldInput,onBlurField:onFieldBlur,
+                onSelectionCheck:checkSelectionForField(el.id),
+                onSelect:function(){setSelected(el.id);},
+                registerNode:registerNode
+              });
+            })))),
       h("button",{className:"lp-editor-flip-btn",onClick:flipCardEditor,type:"button"},"⟲ Karte umdrehen")),
 
     h("div",{className:"lp-editor-actions-row lp-editor-actions-bottom"},actionsRowChildren()),
@@ -3346,7 +3356,7 @@ function LpCardScaledLayer(p){
       if(ro)ro.disconnect();else window.removeEventListener("resize",update);
     };
   },[p.containerRef]);
-  return h("div",{style:{position:"absolute",top:0,left:0,width:LP_CARD_REF_W+"px",height:LP_CARD_REF_H+"px",transform:"scale("+scale+")",transformOrigin:"top left"}},p.children);
+  return h("div",{className:"lp-card-scaled-layer",style:{position:"absolute",top:0,left:0,width:LP_CARD_REF_W+"px",height:LP_CARD_REF_H+"px",transform:"scale("+scale+")",transformOrigin:"top left"}},p.children);
 }
 
 /* Nicht-editierbare Darstellung eines Editor-Elements (Lernmodus/Vorschau) -
