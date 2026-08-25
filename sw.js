@@ -1,5 +1,5 @@
 // Service Worker v16 - CDN-Scripts (React, Supabase) offline cachen
-const CACHE = 'kkm-v228';
+const CACHE = 'kkm-v229';
 const BASE = self.location.hostname === 'www.gross-apps.de' ? '/KM' : '';
 const STATIC = [BASE+'/index.html', BASE+'/manifest.json', BASE+'/icon.png', BASE+'/logo.svg'];
 const CDN = [
@@ -120,7 +120,7 @@ var p=t.split(':').map(Number), nowM=now.getHours()*60+now.getMinutes(), tgtM=p[
 if(Math.abs(nowM-tgtM)>10) return;
 return self.registration.showNotification('Karteikarten Manager',{
 body:due+' Karte'+(due!==1?'n':'')+' warte'+(due===1?'t':'n')+' auf dich.',
-icon:BASE+'/icon.svg', tag:'kk-daily', renotify:true, vibrate:[180,90,180]
+icon:BASE+'/icon.png', tag:'kk-daily', renotify:true, vibrate:[180,90,180]
 }).then(function(){ return dbSet('lastNotified',today); });
 });
 }
