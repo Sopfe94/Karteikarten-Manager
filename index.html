@@ -1335,7 +1335,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.22";
+var KKM_VERSION="1.8.23";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1470,6 +1470,20 @@ function loadDocsCache(id){
 }
 function saveDocsCache(id,data){
   try{ localStorage.setItem(docsCacheKey(id),JSON.stringify(data)); }catch(e){}
+}
+/* Geraete-lokale Liste der zuletzt in Lernpuls geoeffneten Unterlagen
+   (fuer die Startseiten-Sektion) - unabhaengig vom Drive-eigenen
+   "zuletzt angesehen"-Datum, das auch Aufrufe ausserhalb der App
+   einschliessen wuerde. Neuester Eintrag zuerst, auf 8 begrenzt
+   (Startseite zeigt davon nur die ersten 5). */
+var RECENT_DOCS_KEY='kkm-recent-docs';
+function loadRecentDocs(){
+  try{ var raw=localStorage.getItem(RECENT_DOCS_KEY); return raw?JSON.parse(raw):[]; }catch(e){ return []; }
+}
+function pushRecentDoc(list,file){
+  var next=[file].concat((list||[]).filter(function(d){return d.id!==file.id;})).slice(0,8);
+  try{ localStorage.setItem(RECENT_DOCS_KEY,JSON.stringify(next)); }catch(e){}
+  return next;
 }
 /* Geraete-lokale Einstellung (nicht Teil des Cloud-Sync-Settings-
    Objekts, da rein an den mobilen-Datenverbrauch dieses Geraets
@@ -6607,6 +6621,7 @@ function App(p){
   var scanCropImgRef=useRef(null);
   var scanCropDragRef=useRef(null);
   var docFileInputRef=useRef(null);
+  var rdocs=useState(loadRecentDocs); var recentDocs=rdocs[0]; var setRecentDocs=rdocs[1];
   /* PDF-Viewer: docViewerFileId===null heisst geschlossen. Markierungen/
      Textfelder werden lokal je Drive-Datei-ID gespeichert (kkm-docv-<id>),
      nicht in Drive selbst - die PDF-Datei dort bleibt unangetastet. */
@@ -7525,6 +7540,7 @@ function App(p){
   },[docViewerStudyContext,docViewerLoading,docViewerPages]);
   function openDocViewer(file,opts){
     opts=opts||{};
+    setRecentDocs(function(prev){return pushRecentDoc(prev,{id:file.id,name:file.name,mimeType:file.mimeType,modifiedTime:file.modifiedTime,size:file.size,appProperties:file.appProperties});});
     setDocViewerFileId(file.id);setDocViewerFileName(file.name);
     setDocViewerMarkMode(false);setDocViewerActiveFieldId(null);setDocViewerDrag(null);
     setDocViewerFieldDragId(null);setDocViewerHighlightColor('#FDE68A');
@@ -8153,28 +8169,32 @@ function App(p){
 
             h("div",{className:"lp-section-hdr"},
               h("div",{className:"lp-section-title"},"Karteikarten Stapel"),
-              h("button",{className:"lp-section-link",onClick:function(){switchNav('explorer');}},"Alle anzeigen →")),
+              h("button",{className:"lp-section-link",onClick:function(){setXpTab('stapel');switchNav('explorer');}},"Alle anzeigen →")),
             (decks.length===0&&effectiveGroupDecks.length===0)
               ? h("div",{className:"home-empty"},h("div",{className:"home-empty-icon"},"📚"),h("p",null,"Noch keine Stapel. Leg direkt los."),
                   h(DsButton,{variant:"primary",size:"md",onClick:function(){setShowNew(true);}},
                     h("span",{className:"lp-btn-glow-label"},"+ Neuer Stapel")))
-              : h("div",{className:"lp-deck-grid"},
-                  decks.concat(effectiveGroupDecks)
-                    .slice().sort(function(a,b){return new Date(b.updatedAt||b.created||0)-new Date(a.updatedAt||a.created||0);})
-                    .slice(0,3).map(function(deck){
-                    var pct=deckPct(deck);
-                    return h(LpAnimatedDeckCard,{key:(deck._groupId?'g:':'')+deck.id,
-                      tag:deckStatusTag(pct).label,
-                      title:deck.name,
-                      progress:pct,
-                      onClick:function(){setDeckId(deck.id);},
-                      style:{minHeight:150}});
-                  })),
+              : h(R.Fragment,null,
+                  h(DsButton,{variant:"primary",size:"lg",fullWidth:true,style:{marginBottom:16},
+                    onClick:function(){setQsStep("select");}},
+                    h("span",{className:"lp-btn-glow-label"},"Stapel lernen!")),
+                  h("div",{className:"lp-deck-grid"},
+                    decks.concat(effectiveGroupDecks)
+                      .slice().sort(function(a,b){return new Date(b.updatedAt||b.created||0)-new Date(a.updatedAt||a.created||0);})
+                      .slice(0,3).map(function(deck){
+                      var pct=deckPct(deck);
+                      return h(LpAnimatedDeckCard,{key:(deck._groupId?'g:':'')+deck.id,
+                        tag:deckStatusTag(pct).label,
+                        title:deck.name,
+                        progress:pct,
+                        onClick:function(){setDeckId(deck.id);},
+                        style:{minHeight:150}});
+                    }))),
 
             randomFacher.length>0&&h("div",{style:{display:"flex",flexDirection:"column",gap:16}},
               h("div",{className:"lp-section-hdr"},
                 h("div",{className:"lp-section-title"},"Deine Fächer"),
-                h("button",{className:"lp-section-link",onClick:function(){switchNav('explorer');}},"Alle anzeigen →")),
+                h("button",{className:"lp-section-link",onClick:function(){setXpTab('faecher');switchNav('explorer');}},"Alle anzeigen →")),
               h("div",{className:"lp-xp-topicgrid"},randomFacher.map(function(f){
                 var cnt=decks.filter(function(d){return d.folderId===f.id;}).length;
                 return h("div",{key:f.id,className:"lp-xp-topic lp-hover-glow",
@@ -8183,6 +8203,16 @@ function App(p){
                   h("div",null,
                     h("div",{className:"lp-xp-topic-name"},f.name),
                     h("div",{className:"lp-xp-topic-count"},cnt+" Stapel")));
+              }))),
+
+            googleUser&&recentDocs.length>0&&h("div",{style:{display:"flex",flexDirection:"column",gap:16}},
+              h("div",{className:"lp-section-hdr"},
+                h("div",{className:"lp-section-title"},"Zuletzt aufgerufene Unterlagen"),
+                h("button",{className:"lp-section-link",onClick:function(){setXpTab('unterlagen');switchNav('explorer');}},"Alle anzeigen →")),
+              h("div",{style:{display:"flex",flexDirection:"column",gap:8}},recentDocs.slice(0,5).map(function(d){
+                return h("button",{key:d.id,className:"lp-xp-hit",onClick:function(){openDocViewer(d);}},
+                  docFileIcon(d.id,20),
+                  h("span",{style:{fontSize:15,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},d.name));
               }))),
 
             lpLernSpaceOn&&h(DashboardFriends,{onNav:switchNav,state:dashFriends,presence:presence})),
