@@ -1327,7 +1327,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.18";
+var KKM_VERSION="1.8.19";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2396,6 +2396,7 @@ function ThreeDotMenu(p){
     h("button",{className:"dots-btn",onClick:function(e){e.stopPropagation();setOpen(!open);}},"\u22EF"),
     open&&h("div",{className:"dots-menu",onClick:function(e){e.stopPropagation();}},
       h("button",{className:"dots-item",onClick:function(e){e.stopPropagation();setOpen(false);p.onEdit();}},"\u270F\uFE0F Bearbeiten"),
+      p.onResetProgress&&h("button",{className:"dots-item",onClick:function(e){e.stopPropagation();setOpen(false);p.onResetProgress();}},"\u21BA Fortschritt zur\u00FCcksetzen"),
       h("button",{className:"dots-item dots-item-del",onClick:function(e){e.stopPropagation();setOpen(false);p.onDelete();}},"\uD83D\uDDD1\uFE0F L\u00f6schen")));
 }
 
@@ -3562,6 +3563,18 @@ function DeckDetail(p){
     setEditorSeed(null);
   }
   function delCard(id){ if(!confirm("Karte l\u00f6schen?"))return; p.onUpdate(Object.assign({},p.deck,{cards:p.deck.cards.filter(function(c){return c.id!==id;})})); }
+  /* Setzt fuer alle Karten dieses Stapels den Lernfortschritt zurueck
+     (lvl, nextReview, roundPending) - fuer den Fall, dass bei einem
+     Stapel durch einen frueheren Bug inkonsistente Werte haengen
+     geblieben sind und Fortschrittsanzeige/Faellig-Zahl nicht mehr
+     zusammenpassen. */
+  function resetProgress(){
+    if(!confirm("Fortschritt f\u00fcr diesen Stapel zur\u00fccksetzen? Alle "+p.deck.cards.length+" Karten gelten danach wieder als neu."))return;
+    p.onUpdate(Object.assign({},p.deck,{cards:p.deck.cards.map(function(c){
+      return Object.assign({},c,{lvl:0,nextReview:null,roundPending:false});
+    })}));
+    showToast("Fortschritt zur\u00fcckgesetzt");
+  }
   function finish(){ setStudy(false); }
   /* Speichert eine einzelne Kartenbewertung SOFORT ueber p.onUpdate
      (updateDeck uebernimmt dabei auch den Rollover-Check fuer
@@ -3635,7 +3648,7 @@ function DeckDetail(p){
             h("span",{style:{fontSize:13,color:"var(--color-violet-ghost)",
               fontFamily:"var(--font-mono)"}},p.deck.cards.length+" Karten"),
             due.length>0&&h(DsBadge,{variant:"dark"},due.length+" fällig"))),
-        !p.deck._groupId&&p.onEdit&&h(ThreeDotMenu,{onEdit:p.onEdit,onDelete:p.onDelete})),
+        !p.deck._groupId&&p.onEdit&&h(ThreeDotMenu,{onEdit:p.onEdit,onDelete:p.onDelete,onResetProgress:p.deck.cards.length>0?resetProgress:null})),
       h("div",{style:{display:"flex",flexDirection:"column",gap:12}},
         h(DsButton,{variant:"primary",size:"lg",fullWidth:true,
           onClick:function(){setStudy(true);}},
