@@ -1335,7 +1335,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.24";
+var KKM_VERSION="1.8.25";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6753,7 +6753,7 @@ function App(p){
       var localTs=loadStore()._syncedAt||0;
       if(remoteTs>localTs){
         _applyingRemote=true;
-        var restored=payload.new.app_data;
+        var restored=applyRemoteExtras(payload.new.app_data);
         saveStore(restored);
         setData(restored);
         dbg('🔄 Realtime update angewendet');
@@ -6934,7 +6934,7 @@ function App(p){
     getSb().from('ls_users').select('app_data').eq('ls_id',myId).maybeSingle().then(function(res){
       if(!res.data||!res.data.app_data){showToast('Keine Cloud-Daten gefunden.');return;}
       _applyingRemote=true;
-      var restored=res.data.app_data;
+      var restored=applyRemoteExtras(res.data.app_data);
       saveStore(restored);
       setData(restored);
       showToast('Cloud-Stand geladen!');
