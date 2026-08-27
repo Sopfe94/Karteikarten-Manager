@@ -894,7 +894,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.29";
+var KKM_VERSION="1.8.30";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6962,6 +6962,22 @@ function App(p){
     else requestAnimationFrame(doScroll);
     return function(){ cancelled=true; };
   },[docViewerStudyContext,docViewerLoading,docViewerPages,docViewerZoom]);
+  /* Erlaubt natives Pinch-to-Zoom (Browser-Viewport-Zoom) nur waehrend der
+     PDF-Viewer offen ist - die App sperrt Pinch-Zoom sonst global per
+     maximum-scale=1 im viewport-Meta-Tag, damit der Rest der App sich wie
+     eine native PWA anfuehlt. Der Viewer ist ein fullscreen Overlay
+     (position:fixed;inset:0) ohne sichtbaren Rest der App darunter, daher
+     unbedenklich hier temporaer zu lockern. Bewusst unabhaengig vom
+     +/- Zoom (docViewerZoom/--docv-zoom): Pinch skaliert den fertig
+     gerenderten Viewport nativ, unabhaengig von der CSS-Zoomstufe. */
+  useEffect(function(){
+    if(!docViewerFileId)return;
+    var meta=document.querySelector('meta[name="viewport"]');
+    if(!meta)return;
+    var prev=meta.getAttribute("content");
+    meta.setAttribute("content","width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=4,viewport-fit=cover");
+    return function(){ meta.setAttribute("content",prev); };
+  },[docViewerFileId]);
   function openDocViewer(file,opts){
     opts=opts||{};
     setRecentDocs(function(prev){return pushRecentDoc(prev,{id:file.id,name:file.name,mimeType:file.mimeType,modifiedTime:file.modifiedTime,size:file.size,appProperties:file.appProperties});});
