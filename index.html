@@ -576,9 +576,6 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 select.lp-dark-input{-webkit-appearance:none;appearance:none;color-scheme:dark;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23A78BFA' stroke-width='2' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:32px}
 select.lp-dark-input option{background:#150C2B;color:#fff}
 .lp-modal-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:4px;flex-wrap:wrap}
-.lp-swatch-row{display:flex;gap:8px;flex-wrap:wrap}
-.lp-swatch{width:36px;height:36px;border-radius:10px;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;transition:.15s}
-.lp-swatch.sel,.lp-swatch:hover{border-color:rgba(124,58,237,0.7);background:rgba(124,58,237,0.16)}
 .lp-tabbar{display:flex;gap:4px;border-bottom:1px solid rgba(255,255,255,0.08);overflow-x:auto;flex-shrink:0;scrollbar-width:none;min-height:48px;align-items:stretch}
 .lp-tabbar::-webkit-scrollbar{display:none}
 .lp-tab{background:none;border:none;padding:12px 10px;font-size:13px;font-family:var(--font-sans);font-weight:500;color:rgba(255,255,255,0.45);cursor:pointer;white-space:nowrap;flex-shrink:0;position:relative;box-shadow:none;transition:color .15s,box-shadow .15s}
@@ -605,6 +602,17 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
 .lp-icon-btn-sm{width:30px;height:30px;flex-shrink:0;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:background .15s}
 .lp-icon-btn-sm:hover{background:rgba(255,255,255,0.09)}
 .lp-icon-btn-sm.del{border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.1);color:#EF4444}
+.lp-glow-circle-btn{width:30px;height:30px;flex-shrink:0;border-radius:50%;background:transparent;
+  border:1px solid rgba(124,58,237,0.55);box-shadow:0 0 14px rgba(124,58,237,0.45),0 0 6px rgba(6,182,212,0.3);
+  color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;
+  transition:box-shadow .2s,border-color .2s}
+.lp-glow-circle-btn:hover{border-color:rgba(124,58,237,0.9);
+  box-shadow:0 0 26px rgba(124,58,237,0.75),0 0 14px rgba(6,182,212,0.55)}
+.ds-btn-primary{border:1px solid rgba(124,58,237,0.55);
+  box-shadow:0 0 14px rgba(124,58,237,0.45),0 0 6px rgba(6,182,212,0.3);
+  transition:box-shadow .2s,border-color .2s}
+.ds-btn-primary:hover{border-color:rgba(124,58,237,0.9);
+  box-shadow:0 0 26px rgba(124,58,237,0.75),0 0 14px rgba(6,182,212,0.55)}
 .lp-chip{height:32px;padding:0 16px;border-radius:999px;border:1px solid rgba(124,58,237,0.35);background:rgba(124,58,237,0.1);color:#A78BFA;font-size:13px;font-family:var(--font-sans);cursor:pointer}
 .lp-empty2{padding:40px 20px;text-align:center;color:rgba(255,255,255,0.35);font-size:13px}
 .lp-badge-dot{position:absolute;top:12px;right:12px;width:9px;height:9px;border-radius:50%;background:var(--grad-brand)}
@@ -760,7 +768,9 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
   border:1px solid rgba(255,255,255,0.08);border-radius:999px;padding:8px 8px 8px 16px;align-self:flex-start}
 .lp-xp-folderhdr{display:flex;align-items:center;gap:8px;padding:8px 4px 12px;
   border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:12px}
-.lp-xp-folderhdr-name{font-size:15px;font-weight:600;color:#A78BFA;flex:1}
+.lp-xp-folderhdr-name{font-size:15px;font-weight:600;color:#fff;flex:1}
+.lp-xp-folderhdr-name .grad{background:var(--grad-brand);-webkit-background-clip:text;
+  background-clip:text;-webkit-text-fill-color:transparent}
 .lp-xp-soon{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
   text-align:center;gap:20px;padding:40px 24px}
 .lp-xp-soon-icon{width:80px;height:80px;border-radius:20px;
@@ -839,12 +849,15 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
   transition:box-shadow 200ms ease,border-color 200ms ease}
 .lp-docv-close:hover{border-color:rgba(124,58,237,0.9);box-shadow:0 0 26px rgba(124,58,237,0.75),0 0 14px rgba(6,182,212,0.55)}
 .lp-docv-body{flex:1;display:flex;min-height:0}
-.lp-docv-pages{flex:1;overflow-y:auto;background:#0C0818;display:flex;flex-direction:column;
-  align-items:center;gap:28px;padding:32px 16px}
-.lp-docv-pagelabel{font-family:var(--font-mono);font-size:10px;letter-spacing:0.08em;color:var(--color-violet-ghost)}
-.lp-docv-page{position:relative;width:calc(300px * var(--docv-zoom,1));flex-shrink:0;background:#F8F7FA;
-  border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,0.35)}
-@media(min-width:768px){.lp-docv-page{width:calc(600px * var(--docv-zoom,1))}}
+.lp-docv-pages{flex:1;min-width:0;overflow-y:auto;background:#0C0818;display:flex;flex-direction:column;
+  align-items:flex-start;gap:28px;padding:32px 16px}
+.lp-docv-pagelabel{font-family:var(--font-mono);font-size:10px;letter-spacing:0.08em;color:var(--color-violet-ghost);margin:0 auto}
+.lp-docv-page{position:relative;width:calc(min(85vw,460px) * var(--docv-zoom,1));flex-shrink:0;background:#F8F7FA;
+  border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,0.35);margin:0 auto}
+@media(min-width:768px){
+  .lp-docv-page{width:calc(600px * var(--docv-zoom,1))}
+  .lp-docv-page.free{width:calc(min(600px,100% - 40px) * var(--docv-zoom,1))}
+}
 .lp-docv-page.marking{cursor:crosshair;touch-action:none}
 .lp-docv-page img{width:100%;display:block;pointer-events:none;border-radius:8px}
 .lp-docv-highlight{position:absolute;opacity:0.45;border-radius:2px;cursor:pointer}
@@ -895,7 +908,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.29";
+var KKM_VERSION="1.8.38";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -922,7 +935,6 @@ dbg('App-Start v'+KKM_VERSION+'. Supabase geladen:', !!(window.supabase&&window.
 
 var LOGO = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj4KICA8ZGVmcz4KICAgIDxyYWRpYWxHcmFkaWVudCBpZD0iYmciIGN4PSI1MCUiIGN5PSI0MiUiIHI9IjYwJSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMzYjFmOGMiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSI2MCUiIHN0b3AtY29sb3I9IiMxZTEyNjAiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjMDgwNTFhIi8+CiAgICA8L3JhZGlhbEdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJnUCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMTAwJSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiNhODU1ZjciLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjN2MzYWVkIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJnVCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMTAwJSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMyZGQ0YmYiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjMDg5MWIyIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJnTyIgeDE9IjIwJSIgeTE9IjAlIiB4Mj0iODAlIiB5Mj0iMTAwJSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiNmYjkyM2MiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjZGMyNjI2Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJnWSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMTAwJSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiNmY2QzNGQiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjZjU5ZTBiIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGZpbHRlciBpZD0iZ2xvdyIgeD0iLTQwJSIgeT0iLTQwJSIgd2lkdGg9IjE4MCUiIGhlaWdodD0iMTgwJSI+CiAgICAgIDxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjE0IiByZXN1bHQ9ImIiLz4KICAgICAgPGZlTWVyZ2U+PGZlTWVyZ2VOb2RlIGluPSJiIi8+PGZlTWVyZ2VOb2RlIGluPSJTb3VyY2VHcmFwaGljIi8+PC9mZU1lcmdlPgogICAgPC9maWx0ZXI+CiAgICA8ZmlsdGVyIGlkPSJzaCI+CiAgICAgIDxmZURyb3BTaGFkb3cgZHg9IjAiIGR5PSI2IiBzdGREZXZpYXRpb249IjEwIiBmbG9vZC1jb2xvcj0icmdiYSgwLDAsMCwwLjYpIi8+CiAgICA8L2ZpbHRlcj4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIHJ4PSI3NiIgZmlsbD0idXJsKCNiZykiLz4KICA8ZWxsaXBzZSBjeD0iMjU2IiBjeT0iMjY1IiByeD0iMTUwIiByeT0iMTIwIiBmaWxsPSIjZjk3MzE2IiBvcGFjaXR5PSIwLjE0IiBmaWx0ZXI9InVybCgjZ2xvdykiLz4KICA8IS0tIExlZnQgY2FyZCBwdXJwbGUgLS0+CiAgPGcgdHJhbnNmb3JtPSJyb3RhdGUoLTIyIDE4NSAyNzApIj4KICAgIDxyZWN0IHg9IjkwIiB5PSIxNDgiIHdpZHRoPSIxMTgiIGhlaWdodD0iMTYyIiByeD0iMTgiIGZpbGw9InVybCgjZ1ApIiBmaWx0ZXI9InVybCgjc2gpIi8+CiAgICA8cmVjdCB4PSI5MCIgeT0iMTQ4IiB3aWR0aD0iMTE4IiBoZWlnaHQ9IjYyIiByeD0iMTgiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIwLjA4Ii8+CiAgICA8dGV4dCB4PSIxNDkiIHk9IjI2MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsIEJsYWNrLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iODYiIGZvbnQtd2VpZ2h0PSI5MDAiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIwLjkiPj88L3RleHQ+CiAgPC9nPgogIDwhLS0gVGVhbCBjYXJkIC0tPgogIDxnIHRyYW5zZm9ybT0icm90YXRlKC05IDIxOCAyNTgpIj4KICAgIDxyZWN0IHg9IjEzNCIgeT0iMTM2IiB3aWR0aD0iMTE4IiBoZWlnaHQ9IjE2MiIgcng9IjE4IiBmaWxsPSJ1cmwoI2dUKSIgZmlsdGVyPSJ1cmwoI3NoKSIvPgogICAgPHJlY3QgeD0iMTM0IiB5PSIxMzYiIHdpZHRoPSIxMTgiIGhlaWdodD0iNjIiIHJ4PSIxOCIgZmlsbD0id2hpdGUiIG9wYWNpdHk9IjAuMDgiLz4KICA8L2c+CiAgPCEtLSBPcmFuZ2UgY2VudGVyIGNhcmQgd2l0aCBidWxiIC0tPgogIDxnIHRyYW5zZm9ybT0icm90YXRlKC0yIDI1NiAyNTgpIj4KICAgIDxyZWN0IHg9IjE3OCIgeT0iMTI2IiB3aWR0aD0iMTI2IiBoZWlnaHQ9IjE3MCIgcng9IjE4IiBmaWxsPSJ1cmwoI2dPKSIgZmlsdGVyPSJ1cmwoI3NoKSIvPgogICAgPHJlY3QgeD0iMTc4IiB5PSIxMjYiIHdpZHRoPSIxMjYiIGhlaWdodD0iNzAiIHJ4PSIxOCIgZmlsbD0id2hpdGUiIG9wYWNpdHk9IjAuMSIvPgogICAgPHJlY3QgeD0iMTc4IiB5PSIxMjYiIHdpZHRoPSIxMjYiIGhlaWdodD0iMTcwIiByeD0iMTgiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZiYmYyNCIgc3Ryb2tlLXdpZHRoPSIyLjUiIG9wYWNpdHk9IjAuNyIvPgogICAgPGNpcmNsZSBjeD0iMjQxIiBjeT0iMjI1IiByPSIyOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI1LjUiIG9wYWNpdHk9IjAuOTIiLz4KICAgIDxwYXRoIGQ9Ik0yMjggMjUyIFEyNDEgMjY1IDI1NCAyNTIiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBvcGFjaXR5PSIwLjkiLz4KICAgIDxsaW5lIHgxPSIyMzQiIHkxPSIyNTkiIHgyPSIyNDgiIHkyPSIyNTkiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iNC41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIG9wYWNpdHk9IjAuOSIvPgogICAgPGxpbmUgeDE9IjI0MSIgeTE9IjE4NSIgeDI9IjI0MSIgeTI9IjE3NiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiIG9wYWNpdHk9IjAuNyIvPgogICAgPGxpbmUgeDE9IjI3MSIgeTE9IjE5NiIgeDI9IjI3OCIgeTI9IjE4OSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiIG9wYWNpdHk9IjAuNyIvPgogICAgPGxpbmUgeDE9IjIxMSIgeTE9IjE5NiIgeDI9IjIwNCIgeTI9IjE4OSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiIG9wYWNpdHk9IjAuNyIvPgogIDwvZz4KICA8IS0tIFllbGxvdyByaWdodCBjYXJkIHdpdGggY2hlY2ttYXJrIC0tPgogIDxnIHRyYW5zZm9ybT0icm90YXRlKDIwIDMyMCAyNzApIj4KICAgIDxyZWN0IHg9IjI2MCIgeT0iMTQ4IiB3aWR0aD0iMTE4IiBoZWlnaHQ9IjE2MiIgcng9IjE4IiBmaWxsPSJ1cmwoI2dZKSIgZmlsdGVyPSJ1cmwoI3NoKSIvPgogICAgPHJlY3QgeD0iMjYwIiB5PSIxNDgiIHdpZHRoPSIxMTgiIGhlaWdodD0iNjIiIHJ4PSIxOCIgZmlsbD0id2hpdGUiIG9wYWNpdHk9IjAuMSIvPgogICAgPHBvbHlsaW5lIHBvaW50cz0iMjc2LDIzNSAyOTksMjYyIDM0NiwyMDUiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgb3BhY2l0eT0iMC45MiIvPgogIDwvZz4KICA8IS0tIFNwYXJrbGVzIC0tPgogIDxjaXJjbGUgY3g9IjExMCIgY3k9IjE0NiIgcj0iNSIgZmlsbD0iI2ZiYmYyNCIgb3BhY2l0eT0iMC42Ii8+CiAgPGxpbmUgeDE9IjExMCIgeTE9IjExMCIgeDI9IjExMCIgeTI9IjEyOCIgc3Ryb2tlPSIjZmJiZjI0IiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgb3BhY2l0eT0iMC41Ii8+CiAgPGxpbmUgeDE9IjEwMSIgeTE9IjExOSIgeDI9IjExOSIgeTI9IjExOSIgc3Ryb2tlPSIjZmJiZjI0IiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgb3BhY2l0eT0iMC41Ii8+CiAgPGNpcmNsZSBjeD0iMzkyIiBjeT0iMTMwIiByPSI0IiBmaWxsPSIjYTg1NWY3IiBvcGFjaXR5PSIwLjciLz4KICA8bGluZSB4MT0iMzkyIiB5MT0iMTcyIiB4Mj0iMzkyIiB5Mj0iMTg4IiBzdHJva2U9IiNhODU1ZjciIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIG9wYWNpdHk9IjAuNiIvPgogIDxsaW5lIHgxPSIzODQiIHkxPSIxODAiIHgyPSI0MDAiIHkyPSIxODAiIHN0cm9rZT0iI2E4NTVmNyIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgb3BhY2l0eT0iMC42Ii8+Cjwvc3ZnPgo=";
 var EMOJIS = ["📚","🧠","🔬","🌍","✏️","🎵","💡","🏛️","🧮","🌱","💻","🗺️","⚗️","📐","🎨"];
-var FOLDER_EMOJIS = ["📁","📂","🗂️","📋","🗒️","📌","🔖","🏷️","📎","🗃️","💼","🎯","🌟","⭐","🔑"];
 var SRS_DAYS = [0,1,2,4,8,16,30];
 var STORE_KEY = "kkm-v2";
 
@@ -1977,17 +1989,14 @@ function LpStapelMenuBtn(p){
 
 function FolderModal(p){
   var ns=useState(p.folder?p.folder.name:""); var n=ns[0]; var sn=ns[1];
-  var es=useState(p.folder?p.folder.emoji:"\uD83D\uDCC1"); var e=es[0]; var se=es[1];
   var isFach=p.kind==="fach";
   var cs=useState(function(){return p.folder&&p.folder.color?p.folder.color:LP_FACH_COLORS[Math.floor(Math.random()*LP_FACH_COLORS.length)];}); var col=cs[0];
-  function save(){ if(!n.trim())return; isFach?p.onSave({name:n.trim(),color:col}):p.onSave({name:n.trim(),emoji:e}); }
+  function save(){ if(!n.trim())return; isFach?p.onSave({name:n.trim(),color:col}):p.onSave({name:n.trim(),emoji:"\uD83D\uDCC1"}); }
   return h("div",{className:"lp-modal-ov",onClick:p.onClose},
     h("div",{className:"lp-modal-box",onClick:function(ev){ev.stopPropagation();}},
       h("div",{className:"lp-modal-title grad"},p.folder?(isFach?"Fach bearbeiten":"Ordner bearbeiten"):(isFach?"Neues Fach":"Neuer Ordner")),
       h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Name"),
         h("input",{className:"lp-dark-input",value:n,onInput:function(ev){sn(ev.target.value);},placeholder:"z.B. Mathematik",autoFocus:true,onKeyDown:function(ev){if(ev.key==="Enter")save();}})),
-      !isFach&&h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Symbol"),
-            h("div",{className:"lp-swatch-row"},FOLDER_EMOJIS.map(function(em){ return h("button",{key:em,type:"button",className:"lp-swatch"+(e===em?" sel":""),onClick:function(){se(em);}},em); }))),
       h("div",{className:"lp-modal-actions"},h(DsButton,{variant:"danger",onClick:p.onClose},"Abbrechen"),h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:save},h("span",{className:"lp-btn-glow-label"},"Speichern")))));
 }
 
@@ -3122,6 +3131,29 @@ function SingleCardView(p){
       h(LpFlipCard,{flipped:flip,onFlip:function(){setFlip(!flip);},front:card.front,back:card.back,frontElements:card.frontElements,backElements:card.backElements})));
 }
 
+/* Verlaufs-Ordnersymbol - dieselbe Form/Gradient wie die Unterlagen-
+   Ordner-Kacheln (renderXpUnterlagen), damit Ordner ueberall im Explorer
+   gleich aussehen statt mit den alten frei waehlbaren Emojis. */
+function lpFolderIconSvg(id,size){
+  var px=size||18;
+  return h("svg",{width:px,height:px,viewBox:"0 0 24 24"},
+    h("defs",null,h("linearGradient",{id:"lpFolderGrad-"+id,x1:"0",y1:"0",x2:"1",y2:"0"},
+      h("stop",{offset:"0%",stopColor:"#7C3AED"}),
+      h("stop",{offset:"100%",stopColor:"#06B6D4"}))),
+    h("path",{d:"M3 6a2 2 0 0 1 2-2h4.17a2 2 0 0 1 1.41.59L12 6h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z",
+      fill:"url(#lpFolderGrad-"+id+")"}));
+}
+
+/* Rendert einen Namen im selben Zwei-Ton-Stil wie der grosse Stapel-
+   Titel (.lp-xp-decktitle .grad): alles ausser dem letzten Wort weiss,
+   letztes Wort im Marken-Verlauf. */
+function lpGradName(name){
+  var parts=String(name||"").split(" ");
+  var last=parts.length>1?parts.pop():"";
+  var first=parts.join(" ");
+  return h(R.Fragment,null,first,last&&h("span",{className:"grad"},(first?" ":"")+last));
+}
+
 function DeckDetail(p){
   var as=useState(false); var showAdd=as[0]; var setShowAdd=as[1];
   var ec=useState(null); var editC=ec[0]; var setEditC=ec[1];
@@ -3137,7 +3169,9 @@ function DeckDetail(p){
   var sm=useState(false); var showShare=sm[0]; var setShowShare=sm[1];
   var sfn=useState(false); var showNewFolder=sfn[0]; var setShowNewFolder=sfn[1];
   var ef=useState(null); var editFolderItem=ef[0]; var setEditFolderItem=ef[1];
-  var cs=useState({}); var collapsed=cs[0]; var setCollapsed=cs[1];
+  var cs=useState(function(){
+    var init={}; (p.deck.folders||[]).forEach(function(f){init[f.id]=true;}); init.__ungrouped=true; return init;
+  }); var collapsed=cs[0]; var setCollapsed=cs[1];
   var vc=useState(null); var viewCard=vc[0]; var setViewCard=vc[1];
   var tm=useToast(); var toast=tm[0]; var showToast=tm[1];
   var es=useState(null); var editorSeed=es[0]; var setEditorSeed=es[1];
@@ -3200,22 +3234,19 @@ function DeckDetail(p){
 
   function collapseBtn(id){
     var isCol=!!collapsed[id];
-    return h("button",{className:"lp-icon-btn-sm",title:isCol?"Aufklappen":"Zuklappen",
-      onClick:function(){toggleCollapse(id);},
-      style:{borderRadius:"50%"}},isCol?"▼":"▲");
+    return h("button",{className:"lp-glow-circle-btn",title:isCol?"Aufklappen":"Zuklappen",
+      onClick:function(){toggleCollapse(id);}},isCol?"▼":"▲");
   }
 
   function renderCards(cards){
     if(!cards.length) return null;
     return h("div",{style:{display:"flex",flexDirection:"column",gap:8}},cards.map(function(c){
       var folder=deckFolders.find(function(f){return f.id===c.folderId;});
-      var isDue=!c.roundPending&&c.nextReview<=todayStr();
-      return h("div",{className:"lp-row clickable",key:c.id,onClick:function(){setViewCard(c);}},
+      var isDue=!c.roundPending&&(!c.nextReview||c.nextReview<=todayStr());
+      return h("div",{className:"lp-row clickable lp-hover-glow",key:c.id,onClick:function(){setViewCard(c);}},
         h("div",{style:{flex:1,minWidth:0}},
           h("div",{className:"lp-row-title",style:{whiteSpace:"nowrap",overflow:"hidden",
             textOverflow:"ellipsis"}},c.front),
-          h("div",{className:"lp-row-sub",style:{whiteSpace:"nowrap",overflow:"hidden",
-            textOverflow:"ellipsis",marginTop:4}},c.back),
           folder&&h("div",{style:{fontSize:11,color:"#A78BFA",marginTop:4,
             fontFamily:"var(--font-mono)"}},folder.emoji+" "+folder.name)),
         h(DsBadge,{variant:isDue?"dark":"live"},isDue?"fällig":c.nextReview),
@@ -3243,7 +3274,7 @@ function DeckDetail(p){
             due.length>0&&h(DsBadge,{variant:"dark"},due.length+" fällig"))),
         !p.deck._groupId&&p.onEdit&&h(ThreeDotMenu,{onEdit:p.onEdit,onDelete:p.onDelete,onResetProgress:p.deck.cards.length>0?resetProgress:null})),
       h("div",{style:{display:"flex",flexDirection:"column",gap:12}},
-        h(DsButton,{variant:"primary",size:"lg",fullWidth:true,
+        h(DsButton,{variant:"primary",size:"md",style:{alignSelf:"flex-start"},
           onClick:function(){setStudy(true);}},
           h("span",{className:"lp-btn-glow-label"},
             due.length>0?"Stapel lernen ("+due.length+")":"Stapel lernen")),
@@ -3268,8 +3299,8 @@ function DeckDetail(p){
           return h("div",{key:folder.id},
             h("div",{className:"lp-xp-folderhdr"},
               collapseBtn(folder.id),
-              h("span",{style:{fontSize:17}},folder.emoji),
-              h("span",{className:"lp-xp-folderhdr-name"},folder.name),
+              lpFolderIconSvg(folder.id,18),
+              h("span",{className:"lp-xp-folderhdr-name"},lpGradName(folder.name)),
               h(DsBadge,{variant:"dark"},folderCards.length+" Karten"),
               h(ThreeDotMenu,{onEdit:function(){setEditFolderItem(folder);},
                 onDelete:function(){delFolder(folder.id);}})),
@@ -3280,7 +3311,7 @@ function DeckDetail(p){
         ungrouped.length>0&&h("div",null,
           h("div",{className:"lp-xp-folderhdr"},
             collapseBtn("__ungrouped"),
-            h("span",{style:{fontSize:17}},"📋"),
+            lpFolderIconSvg("ungrouped-"+p.deck.id,18),
             h("span",{className:"lp-xp-folderhdr-name"},"Ohne Ordner"),
             h(DsBadge,{variant:"dark"},ungrouped.length+" Karten")),
           !collapsed["__ungrouped"]&&renderCards(ungrouped)))
@@ -5399,9 +5430,7 @@ function DsButton(p){
     xl:{height:56,padding:'0 36px',fontSize:18}
   };
   var variants={
-    primary:{background:'transparent',color:'#fff',
-      border:'1px solid rgba(124,58,237,0.55)',
-      boxShadow:'0 0 14px rgba(124,58,237,0.45), 0 0 6px rgba(6,182,212,0.3)'},
+    primary:{background:'transparent',color:'#fff'},
     secondary:{background:'#7C3AED',color:'#fff',border:'none',
       boxShadow:'0 4px 16px rgba(124,58,237,0.25)'},
     outline:{background:'transparent',color:'#A78BFA',
@@ -5422,8 +5451,9 @@ function DsButton(p){
     width:p.fullWidth?'100%':'auto',opacity:dis?0.45:1,letterSpacing:'0.01em',
     whiteSpace:'nowrap',textDecoration:'none',outline:'none'
   },sizes[p.size||'md'],variants[p.variant||'primary'],p.style||{});
+  var cls=((p.variant||'primary')==='primary'?'ds-btn-primary':'')+(p.className?' '+p.className:'');
   return h('button',{style:st,disabled:dis,onClick:p.onClick,title:p.title,
-    id:p.id,className:p.className,type:p.type},p.children);
+    id:p.id,className:cls,type:p.type},p.children);
 }
 
 /* Card — _ds/components/core/Card.jsx (dark) */
@@ -6072,6 +6102,7 @@ function App(p){
   var dverr=useState(null); var docViewerError=dverr[0]; var setDocViewerError=dverr[1];
   var dvpg=useState([]); var docViewerPages=dvpg[0]; var setDocViewerPages=dvpg[1];
   var dvzm=useState(1); var docViewerZoom=dvzm[0]; var setDocViewerZoom=dvzm[1];
+  var dvfw=useState({}); var docViewerFitWidths=dvfw[0]; var setDocViewerFitWidths=dvfw[1];
   var dvfs=useState(14); var docViewerFontSize=dvfs[0]; var setDocViewerFontSize=dvfs[1];
   var dvmm=useState(false); var docViewerMarkMode=dvmm[0]; var setDocViewerMarkMode=dvmm[1];
   var dvhc=useState('#FDE68A'); var docViewerHighlightColor=dvhc[0]; var setDocViewerHighlightColor=dvhc[1];
@@ -6551,7 +6582,7 @@ function App(p){
         dHits.length>0&&h("div",{style:{display:"flex",flexDirection:"column",gap:12}},
           h("div",{className:"lp-seclbl"},"STAPEL"),
           dHits.map(function(d){
-            return h("button",{key:"h"+d.id,className:"lp-xp-hit",
+            return h("button",{key:"h"+d.id,className:"lp-xp-hit lp-hover-glow",
               onClick:function(){setDeckId(d.id);}},
               lpFachTile(d,28),
               h("span",{style:{fontSize:15,fontWeight:600}},d.name));
@@ -6559,7 +6590,7 @@ function App(p){
         fHits.length>0&&h("div",{style:{display:"flex",flexDirection:"column",gap:12}},
           h("div",{className:"lp-seclbl"},"FÄCHER"),
           fHits.map(function(f){
-            return h("button",{key:"hf"+f.id,className:"lp-xp-hit",
+            return h("button",{key:"hf"+f.id,className:"lp-xp-hit lp-hover-glow",
               onClick:function(){setXpSubject(f.id);setXpQuery("");setXpTab("stapel");}},
               lpFachTile(f,28),
               h("span",{style:{fontSize:15,fontWeight:600}},f.name));
@@ -6567,7 +6598,7 @@ function App(p){
         pHits.length>0&&h("div",{style:{display:"flex",flexDirection:"column",gap:12}},
           h("div",{className:"lp-seclbl"},"UNTERLAGEN"),
           pHits.map(function(d){
-            return h("button",{key:"hp"+d.id,className:"lp-xp-hit",
+            return h("button",{key:"hp"+d.id,className:"lp-xp-hit lp-hover-glow",
               onClick:function(){openDocViewer(d);}},
               docFileIcon(d.id,20),
               h("span",{style:{fontSize:15,fontWeight:600}},d.name));
@@ -6956,14 +6987,19 @@ function App(p){
   /* Scrollt erst zur markierten Textstelle, wenn alle Seitenbilder
      fertig geladen sind - direkt beim Einhaengen des Rahmens ist die
      Seite oft noch ohne Hoehe (Bild laedt asynchron), wodurch
-     scrollIntoView die Position falsch/gar nicht berechnet. */
+     scrollIntoView die Position falsch/gar nicht berechnet. Reagiert
+     bewusst auch auf docViewerZoom als Abhaengigkeit: aendert sich die
+     Zoomstufe, verschiebt sich die markierte Stelle auf der breiter/
+     schmaler werdenden Seite - ohne erneutes Zentrieren wandert sie
+     sonst aus dem sichtbaren Bereich. inline:"center" zentriert dabei
+     auch horizontal, nicht nur vertikal. */
   useEffect(function(){
     if(!docViewerStudyContext||docViewerLoading||!docViewerPages.length)return;
     var cancelled=false;
     function doScroll(){
       if(cancelled)return;
       var el=docViewerStudyHlRef.current;
-      if(el)el.scrollIntoView({behavior:"smooth",block:"center"});
+      if(el)el.scrollIntoView({behavior:"smooth",block:"center",inline:"center"});
     }
     var imgs=document.querySelectorAll(".lp-docv-pages img");
     var pending=[];
@@ -6978,7 +7014,71 @@ function App(p){
     if(pending.length)Promise.all(pending).then(function(){ if(!cancelled)requestAnimationFrame(doScroll); });
     else requestAnimationFrame(doScroll);
     return function(){ cancelled=true; };
+  },[docViewerStudyContext,docViewerLoading,docViewerPages,docViewerZoom]);
+  /* Fit-to-Screen fuer den normalen (nicht verknuepften) Desktop-Viewer:
+     die Basisbreite (100%) wird so berechnet, dass die Seite komplett
+     ohne Scrollen sichtbar ist - nicht nur die Breite, sondern auch die
+     Hoehe wird beruecksichtigt (Seitenverhaeltnis ist pro Dokument
+     unterschiedlich, daher per JS anhand der geladenen Bildmasse statt
+     rein per CSS). Die 600px-Obergrenze aus der CSS-Regel bleibt als
+     Deckel erhalten. Reagiert bewusst NICHT auf docViewerZoom - die
+     Fit-Basis soll konstant bleiben, waehrenddessen skalieren die +/-
+     Zoom-Buttons wie bisher unabhaengig ueber --docv-zoom von dieser
+     Basis aus (auch ueber den Bildschirm hinaus, mit Scrollen). */
+  useEffect(function(){
+    if(docViewerStudyContext||docViewerLoading||!docViewerPages.length)return;
+    if(window.innerWidth<768)return;
+    var cancelled=false;
+    function computeFits(){
+      if(cancelled)return;
+      var pagesEl=document.querySelector(".lp-docv-pages");
+      if(!pagesEl)return;
+      var cs=getComputedStyle(pagesEl);
+      var availH=pagesEl.clientHeight-(parseFloat(cs.paddingTop)||0)-(parseFloat(cs.paddingBottom)||0);
+      var availW=pagesEl.clientWidth-40;
+      var next={};
+      pagesEl.querySelectorAll(":scope > div").forEach(function(wrapperEl,i){
+        var img=wrapperEl.querySelector(".lp-docv-page img");
+        if(!img||!img.naturalWidth||!img.naturalHeight)return;
+        var label=wrapperEl.querySelector(".lp-docv-pagelabel");
+        var labelH=label?label.getBoundingClientRect().height+8:0;
+        var ar=img.naturalWidth/img.naturalHeight;
+        var fit=Math.min(600,availW,(availH-labelH)*ar);
+        next[i]=Math.max(200,Math.round(fit));
+      });
+      setDocViewerFitWidths(next);
+    }
+    var imgs=document.querySelectorAll(".lp-docv-pages img");
+    var pending=[];
+    imgs.forEach(function(img){
+      if(!img.complete){
+        pending.push(new Promise(function(res){
+          img.addEventListener("load",res,{once:true});
+          img.addEventListener("error",res,{once:true});
+        }));
+      }
+    });
+    if(pending.length)Promise.all(pending).then(function(){ if(!cancelled)requestAnimationFrame(computeFits); });
+    else requestAnimationFrame(computeFits);
+    window.addEventListener("resize",computeFits);
+    return function(){ cancelled=true; window.removeEventListener("resize",computeFits); };
   },[docViewerStudyContext,docViewerLoading,docViewerPages]);
+  /* Erlaubt natives Pinch-to-Zoom (Browser-Viewport-Zoom) nur waehrend der
+     PDF-Viewer offen ist - die App sperrt Pinch-Zoom sonst global per
+     maximum-scale=1 im viewport-Meta-Tag, damit der Rest der App sich wie
+     eine native PWA anfuehlt. Der Viewer ist ein fullscreen Overlay
+     (position:fixed;inset:0) ohne sichtbaren Rest der App darunter, daher
+     unbedenklich hier temporaer zu lockern. Bewusst unabhaengig vom
+     +/- Zoom (docViewerZoom/--docv-zoom): Pinch skaliert den fertig
+     gerenderten Viewport nativ, unabhaengig von der CSS-Zoomstufe. */
+  useEffect(function(){
+    if(!docViewerFileId)return;
+    var meta=document.querySelector('meta[name="viewport"]');
+    if(!meta)return;
+    var prev=meta.getAttribute("content");
+    meta.setAttribute("content","width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=4,viewport-fit=cover");
+    return function(){ meta.setAttribute("content",prev); };
+  },[docViewerFileId]);
   function openDocViewer(file,opts){
     opts=opts||{};
     setRecentDocs(function(prev){return pushRecentDoc(prev,{id:file.id,name:file.name,mimeType:file.mimeType,modifiedTime:file.modifiedTime,size:file.size,appProperties:file.appProperties});});
@@ -6993,7 +7093,7 @@ function App(p){
     setDocViewerHighlights((saved&&saved.highlights)||[]);
     setDocViewerTextFields((saved&&saved.textFields)||[]);
     setDocViewerFontSize((saved&&saved.fontSize)||14);
-    setDocViewerZoom((saved&&saved.zoom)||1);
+    setDocViewerZoom(1);
     var cached=docPfCacheRef.current[file.id];
     if(cached&&cached.pages){
       setDocViewerError(null);setDocViewerLoading(false);setDocViewerPages(cached.pages);
@@ -7029,7 +7129,7 @@ function App(p){
       try{
         localStorage.setItem(docViewerAnnotKey(docViewerFileId),JSON.stringify({
           highlights:docViewerHighlights,textFields:docViewerTextFields,
-          fontSize:docViewerFontSize,zoom:docViewerZoom
+          fontSize:docViewerFontSize
         }));
       }catch(e){}
     }
@@ -7217,9 +7317,11 @@ function App(p){
             var pageFields=docViewerTextFields.filter(function(f){return f.page===pg.index;});
             var studyHl=docViewerStudyContext&&docViewerStudyContext.highlight.page===pg.index?docViewerStudyContext.highlight:null;
             var pickHl=docViewerLinkMode&&pdfLinkPickRect&&pdfLinkPickRect.page===pg.index?pdfLinkPickRect:null;
-            return h("div",{key:pg.index,style:{display:"flex",flexDirection:"column",alignItems:"center",gap:8}},
+            var fitW=docViewerFitWidths[pg.index];
+            return h("div",{key:pg.index,style:{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:8,width:"100%"}},
               h("span",{className:"lp-docv-pagelabel"},"Seite "+(pg.index+1)+" / "+docViewerPages.length),
-              h("div",{className:"lp-docv-page"+((docViewerMarkMode||docViewerLinkMode)?" marking":""),
+              h("div",{className:"lp-docv-page"+((docViewerMarkMode||docViewerLinkMode)?" marking":"")+(!docViewerStudyContext?" free":""),
+                  style:fitW?{width:"calc("+fitW+"px * var(--docv-zoom,1))"}:undefined,
                   onPointerDown:onDocPageDown(pg.index)},
                 h("img",{src:pg.url,draggable:false}),
                 pageHighlights.map(function(o){
@@ -7651,7 +7753,7 @@ function App(p){
                 h("div",{className:"lp-section-title"},"Zuletzt aufgerufene Unterlagen"),
                 h("button",{className:"lp-section-link",onClick:function(){setXpTab('unterlagen');switchNav('explorer');}},"Alle anzeigen →")),
               h("div",{style:{display:"flex",flexDirection:"column",gap:8}},recentDocs.slice(0,5).map(function(d){
-                return h("button",{key:d.id,className:"lp-xp-hit",onClick:function(){openDocViewer(d);}},
+                return h("button",{key:d.id,className:"lp-xp-hit lp-hover-glow",onClick:function(){openDocViewer(d);}},
                   docFileIcon(d.id,20),
                   h("span",{style:{fontSize:15,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},d.name));
               }))),
