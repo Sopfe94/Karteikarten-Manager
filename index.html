@@ -607,6 +607,11 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
   transition:box-shadow .2s,border-color .2s}
 .lp-glow-circle-btn:hover{border-color:rgba(124,58,237,0.9);
   box-shadow:0 0 26px rgba(124,58,237,0.75),0 0 14px rgba(6,182,212,0.55)}
+.ds-btn-primary{border:1px solid rgba(124,58,237,0.55);
+  box-shadow:0 0 14px rgba(124,58,237,0.45),0 0 6px rgba(6,182,212,0.3);
+  transition:box-shadow .2s,border-color .2s}
+.ds-btn-primary:hover{border-color:rgba(124,58,237,0.9);
+  box-shadow:0 0 26px rgba(124,58,237,0.75),0 0 14px rgba(6,182,212,0.55)}
 .lp-chip{height:32px;padding:0 16px;border-radius:999px;border:1px solid rgba(124,58,237,0.35);background:rgba(124,58,237,0.1);color:#A78BFA;font-size:13px;font-family:var(--font-sans);cursor:pointer}
 .lp-empty2{padding:40px 20px;text-align:center;color:rgba(255,255,255,0.35);font-size:13px}
 .lp-badge-dot{position:absolute;top:12px;right:12px;width:9px;height:9px;border-radius:50%;background:var(--grad-brand)}
@@ -762,7 +767,9 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
   border:1px solid rgba(255,255,255,0.08);border-radius:999px;padding:8px 8px 8px 16px;align-self:flex-start}
 .lp-xp-folderhdr{display:flex;align-items:center;gap:8px;padding:8px 4px 12px;
   border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:12px}
-.lp-xp-folderhdr-name{font-size:15px;font-weight:600;color:#A78BFA;flex:1}
+.lp-xp-folderhdr-name{font-size:15px;font-weight:600;color:#fff;flex:1}
+.lp-xp-folderhdr-name .grad{background:var(--grad-brand);-webkit-background-clip:text;
+  background-clip:text;-webkit-text-fill-color:transparent}
 .lp-xp-soon{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
   text-align:center;gap:20px;padding:40px 24px}
 .lp-xp-soon-icon{width:80px;height:80px;border-radius:20px;
@@ -900,7 +907,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.36";
+var KKM_VERSION="1.8.37";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3115,6 +3122,16 @@ function lpFolderIconSvg(id,size){
       fill:"url(#lpFolderGrad-"+id+")"}));
 }
 
+/* Rendert einen Namen im selben Zwei-Ton-Stil wie der grosse Stapel-
+   Titel (.lp-xp-decktitle .grad): alles ausser dem letzten Wort weiss,
+   letztes Wort im Marken-Verlauf. */
+function lpGradName(name){
+  var parts=String(name||"").split(" ");
+  var last=parts.length>1?parts.pop():"";
+  var first=parts.join(" ");
+  return h(R.Fragment,null,first,last&&h("span",{className:"grad"},(first?" ":"")+last));
+}
+
 function DeckDetail(p){
   var as=useState(false); var showAdd=as[0]; var setShowAdd=as[1];
   var ec=useState(null); var editC=ec[0]; var setEditC=ec[1];
@@ -3204,7 +3221,7 @@ function DeckDetail(p){
     return h("div",{style:{display:"flex",flexDirection:"column",gap:8}},cards.map(function(c){
       var folder=deckFolders.find(function(f){return f.id===c.folderId;});
       var isDue=!c.roundPending&&(!c.nextReview||c.nextReview<=todayStr());
-      return h("div",{className:"lp-row clickable",key:c.id,onClick:function(){setViewCard(c);}},
+      return h("div",{className:"lp-row clickable lp-hover-glow",key:c.id,onClick:function(){setViewCard(c);}},
         h("div",{style:{flex:1,minWidth:0}},
           h("div",{className:"lp-row-title",style:{whiteSpace:"nowrap",overflow:"hidden",
             textOverflow:"ellipsis"}},c.front),
@@ -3261,7 +3278,7 @@ function DeckDetail(p){
             h("div",{className:"lp-xp-folderhdr"},
               collapseBtn(folder.id),
               lpFolderIconSvg(folder.id,18),
-              h("span",{className:"lp-xp-folderhdr-name"},folder.name),
+              h("span",{className:"lp-xp-folderhdr-name"},lpGradName(folder.name)),
               h(DsBadge,{variant:"dark"},folderCards.length+" Karten"),
               h(ThreeDotMenu,{onEdit:function(){setEditFolderItem(folder);},
                 onDelete:function(){delFolder(folder.id);}})),
@@ -5391,9 +5408,7 @@ function DsButton(p){
     xl:{height:56,padding:'0 36px',fontSize:18}
   };
   var variants={
-    primary:{background:'transparent',color:'#fff',
-      border:'1px solid rgba(124,58,237,0.55)',
-      boxShadow:'0 0 14px rgba(124,58,237,0.45), 0 0 6px rgba(6,182,212,0.3)'},
+    primary:{background:'transparent',color:'#fff'},
     secondary:{background:'#7C3AED',color:'#fff',border:'none',
       boxShadow:'0 4px 16px rgba(124,58,237,0.25)'},
     outline:{background:'transparent',color:'#A78BFA',
@@ -5414,8 +5429,9 @@ function DsButton(p){
     width:p.fullWidth?'100%':'auto',opacity:dis?0.45:1,letterSpacing:'0.01em',
     whiteSpace:'nowrap',textDecoration:'none',outline:'none'
   },sizes[p.size||'md'],variants[p.variant||'primary'],p.style||{});
+  var cls=((p.variant||'primary')==='primary'?'ds-btn-primary':'')+(p.className?' '+p.className:'');
   return h('button',{style:st,disabled:dis,onClick:p.onClick,title:p.title,
-    id:p.id,className:p.className,type:p.type},p.children);
+    id:p.id,className:cls,type:p.type},p.children);
 }
 
 /* Card — _ds/components/core/Card.jsx (dark) */
@@ -6544,7 +6560,7 @@ function App(p){
         dHits.length>0&&h("div",{style:{display:"flex",flexDirection:"column",gap:12}},
           h("div",{className:"lp-seclbl"},"STAPEL"),
           dHits.map(function(d){
-            return h("button",{key:"h"+d.id,className:"lp-xp-hit",
+            return h("button",{key:"h"+d.id,className:"lp-xp-hit lp-hover-glow",
               onClick:function(){setDeckId(d.id);}},
               lpFachTile(d,28),
               h("span",{style:{fontSize:15,fontWeight:600}},d.name));
@@ -6552,7 +6568,7 @@ function App(p){
         fHits.length>0&&h("div",{style:{display:"flex",flexDirection:"column",gap:12}},
           h("div",{className:"lp-seclbl"},"FÄCHER"),
           fHits.map(function(f){
-            return h("button",{key:"hf"+f.id,className:"lp-xp-hit",
+            return h("button",{key:"hf"+f.id,className:"lp-xp-hit lp-hover-glow",
               onClick:function(){setXpSubject(f.id);setXpQuery("");setXpTab("stapel");}},
               lpFachTile(f,28),
               h("span",{style:{fontSize:15,fontWeight:600}},f.name));
@@ -6560,7 +6576,7 @@ function App(p){
         pHits.length>0&&h("div",{style:{display:"flex",flexDirection:"column",gap:12}},
           h("div",{className:"lp-seclbl"},"UNTERLAGEN"),
           pHits.map(function(d){
-            return h("button",{key:"hp"+d.id,className:"lp-xp-hit",
+            return h("button",{key:"hp"+d.id,className:"lp-xp-hit lp-hover-glow",
               onClick:function(){openDocViewer(d);}},
               docFileIcon(d.id,20),
               h("span",{style:{fontSize:15,fontWeight:600}},d.name));
@@ -7715,7 +7731,7 @@ function App(p){
                 h("div",{className:"lp-section-title"},"Zuletzt aufgerufene Unterlagen"),
                 h("button",{className:"lp-section-link",onClick:function(){setXpTab('unterlagen');switchNav('explorer');}},"Alle anzeigen →")),
               h("div",{style:{display:"flex",flexDirection:"column",gap:8}},recentDocs.slice(0,5).map(function(d){
-                return h("button",{key:d.id,className:"lp-xp-hit",onClick:function(){openDocViewer(d);}},
+                return h("button",{key:d.id,className:"lp-xp-hit lp-hover-glow",onClick:function(){openDocViewer(d);}},
                   docFileIcon(d.id,20),
                   h("span",{style:{fontSize:15,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},d.name));
               }))),
