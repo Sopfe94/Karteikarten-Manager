@@ -900,7 +900,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.35";
+var KKM_VERSION="1.8.36";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -7055,7 +7055,7 @@ function App(p){
     setDocViewerHighlights((saved&&saved.highlights)||[]);
     setDocViewerTextFields((saved&&saved.textFields)||[]);
     setDocViewerFontSize((saved&&saved.fontSize)||14);
-    setDocViewerZoom((saved&&saved.zoom)||1);
+    setDocViewerZoom(1);
     var cached=docPfCacheRef.current[file.id];
     if(cached&&cached.pages){
       setDocViewerError(null);setDocViewerLoading(false);setDocViewerPages(cached.pages);
@@ -7091,7 +7091,7 @@ function App(p){
       try{
         localStorage.setItem(docViewerAnnotKey(docViewerFileId),JSON.stringify({
           highlights:docViewerHighlights,textFields:docViewerTextFields,
-          fontSize:docViewerFontSize,zoom:docViewerZoom
+          fontSize:docViewerFontSize
         }));
       }catch(e){}
     }
