@@ -900,7 +900,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.34";
+var KKM_VERSION="1.8.35";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6064,6 +6064,7 @@ function App(p){
   var dverr=useState(null); var docViewerError=dverr[0]; var setDocViewerError=dverr[1];
   var dvpg=useState([]); var docViewerPages=dvpg[0]; var setDocViewerPages=dvpg[1];
   var dvzm=useState(1); var docViewerZoom=dvzm[0]; var setDocViewerZoom=dvzm[1];
+  var dvfw=useState({}); var docViewerFitWidths=dvfw[0]; var setDocViewerFitWidths=dvfw[1];
   var dvfs=useState(14); var docViewerFontSize=dvfs[0]; var setDocViewerFontSize=dvfs[1];
   var dvmm=useState(false); var docViewerMarkMode=dvmm[0]; var setDocViewerMarkMode=dvmm[1];
   var dvhc=useState('#FDE68A'); var docViewerHighlightColor=dvhc[0]; var setDocViewerHighlightColor=dvhc[1];
@@ -6976,6 +6977,54 @@ function App(p){
     else requestAnimationFrame(doScroll);
     return function(){ cancelled=true; };
   },[docViewerStudyContext,docViewerLoading,docViewerPages,docViewerZoom]);
+  /* Fit-to-Screen fuer den normalen (nicht verknuepften) Desktop-Viewer:
+     die Basisbreite (100%) wird so berechnet, dass die Seite komplett
+     ohne Scrollen sichtbar ist - nicht nur die Breite, sondern auch die
+     Hoehe wird beruecksichtigt (Seitenverhaeltnis ist pro Dokument
+     unterschiedlich, daher per JS anhand der geladenen Bildmasse statt
+     rein per CSS). Die 600px-Obergrenze aus der CSS-Regel bleibt als
+     Deckel erhalten. Reagiert bewusst NICHT auf docViewerZoom - die
+     Fit-Basis soll konstant bleiben, waehrenddessen skalieren die +/-
+     Zoom-Buttons wie bisher unabhaengig ueber --docv-zoom von dieser
+     Basis aus (auch ueber den Bildschirm hinaus, mit Scrollen). */
+  useEffect(function(){
+    if(docViewerStudyContext||docViewerLoading||!docViewerPages.length)return;
+    if(window.innerWidth<768)return;
+    var cancelled=false;
+    function computeFits(){
+      if(cancelled)return;
+      var pagesEl=document.querySelector(".lp-docv-pages");
+      if(!pagesEl)return;
+      var cs=getComputedStyle(pagesEl);
+      var availH=pagesEl.clientHeight-(parseFloat(cs.paddingTop)||0)-(parseFloat(cs.paddingBottom)||0);
+      var availW=pagesEl.clientWidth-40;
+      var next={};
+      pagesEl.querySelectorAll(":scope > div").forEach(function(wrapperEl,i){
+        var img=wrapperEl.querySelector(".lp-docv-page img");
+        if(!img||!img.naturalWidth||!img.naturalHeight)return;
+        var label=wrapperEl.querySelector(".lp-docv-pagelabel");
+        var labelH=label?label.getBoundingClientRect().height+8:0;
+        var ar=img.naturalWidth/img.naturalHeight;
+        var fit=Math.min(600,availW,(availH-labelH)*ar);
+        next[i]=Math.max(200,Math.round(fit));
+      });
+      setDocViewerFitWidths(next);
+    }
+    var imgs=document.querySelectorAll(".lp-docv-pages img");
+    var pending=[];
+    imgs.forEach(function(img){
+      if(!img.complete){
+        pending.push(new Promise(function(res){
+          img.addEventListener("load",res,{once:true});
+          img.addEventListener("error",res,{once:true});
+        }));
+      }
+    });
+    if(pending.length)Promise.all(pending).then(function(){ if(!cancelled)requestAnimationFrame(computeFits); });
+    else requestAnimationFrame(computeFits);
+    window.addEventListener("resize",computeFits);
+    return function(){ cancelled=true; window.removeEventListener("resize",computeFits); };
+  },[docViewerStudyContext,docViewerLoading,docViewerPages]);
   /* Erlaubt natives Pinch-to-Zoom (Browser-Viewport-Zoom) nur waehrend der
      PDF-Viewer offen ist - die App sperrt Pinch-Zoom sonst global per
      maximum-scale=1 im viewport-Meta-Tag, damit der Rest der App sich wie
@@ -7230,9 +7279,11 @@ function App(p){
             var pageFields=docViewerTextFields.filter(function(f){return f.page===pg.index;});
             var studyHl=docViewerStudyContext&&docViewerStudyContext.highlight.page===pg.index?docViewerStudyContext.highlight:null;
             var pickHl=docViewerLinkMode&&pdfLinkPickRect&&pdfLinkPickRect.page===pg.index?pdfLinkPickRect:null;
+            var fitW=docViewerFitWidths[pg.index];
             return h("div",{key:pg.index,style:{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:8,width:"100%"}},
               h("span",{className:"lp-docv-pagelabel"},"Seite "+(pg.index+1)+" / "+docViewerPages.length),
               h("div",{className:"lp-docv-page"+((docViewerMarkMode||docViewerLinkMode)?" marking":"")+(!docViewerStudyContext?" free":""),
+                  style:fitW?{width:"calc("+fitW+"px * var(--docv-zoom,1))"}:undefined,
                   onPointerDown:onDocPageDown(pg.index)},
                 h("img",{src:pg.url,draggable:false}),
                 pageHighlights.map(function(o){
