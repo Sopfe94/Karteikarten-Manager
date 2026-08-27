@@ -841,8 +841,8 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
 .lp-docv-pages{flex:1;overflow-y:auto;background:#0C0818;display:flex;flex-direction:column;
   align-items:flex-start;gap:28px;padding:32px 16px}
 .lp-docv-pagelabel{font-family:var(--font-mono);font-size:10px;letter-spacing:0.08em;color:var(--color-violet-ghost)}
-.lp-docv-page{position:relative;width:calc(300px * var(--docv-zoom,1));flex-shrink:0;background:#F8F7FA;
-  border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,0.35);margin:0 auto}
+.lp-docv-page{position:relative;width:calc(min(85vw,460px) * var(--docv-zoom,1));flex-shrink:0;background:#F8F7FA;
+  border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,0.35)}
 @media(min-width:768px){.lp-docv-page{width:calc(600px * var(--docv-zoom,1))}}
 .lp-docv-page.marking{cursor:crosshair;touch-action:none}
 .lp-docv-page img{width:100%;display:block;pointer-events:none;border-radius:8px}
@@ -894,7 +894,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.30";
+var KKM_VERSION="1.8.31";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -7216,7 +7216,7 @@ function App(p){
             var pageFields=docViewerTextFields.filter(function(f){return f.page===pg.index;});
             var studyHl=docViewerStudyContext&&docViewerStudyContext.highlight.page===pg.index?docViewerStudyContext.highlight:null;
             var pickHl=docViewerLinkMode&&pdfLinkPickRect&&pdfLinkPickRect.page===pg.index?pdfLinkPickRect:null;
-            return h("div",{key:pg.index,style:{display:"flex",flexDirection:"column",alignItems:"center",gap:8}},
+            return h("div",{key:pg.index,style:{display:"flex",flexDirection:"column",alignItems:"center",gap:8,margin:"0 auto"}},
               h("span",{className:"lp-docv-pagelabel"},"Seite "+(pg.index+1)+" / "+docViewerPages.length),
               h("div",{className:"lp-docv-page"+((docViewerMarkMode||docViewerLinkMode)?" marking":""),
                   onPointerDown:onDocPageDown(pg.index)},
