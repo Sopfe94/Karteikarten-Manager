@@ -1,12 +1,13 @@
 // Service Worker v16 - CDN-Scripts (React, Supabase) offline cachen
-const CACHE = 'kkm-v242';
+const CACHE = 'kkm-v243';
 const BASE = self.location.hostname === 'www.gross-apps.de' ? '/KM' : '';
 const STATIC = [BASE+'/index.html', BASE+'/manifest.json', BASE+'/icon.png'];
 const CDN = [
 'https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js',
 'https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js',
 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
-'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
+'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+'https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.4.13/purify.min.js'
 ];
 /* opencv.js, ort.wasm.min.js, ort-wasm-simd-threaded.(wasm|mjs),
    docaligner.onnx sowie pdf.min.js/pdf.worker.min.js (PDF-Viewer)

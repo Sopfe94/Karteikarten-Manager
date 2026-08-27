@@ -19,6 +19,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.4.13/purify.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 /* ═══════════════════════════════════════════════════════════
@@ -894,7 +895,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.28";
+var KKM_VERSION="1.8.29";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2037,6 +2038,26 @@ function CardModal(p){
 function escapeHtml(s){
   return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
+/* Karten-HTML (el.html) kommt aus contentEditable-Feldern (Formatierung,
+   Paste aus der Zwischenablage) und wird spaeter per dangerouslySetInnerHTML
+   gerendert - deshalb vor jedem Schreiben UND vor jedem Rendern saeubern.
+   Erlaubt sind nur die Tags, die der Editor tatsaechlich erzeugt (Farb-Spans,
+   Zeilenumbrueche), und am style-Attribut nur die color-Deklaration. */
+var _sanitizeCardHtmlHookAdded=false;
+function sanitizeCardHtml(html){
+  if(html==null)return html;
+  if(typeof DOMPurify==="undefined")return escapeHtml(html);
+  if(!_sanitizeCardHtmlHookAdded){
+    DOMPurify.addHook("uponSanitizeAttribute",function(node,data){
+      if(data.attrName==="style"){
+        var m=/(?:^|;)\s*color\s*:\s*(#[0-9a-fA-F]{3,8}|rgba?\([^)]*\)|[a-zA-Z]+)\s*(?:;|$)/.exec(data.attrValue||"");
+        data.attrValue=m?("color:"+m[1]):"";
+      }
+    });
+    _sanitizeCardHtmlHookAdded=true;
+  }
+  return DOMPurify.sanitize(html,{ALLOWED_TAGS:["span","br","div","b","i","u","font"],ALLOWED_ATTR:["style"]});
+}
 function hexToRgbaEditor(hex,alpha){
   var h2=(hex||"#FBBF24").replace("#","");
   var r=parseInt(h2.substring(0,2),16),g=parseInt(h2.substring(2,4),16),b=parseInt(h2.substring(4,6),16);
@@ -2070,7 +2091,7 @@ function LpEditorElement(pp){
   var initedRef=useRef(false);
   useEffect(function(){
     if(el.type==="text"&&ref.current&&!initedRef.current){
-      ref.current.innerHTML=el.html!=null?el.html:escapeHtml(el.text||"");
+      ref.current.innerHTML=el.html!=null?sanitizeCardHtml(el.html):escapeHtml(el.text||"");
       initedRef.current=true;
     }
     if(ref.current)pp.registerNode(el.id,ref.current);
@@ -2663,22 +2684,23 @@ function LpCardEditor(p){
     setBackEls(function(prev){return prev.some(function(e){return e.id===id;})?prev.map(function(e){return e.id===id?Object.assign({},e,{text:text}):e;}):prev;});
   }
   function onFieldBlur(id,htmlVal,textVal){
-    setFrontEls(function(prev){return prev.some(function(e){return e.id===id;})?prev.map(function(e){return e.id===id?Object.assign({},e,{html:htmlVal,text:textVal}):e;}):prev;});
-    setBackEls(function(prev){return prev.some(function(e){return e.id===id;})?prev.map(function(e){return e.id===id?Object.assign({},e,{html:htmlVal,text:textVal}):e;}):prev;});
+    var cleanHtml=sanitizeCardHtml(htmlVal);
+    setFrontEls(function(prev){return prev.some(function(e){return e.id===id;})?prev.map(function(e){return e.id===id?Object.assign({},e,{html:cleanHtml,text:textVal}):e;}):prev;});
+    setBackEls(function(prev){return prev.some(function(e){return e.id===id;})?prev.map(function(e){return e.id===id?Object.assign({},e,{html:cleanHtml,text:textVal}):e;}):prev;});
   }
 
   function saveCard(){
     var ffront=frontEls.map(function(e){
       if(e.type==="text"&&fieldNodesRef.current[e.id]){
         var node=fieldNodesRef.current[e.id];
-        return Object.assign({},e,{text:node.innerText,html:node.innerHTML});
+        return Object.assign({},e,{text:node.innerText,html:sanitizeCardHtml(node.innerHTML)});
       }
       return e;
     });
     var fback=backEls.map(function(e){
       if(e.type==="text"&&fieldNodesRef.current[e.id]){
         var node=fieldNodesRef.current[e.id];
-        return Object.assign({},e,{text:node.innerText,html:node.innerHTML});
+        return Object.assign({},e,{text:node.innerText,html:sanitizeCardHtml(node.innerHTML)});
       }
       return e;
     });
@@ -2943,7 +2965,7 @@ function LpCardFaceElement(pp){
     whiteSpace:"pre-wrap"
   };
   var wrapStyle={position:"absolute",left:el.x+"%",top:el.y+"%",transform:"translate(-50%,-50%)",zIndex:1,maxWidth:"92%"};
-  if(el.html!=null) return h("div",{style:wrapStyle},h("div",{style:textStyle,dangerouslySetInnerHTML:{__html:el.html}}));
+  if(el.html!=null) return h("div",{style:wrapStyle},h("div",{style:textStyle,dangerouslySetInnerHTML:{__html:sanitizeCardHtml(el.html)}}));
   return h("div",{style:wrapStyle},h("div",{style:textStyle},el.text||""));
 }
 /* Rendert eine Kartenseite: Editor-Elemente wenn vorhanden (frontElements/
