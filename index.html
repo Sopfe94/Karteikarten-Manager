@@ -908,7 +908,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.42";
+var KKM_VERSION="1.8.43";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -4628,15 +4628,15 @@ function LernSpaceView(p){
     saveData({groups:newGroups});
     setGroupName('');
     showToast('Gruppe erstellt!');
-    /* Bewusst insert() statt upsert() - ein frisch generiertes gid kann nie
-       kollidieren, und Postgres behandelt INSERT...ON CONFLICT DO UPDATE bei
-       einer echten Neuanlage (kein tatsaechlicher Konflikt) anders als ein
-       echtes Update: die RLS-Pruefung fuer die zurueckgegebene neue Zeile
-       schlaegt dabei faelschlich fehl, obwohl die Policy selbst korrekt ist. */
-    getSb().from('ls_groups').insert({
-      id:gid,name:g.name,emoji:g.emoji||null,members:g.members,group_decks:[],
-      created:String(g.created),created_by:MY_ID,updated_at:new Date().toISOString()
-    }).then(function(){},function(){});
+    /* RPC statt Direkt-Insert: Postgres wendet bei INSERT...RETURNING
+       zusaetzlich die SELECT-Policy auf die neue Zeile an (dokumentiertes
+       RLS-Verhalten) - is_ls_group_member() sieht die eigene, gerade erst
+       eingefuegte Zeile innerhalb desselben RETURNING-Checks aber nicht,
+       wodurch selbst ein reines insert() (mit Repraesentation, wie es der
+       Supabase-Client standardmaessig anfordert) faelschlich an der
+       Select-Policy scheitert. Die SECURITY DEFINER-Funktion umgeht RLS
+       komplett, exakt wie ls_claim_own_id und alle anderen Cross-Row-Writes. */
+    getSb().rpc('ls_create_group',{p_id:gid,p_name:g.name,p_emoji:g.emoji||null,p_created:String(g.created)}).then(function(){},function(){});
   }
 
   function applyGroupUpdate(updG){
