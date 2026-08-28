@@ -908,7 +908,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.41";
+var KKM_VERSION="1.8.42";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6139,7 +6139,13 @@ function App(p){
   function bindGuestAuthUid(uid){
     var myId=getLsId();
     if(!myId||!uid)return;
-    getSb().from('ls_users').upsert({ls_id:myId,authUid:uid,updated_at:new Date().toISOString()},{onConflict:'ls_id',ignoreDuplicates:false}).then(function(){},function(){});
+    /* RPC statt Direkt-Upsert: Ein noch nicht gebundenes ls_users-Row
+       (authUid IS NULL) ist unter RLS für UPDATE unsichtbar, weil Postgres
+       fuer UPDATE zusaetzlich die SELECT-Policy prueft - die (bewusst,
+       gegen Erraten fremder ls_id) keine authUid-IS-NULL-Ausnahme hat.
+       Die SECURITY DEFINER-Funktion umgeht RLS komplett, exakt wie die
+       anderen Cross-Row-Writes (ls_invite_group_member etc.). */
+    getSb().rpc('ls_claim_own_id',{p_ls_id:myId}).then(function(){},function(){});
   }
   useEffect(function(){
     var sb=getSb();
