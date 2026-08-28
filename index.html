@@ -908,7 +908,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.38";
+var KKM_VERSION="1.8.39";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1578,8 +1578,8 @@ function UserLabel(p){
   useEffect(function(){
     var id=p.id;if(!id)return;
     if(_unCache[id]){setDisp(_unCache[id]);return;}
-    getSb().from('ls_users').select('username').eq('ls_id',id).maybeSingle().then(function(res){
-      var u=(res.data&&res.data.username)||null;
+    getSb().rpc('ls_lookup_username_by_id',{p_ls_id:id}).then(function(res){
+      var u=res.data||null;
       _unCache[id]=u;setDisp(u);
     }).catch(function(){});
   },[p.id]);
@@ -3824,7 +3824,7 @@ function UsernamePickerModal(p){
     setStatus('checking');
     clearTimeout(dtRef.current);
     dtRef.current=setTimeout(function(){
-      getSb().from('ls_users').select('ls_id').eq('username',val).maybeSingle().then(function(res){
+      getSb().rpc('ls_lookup_id_by_username',{p_username:val}).then(function(res){
         setStatus(res.data?'taken':'available');
       }).catch(function(){setStatus(null);});
     },400);
@@ -4328,9 +4328,9 @@ function LernSpaceView(p){
     (lsData.requests||[]).forEach(function(r){ids.push(r.fromId);});
     ids.filter(function(id,i){return ids.indexOf(id)===i;}).forEach(function(id){
       if(friendProfiles[id])return;
-      lsGet('ls_users',id).then(function(d){
-        if(!d)return;
-        setFriendProfiles(function(prev){var n=Object.assign({},prev);n[id]=d;return n;});
+      getSb().rpc('ls_get_friend_profile',{p_target_ls_id:id}).then(function(res){
+        if(!res.data)return;
+        setFriendProfiles(function(prev){var n=Object.assign({},prev);n[id]=res.data;return n;});
       }).catch(function(){});
     });
   },[lsData]);
@@ -4550,8 +4550,8 @@ function LernSpaceView(p){
     var q=val.slice(1);
     if(!q){setInviteHints([]);return;}
     ihRef.current=setTimeout(function(){
-      getSb().from('ls_users').select('username').ilike('username','%'+q+'%').limit(4).then(function(res){
-        if(res.data) setInviteHints(res.data.map(function(r){return r.username;}).filter(Boolean));
+      getSb().rpc('ls_search_usernames',{p_query:q}).then(function(res){
+        if(res.data) setInviteHints(res.data.filter(Boolean));
       }).catch(function(){});
     },350);
   }
@@ -4562,8 +4562,8 @@ function LernSpaceView(p){
     var q=val.slice(1);
     if(!q){setMemberHints([]);return;}
     mihRef.current=setTimeout(function(){
-      getSb().from('ls_users').select('username').ilike('username','%'+q+'%').limit(4).then(function(res){
-        if(res.data) setMemberHints(res.data.map(function(r){return r.username;}).filter(Boolean));
+      getSb().rpc('ls_search_usernames',{p_query:q}).then(function(res){
+        if(res.data) setMemberHints(res.data.filter(Boolean));
       }).catch(function(){});
     },350);
   }
@@ -4577,14 +4577,8 @@ function LernSpaceView(p){
       var curSent=(lsData&&lsData.sentRequests)||[];
       if(curFriends.find(function(f){return f.id===tid;})){showToast('Bereits befreundet');return;}
       if(curSent.find(function(r){return r.toId===tid;})){showToast('Anfrage bereits gesendet');return;}
-      lsGet('ls_users',tid).then(function(td){
-        if(!td){showToast('Nutzer nicht gefunden');return null;}
-        var reqs=[].concat(td.requests||[]);
-        if(reqs.find(function(r){return r.fromId===MY_ID;})){showToast('Anfrage bereits gesendet');return null;}
-        reqs.push({fromId:MY_ID,ts:Date.now()});
-        return lsSet('ls_users',tid,Object.assign({},td,{requests:reqs}));
-      }).then(function(res){
-        if(!res)return;
+      getSb().rpc('ls_send_friend_request',{p_target_ls_id:tid}).then(function(res){
+        if(res.error){showToast('Nutzer nicht gefunden');return;}
         var newSent=[].concat((lsData&&lsData.sentRequests)||[],[{toId:tid,ts:Date.now()}]);
         saveData({sentRequests:newSent});
         showToast('Anfrage gesendet!');
@@ -4592,19 +4586,14 @@ function LernSpaceView(p){
       }).catch(function(){showToast('Fehler beim Senden');});
     }
     var uname=raw.startsWith('@')?raw.slice(1):raw;
-    getSb().from('ls_users').select('ls_id').eq('username',uname).maybeSingle()
+    getSb().rpc('ls_lookup_id_by_username',{p_username:uname})
     .then(function(res){
-      doSend(res.data?res.data.ls_id:uname);
+      doSend(res.data||uname);
     }).catch(function(){doSend(uname);});
   }
 
   function cancelRequest(toId){
-    lsGet('ls_users',toId).then(function(td){
-      if(td){
-        var reqs=(td.requests||[]).filter(function(r){return r.fromId!==MY_ID;});
-        return lsSet('ls_users',toId,Object.assign({},td,{requests:reqs}));
-      }
-    }).catch(function(){});
+    getSb().rpc('ls_cancel_friend_request',{p_target_ls_id:toId}).catch(function(){});
     var newSent=(lsData.sentRequests||[]).filter(function(r){return r.toId!==toId;});
     saveData({sentRequests:newSent});
     showToast('Anfrage zur\u00fcckgezogen');
@@ -4615,13 +4604,7 @@ function LernSpaceView(p){
     var newReqs=(lsData.requests||[]).filter(function(r){return r.fromId!==req.fromId;});
     var newActs=[{type:'friend',text:(_unCache[req.fromId]||req.fromId)+' ist jetzt dein Freund',ts:Date.now()}].concat(lsData.activities||[]).slice(0,20);
     saveDataAccept({friends:newFriends,requests:newReqs,activities:newActs},req.fromId);
-    lsGet('ls_users',req.fromId).then(function(td){
-      if(td){
-        var tf=(td.friends||[]).find(function(f){return f.id===MY_ID;})?td.friends:[].concat(td.friends||[],[{id:MY_ID,since:Date.now()}]);
-        var tSent=(td.sentRequests||[]).filter(function(s){return s.toId!==MY_ID;});
-        return lsSet('ls_users',req.fromId,Object.assign({},td,{friends:tf,sentRequests:tSent}));
-      }
-    }).catch(function(){});
+    getSb().rpc('ls_accept_friend_request',{p_requester_ls_id:req.fromId}).catch(function(){});
     showToast('Freund hinzugef\u00fcgt!');
   }
 
@@ -4632,12 +4615,7 @@ function LernSpaceView(p){
   function removeFriend(fid){
     var newFriends=(lsData.friends||[]).filter(function(f){return f.id!==fid;});
     saveDataRemove({friends:newFriends});
-    lsGet('ls_users',fid).then(function(td){
-      if(td){
-        var tf=(td.friends||[]).filter(function(f){return f.id!==MY_ID;});
-        return lsSet('ls_users',fid,Object.assign({},td,{friends:tf}));
-      }
-    }).catch(function(){});
+    getSb().rpc('ls_remove_friend',{p_target_ls_id:fid}).catch(function(){});
     setRemovingFid(null);
     showToast('Freundschaft beendet');
   }
@@ -4673,23 +4651,17 @@ function LernSpaceView(p){
       if(nm.find(function(m){return m.id===tid;})){showToast('Bereits Mitglied');return;}
       if((lsData.groupInvites||[]).find(function(x){return x.id===g.id&&x.toId===tid;})){showToast('Einladung bereits gesendet');return;}
       dbg('invite: starte \u2709 '+tid+' \u2192 Gruppe '+g.id);
-      var invite={id:g.id,name:g.name,emoji:g.emoji||'\ud83c\udfeb',fromId:MY_ID,role:inviteRole,ts:Date.now()};
-      lsGet('ls_users',tid).then(function(td){
-        if(!td){dbg('invite: Benutzer nicht gefunden: '+tid);showToast('Benutzer nicht gefunden');return;}
-        dbg('invite: ls_users gelesen, groupInvites vorher:',(td.groupInvites||[]).length);
-        var tInvites=(td.groupInvites||[]).filter(function(x){return x.id!==g.id;}).concat([invite]);
-        dbg('invite: schreibe groupInvites f\u00fcr '+tid);
-        return lsSet('ls_users',tid,Object.assign({},td,{groupInvites:tInvites}));
-      }).then(function(){
+      getSb().rpc('ls_invite_group_member',{p_target_ls_id:tid,p_group_id:g.id,p_group_name:g.name,p_group_emoji:g.emoji||'\ud83c\udfeb',p_role:inviteRole}).then(function(res){
+        if(res.error){dbg('invite: \u274c',res.error.message);showToast('Benutzer nicht gefunden oder keine Berechtigung');return;}
         dbg('invite: \u2705 Einladung gesendet an '+tid);
         showToast('Einladung gesendet!');
         setInviteMemberId('');setInviteRole('user');setMemberHints([]);
       }).catch(function(e){dbg('invite: \u274c',e&&(e.message||JSON.stringify(e)));showToast('Fehler beim Einladen');});
     }
     var uname=raw.startsWith('@')?raw.slice(1):raw;
-    getSb().from('ls_users').select('ls_id').eq('username',uname).maybeSingle()
+    getSb().rpc('ls_lookup_id_by_username',{p_username:uname})
     .then(function(res){
-      doInvite(res.data?res.data.ls_id:uname);
+      doInvite(res.data||uname);
     }).catch(function(){doInvite(uname);});
   }
 
@@ -4699,14 +4671,8 @@ function LernSpaceView(p){
     var groupEntry={id:invite.id,name:invite.name,emoji:invite.emoji,members:[],groupDecks:[],deckIds:[],created:invite.ts};
     var newGroups=(lsData.groups||[]).filter(function(g){return g.id!==invite.id;}).concat([groupEntry]);
     saveData({groupInvites:newInvites,groups:newGroups});
-    lsGet('ls_groups',invite.id).then(function(gd){
-      if(!gd){dbg('acceptGroupInvite: Gruppe nicht gefunden');return;}
-      var nm=normalizeMembers(gd.members||[]);
-      if(!nm.find(function(m){return m.id===MY_ID;})){
-        var newMembers=nm.concat([{id:MY_ID,role:invite.role||'user'}]);
-        return lsSet('ls_groups',invite.id,Object.assign({},gd,{members:newMembers}));
-      }
-    }).then(function(){
+    getSb().rpc('ls_accept_group_invite',{p_group_id:invite.id,p_role:invite.role||'user'}).then(function(res){
+      if(res.error){dbg('acceptGroupInvite: \u274c',res.error.message);showToast('Fehler beim Beitreten');return;}
       dbg('acceptGroupInvite: \u2705 beigetreten');
       showToast('Gruppe beigetreten!');
     }).catch(function(e){dbg('acceptGroupInvite: \u274c',e&&e.message);showToast('Fehler beim Beitreten');});
@@ -4723,11 +4689,15 @@ function LernSpaceView(p){
     if(!g)return;
     if(!isGroupAdmin(g,MY_ID)){showToast('Nur Admins');return;}
     if(targetId===MY_ID){showToast('Eigene Rolle nicht \u00e4nderbar');return;}
-    var newMembers=normalizeMembers(g.members).map(function(m){
-      return m.id===targetId?Object.assign({},m,{role:newRole}):m;
-    });
-    var updG=Object.assign({},g,{members:newMembers});
-    applyGroupUpdate(updG).then(function(){
+    getSb().rpc('ls_group_change_role',{p_group_id:g.id,p_target_ls_id:targetId,p_new_role:newRole}).then(function(res){
+      if(res.error){showToast('Fehler');return;}
+      var newMembers=normalizeMembers(g.members).map(function(m){
+        return m.id===targetId?Object.assign({},m,{role:newRole}):m;
+      });
+      var updG=Object.assign({},g,{members:newMembers});
+      setSelectedGroup(updG);
+      var newGroups=(lsData.groups||[]).map(function(gr){return gr.id===updG.id?updG:gr;});
+      saveData({groups:newGroups});
       showToast('Rolle aktualisiert');
     }).catch(function(){showToast('Fehler');});
   }
@@ -4738,16 +4708,15 @@ function LernSpaceView(p){
     if(!isGroupAdmin(g,MY_ID)){showToast('Nur Admins');return;}
     if(targetId===MY_ID){showToast('Dich selbst nicht entfernbar');return;}
     if(!confirm(targetId+' aus der Gruppe entfernen?'))return;
-    var newMembers=normalizeMembers(g.members).filter(function(m){return m.id!==targetId;});
-    var updG=Object.assign({},g,{members:newMembers});
-    applyGroupUpdate(updG).then(function(){
-      // Gruppe aus den ls_users-Daten des Entfernten löschen
-      return lsGet('ls_users',targetId).then(function(td){
-        if(!td)return;
-        var tGroups=(td.groups||[]).filter(function(x){return x.id!==g.id;});
-        return lsSet('ls_users',targetId,Object.assign({},td,{groups:tGroups}));
-      });
-    }).then(function(){showToast('Mitglied entfernt');}).catch(function(){showToast('Fehler');});
+    getSb().rpc('ls_group_remove_member',{p_group_id:g.id,p_target_ls_id:targetId}).then(function(res){
+      if(res.error){showToast('Fehler');return;}
+      var newMembers=normalizeMembers(g.members).filter(function(m){return m.id!==targetId;});
+      var updG=Object.assign({},g,{members:newMembers});
+      setSelectedGroup(updG);
+      var newGroups=(lsData.groups||[]).map(function(gr){return gr.id===updG.id?updG:gr;});
+      saveData({groups:newGroups});
+      showToast('Mitglied entfernt');
+    }).catch(function(){showToast('Fehler');});
   }
 
   function deleteOrTransferGroup(){
@@ -4758,32 +4727,28 @@ function LernSpaceView(p){
       if(!confirm('Gruppe an '+tid+' \u00fcbertragen?'))return;
       var members=normalizeMembers(g.members);
       if(!members.find(function(m){return m.id===tid;})){showToast('Kein Mitglied der Gruppe');return;}
-      var newMembers=members.map(function(m){
-        if(m.id===tid&&m.role!=='admin')return Object.assign({},m,{role:'admin'});
-        if(m.id===MY_ID)return Object.assign({},m,{role:'user'});
-        return m;
-      });
-      var updG=Object.assign({},g,{members:newMembers,createdBy:tid});
-      applyGroupUpdate(updG).then(function(){
+      getSb().rpc('ls_group_transfer',{p_group_id:g.id,p_target_ls_id:tid}).then(function(res){
+        if(res.error){showToast('Fehler');return;}
+        var newMembers=members.map(function(m){
+          if(m.id===tid&&m.role!=='admin')return Object.assign({},m,{role:'admin'});
+          if(m.id===MY_ID)return Object.assign({},m,{role:'user'});
+          return m;
+        });
+        var updG=Object.assign({},g,{members:newMembers,createdBy:tid});
+        setSelectedGroup(updG);
+        var newGroups=(lsData.groups||[]).map(function(gr){return gr.id===updG.id?updG:gr;});
+        saveData({groups:newGroups});
         showToast('Gruppe \u00fcbertragen!');
         setShowGroupSettings(false);setShowDeleteZone(false);setTransferTarget('');
       }).catch(function(){showToast('Fehler');});
     } else {
       if(!confirm('Gruppe "'+g.name+'" wirklich unwiderruflich l\u00f6schen?'))return;
-      getSb().from('ls_groups').delete().eq('id',g.id)
+      getSb().rpc('ls_delete_group',{p_group_id:g.id})
       .then(function(res){
         if(res.error)throw res.error;
-        var mems=normalizeMembers(g.members);
-        return Promise.all(mems.map(function(m){
-          return lsGet('ls_users',m.id).then(function(td){
-            if(!td)return;
-            var ng=(td.groups||[]).filter(function(x){return x.id!==g.id;});
-            return lsSet('ls_users',m.id,Object.assign({},td,{groups:ng}));
-          }).catch(function(){});
-        }));
-      }).then(function(){
         var newGroups=(lsData.groups||[]).filter(function(x){return x.id!==g.id;});
         setLsData(Object.assign({},lsData,{groups:newGroups}));
+        saveData({groups:newGroups});
         setSelectedGroup(null);
         setShowGroupSettings(false);setShowDeleteZone(false);setTransferTarget('');
         setLsPage('groups');
@@ -4794,12 +4759,10 @@ function LernSpaceView(p){
 
   function shareStackWith(deck,friendId){
     var copy=copyDeckNewIds(deck);
-    lsGet('ls_users',friendId).then(function(td){
-      var tData=td||defaultData;
-      var inc=[].concat(tData.sharedIncoming||[],[{fromId:MY_ID,deck:copy,ts:Date.now()}]);
-      return lsSet('ls_users',friendId,Object.assign({},tData,{sharedIncoming:inc}));
-    }).then(function(){showToast('Stapel geteilt!');})
-     .catch(function(){showToast('Fehler beim Teilen');});
+    getSb().rpc('ls_share_deck',{p_target_ls_id:friendId,p_deck:copy}).then(function(res){
+      if(res.error)throw res.error;
+      showToast('Stapel geteilt!');
+    }).catch(function(){showToast('Fehler beim Teilen');});
   }
 
   function acceptShared(item){
@@ -6155,17 +6118,34 @@ function App(p){
     return function(){ getSb().removeChannel(ch); };
   },[googleUser]);
 
+  /* Fuer Gaeste (kein Google-Login) gibt es bisher gar keine Supabase-
+     Auth-Session - ls_id ist rein clientseitig erzeugt und laesst sich
+     nicht per RLS gegen echte fremde Zugriffe absichern. Anonymous Auth
+     gibt jedem Geraet eine echte, serverseitig gepruefte auth.uid(), die
+     per authUid-Spalte an die eigene ls_users-Zeile gebunden wird - exakt
+     das gleiche Muster, das fuer Google-Nutzer schon existiert (siehe
+     handleAuthUser). is_anonymous grenzt das strikt von einem echten
+     Google-Login ab, damit anonyme Sessions nie als googleUser behandelt
+     werden (sonst wuerde z.B. handleAuthUser mit user.email=undefined
+     falsch laufen). */
+  function bindGuestAuthUid(uid){
+    var myId=getLsId();
+    if(!myId||!uid)return;
+    getSb().from('ls_users').upsert({ls_id:myId,authUid:uid,updated_at:new Date().toISOString()},{onConflict:'ls_id',ignoreDuplicates:false}).catch(function(){});
+  }
   useEffect(function(){
     var sb=getSb();
     sb.auth.getSession().then(function(res){
       var session=res.data&&res.data.session;
-      if(session&&session.user){
+      if(session&&session.user&&!session.user.is_anonymous){
         setGoogleUser(session.user);
         if(session.provider_token)driveSetAccessToken(session.provider_token,3500);
         if(session.provider_refresh_token)driveStoreRefreshToken(session.provider_refresh_token);
         localStorage.setItem('kkm-onboarded','1');
         setShowLogin(false);
         handleAuthUser(session.user);
+      } else if(session&&session.user&&session.user.is_anonymous){
+        bindGuestAuthUid(session.user.id);
       } else {
         /* War frueher mit Google eingeloggt (kkm-ls-id sieht wie eine
            E-Mail aus), aber gerade keine gueltige Sitzung mehr - z.B.
@@ -6176,11 +6156,15 @@ function App(p){
         var prevId=localStorage.getItem('kkm-ls-id');
         if(prevId&&prevId.indexOf('@')>-1){
           setShowSessionExpired(true);
+        } else {
+          sb.auth.signInAnonymously().then(function(r){
+            if(r.data&&r.data.user)bindGuestAuthUid(r.data.user.id);
+          }).catch(function(){});
         }
       }
     });
     var sub=sb.auth.onAuthStateChange(function(event,session){
-      if(session&&session.user){
+      if(session&&session.user&&!session.user.is_anonymous){
         setGoogleUser(session.user);
         if(session.provider_token)driveSetAccessToken(session.provider_token,3500);
         if(session.provider_refresh_token)driveStoreRefreshToken(session.provider_refresh_token);
@@ -6189,6 +6173,8 @@ function App(p){
           setShowLogin(false);
           handleAuthUser(session.user);
         }
+      } else if(session&&session.user&&session.user.is_anonymous){
+        bindGuestAuthUid(session.user.id);
       } else {
         setGoogleUser(null);
         _syncUser=null;
@@ -7894,9 +7880,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
              vorladen und in _unCache schreiben - sonst fetcht UserLabel
              ihn beim Rendern selbst nach und der Name "poppt" Sekunden
              spaeter in die schon sichtbare Zeile nach. */
-          var profP=lsGet('ls_users',f.id).catch(function(){return null;});
-          var unameP=withTimeout(getSb().from('ls_users').select('username').eq('ls_id',f.id).maybeSingle(),12000)
-            .then(function(res){return (res.data&&res.data.username)||null;}).catch(function(){return null;});
+          var profP=getSb().rpc('ls_get_friend_profile',{p_target_ls_id:f.id}).then(function(res){return res.data||null;}).catch(function(){return null;});
+          var unameP=getSb().rpc('ls_lookup_username_by_id',{p_ls_id:f.id}).then(function(res){return res.data||null;}).catch(function(){return null;});
           return Promise.all([profP,unameP]).then(function(r){
             if(r[1])_unCache[f.id]=r[1];
             return {id:f.id,since:f.since,profile:r[0]};
