@@ -908,7 +908,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.39";
+var KKM_VERSION="1.8.40";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -4593,7 +4593,7 @@ function LernSpaceView(p){
   }
 
   function cancelRequest(toId){
-    getSb().rpc('ls_cancel_friend_request',{p_target_ls_id:toId}).catch(function(){});
+    getSb().rpc('ls_cancel_friend_request',{p_target_ls_id:toId}).then(function(){},function(){});
     var newSent=(lsData.sentRequests||[]).filter(function(r){return r.toId!==toId;});
     saveData({sentRequests:newSent});
     showToast('Anfrage zur\u00fcckgezogen');
@@ -4604,7 +4604,7 @@ function LernSpaceView(p){
     var newReqs=(lsData.requests||[]).filter(function(r){return r.fromId!==req.fromId;});
     var newActs=[{type:'friend',text:(_unCache[req.fromId]||req.fromId)+' ist jetzt dein Freund',ts:Date.now()}].concat(lsData.activities||[]).slice(0,20);
     saveDataAccept({friends:newFriends,requests:newReqs,activities:newActs},req.fromId);
-    getSb().rpc('ls_accept_friend_request',{p_requester_ls_id:req.fromId}).catch(function(){});
+    getSb().rpc('ls_accept_friend_request',{p_requester_ls_id:req.fromId}).then(function(){},function(){});
     showToast('Freund hinzugef\u00fcgt!');
   }
 
@@ -4615,7 +4615,7 @@ function LernSpaceView(p){
   function removeFriend(fid){
     var newFriends=(lsData.friends||[]).filter(function(f){return f.id!==fid;});
     saveDataRemove({friends:newFriends});
-    getSb().rpc('ls_remove_friend',{p_target_ls_id:fid}).catch(function(){});
+    getSb().rpc('ls_remove_friend',{p_target_ls_id:fid}).then(function(){},function(){});
     setRemovingFid(null);
     showToast('Freundschaft beendet');
   }
@@ -6131,7 +6131,7 @@ function App(p){
   function bindGuestAuthUid(uid){
     var myId=getLsId();
     if(!myId||!uid)return;
-    getSb().from('ls_users').upsert({ls_id:myId,authUid:uid,updated_at:new Date().toISOString()},{onConflict:'ls_id',ignoreDuplicates:false}).catch(function(){});
+    getSb().from('ls_users').upsert({ls_id:myId,authUid:uid,updated_at:new Date().toISOString()},{onConflict:'ls_id',ignoreDuplicates:false}).then(function(){},function(){});
   }
   useEffect(function(){
     var sb=getSb();
