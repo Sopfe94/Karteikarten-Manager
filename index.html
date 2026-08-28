@@ -908,7 +908,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.43";
+var KKM_VERSION="1.8.44";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1954,6 +1954,20 @@ function DeleteAccountConfirmModal(p){
       h("div",{className:"lp-modal-actions"},
         h(DsButton,{variant:"ghost",onClick:p.onClose},"Abbrechen"),
         h(DsButton,{variant:"danger",onClick:p.onConfirm},"Endgültig löschen"))));
+}
+
+function GroupActionConfirmModal(p){
+  var isTransfer=p.action.type==='transfer';
+  return h("div",{className:"lp-modal-ov",onClick:p.onClose},
+    h("div",{className:"lp-modal-box danger",onClick:function(e){e.stopPropagation();}},
+      h("div",{style:{fontSize:17,fontWeight:700,color:"#EF4444"}},isTransfer?'Gruppe übertragen?':'Gruppe endgültig löschen?'),
+      h("div",{style:{fontSize:13,color:"rgba(255,255,255,.65)",lineHeight:1.6}},
+        isTransfer
+          ? 'Gruppe an '+p.action.tid+' übertragen? Du wirst danach zum normalen Mitglied.'
+          : 'Wenn du bestätigst, wird die Gruppe "'+p.groupName+'" für alle Mitglieder unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.'),
+      h("div",{className:"lp-modal-actions"},
+        h(DsButton,{variant:"ghost",onClick:p.onClose},"Abbrechen"),
+        h(DsButton,{variant:"danger",onClick:p.onConfirm},isTransfer?'Übertragen':'Endgültig löschen'))));
 }
 
 function ThreeDotMenu(p){
@@ -4309,6 +4323,7 @@ function LernSpaceView(p){
   var ncbs=useState('');var newCardBack=ncbs[0];var setNewCardBack=ncbs[1];
   var tts=useState('');var transferTarget=tts[0];var setTransferTarget=tts[1];
   var sdzs=useState(false);var showDeleteZone=sdzs[0];var setShowDeleteZone=sdzs[1];
+  var gacs=useState(null);var groupActionConfirm=gacs[0];var setGroupActionConfirm=gacs[1];
   var egcs=useState(null);var editGroupCard=egcs[0];var setEditGroupCard=egcs[1];
   var egcfs=useState('');var editGroupCardFront=egcfs[0];var setEditGroupCardFront=egcfs[1];
   var egcbs=useState('');var editGroupCardBack=egcbs[0];var setEditGroupCardBack=egcbs[1];
@@ -4727,42 +4742,62 @@ function LernSpaceView(p){
     }).catch(function(){showToast('Fehler');});
   }
 
+  /* Native confirm() statt eines eigenen Modals fuehrte in installierten
+     PWAs (Standalone-Modus, insb. iOS) dazu, dass der Dialog gar nicht erst
+     erschien und die Funktion sofort und unbemerkt (kein Toast, kein
+     dbg()-Log - konnte bisher nirgends nachvollzogen werden) beim
+     !confirm(...)-Abbruch zurueckkehrte. Jetzt ein eigenes Modal
+     (GroupActionConfirmModal, gleiches Muster wie DeleteAccountConfirmModal)
+     plus durchgehendes dbg()-Logging wie beim Einladen-Flow. */
   function deleteOrTransferGroup(){
     var g=selectedGroup;
     if(!g)return;
     var tid=transferTarget.trim();
     if(tid){
-      if(!confirm('Gruppe an '+tid+' \u00fcbertragen?'))return;
       var members=normalizeMembers(g.members);
       if(!members.find(function(m){return m.id===tid;})){showToast('Kein Mitglied der Gruppe');return;}
-      getSb().rpc('ls_group_transfer',{p_group_id:g.id,p_target_ls_id:tid}).then(function(res){
-        if(res.error){showToast('Fehler');return;}
-        var newMembers=members.map(function(m){
-          if(m.id===tid&&m.role!=='admin')return Object.assign({},m,{role:'admin'});
-          if(m.id===MY_ID)return Object.assign({},m,{role:'user'});
-          return m;
-        });
-        var updG=Object.assign({},g,{members:newMembers,createdBy:tid});
-        setSelectedGroup(updG);
-        var newGroups=(lsData.groups||[]).map(function(gr){return gr.id===updG.id?updG:gr;});
-        saveData({groups:newGroups});
-        showToast('Gruppe \u00fcbertragen!');
-        setShowGroupSettings(false);setShowDeleteZone(false);setTransferTarget('');
-      }).catch(function(){showToast('Fehler');});
+      setGroupActionConfirm({type:'transfer',tid:tid});
     } else {
-      if(!confirm('Gruppe "'+g.name+'" wirklich unwiderruflich l\u00f6schen?'))return;
-      getSb().rpc('ls_delete_group',{p_group_id:g.id})
-      .then(function(res){
-        if(res.error)throw res.error;
-        var newGroups=(lsData.groups||[]).filter(function(x){return x.id!==g.id;});
-        setLsData(Object.assign({},lsData,{groups:newGroups}));
-        saveData({groups:newGroups});
-        setSelectedGroup(null);
-        setShowGroupSettings(false);setShowDeleteZone(false);setTransferTarget('');
-        setLsPage('groups');
-        showToast('Gruppe gel\u00f6scht');
-      }).catch(function(){showToast('Fehler beim L\u00f6schen');});
+      setGroupActionConfirm({type:'delete'});
     }
+  }
+  function runTransferGroup(tid){
+    var g=selectedGroup;
+    if(!g)return;
+    var members=normalizeMembers(g.members);
+    dbg('transferGroup: starte \u2192 '+tid);
+    getSb().rpc('ls_group_transfer',{p_group_id:g.id,p_target_ls_id:tid}).then(function(res){
+      if(res.error){dbg('transferGroup: \u274c',res.error.message);showToast('Fehler');return;}
+      dbg('transferGroup: \u2705');
+      var newMembers=members.map(function(m){
+        if(m.id===tid&&m.role!=='admin')return Object.assign({},m,{role:'admin'});
+        if(m.id===MY_ID)return Object.assign({},m,{role:'user'});
+        return m;
+      });
+      var updG=Object.assign({},g,{members:newMembers,createdBy:tid});
+      setSelectedGroup(updG);
+      var newGroups=(lsData.groups||[]).map(function(gr){return gr.id===updG.id?updG:gr;});
+      saveData({groups:newGroups});
+      showToast('Gruppe \u00fcbertragen!');
+      setShowGroupSettings(false);setShowDeleteZone(false);setTransferTarget('');
+    }).catch(function(e){dbg('transferGroup: \u274c catch',e&&e.message);showToast('Fehler');});
+  }
+  function runDeleteGroup(){
+    var g=selectedGroup;
+    if(!g)return;
+    dbg('deleteGroup: starte '+g.id);
+    getSb().rpc('ls_delete_group',{p_group_id:g.id})
+    .then(function(res){
+      if(res.error){dbg('deleteGroup: \u274c',res.error.message);throw res.error;}
+      dbg('deleteGroup: \u2705');
+      var newGroups=(lsData.groups||[]).filter(function(x){return x.id!==g.id;});
+      setLsData(Object.assign({},lsData,{groups:newGroups}));
+      saveData({groups:newGroups});
+      setSelectedGroup(null);
+      setShowGroupSettings(false);setShowDeleteZone(false);setTransferTarget('');
+      setLsPage('groups');
+      showToast('Gruppe gel\u00f6scht');
+    }).catch(function(e){dbg('deleteGroup: \u274c catch',e&&e.message);showToast('Fehler beim L\u00f6schen');});
   }
 
   function shareStackWith(deck,friendId){
@@ -5361,6 +5396,17 @@ function LernSpaceView(p){
         )
       )
     ),
+    groupActionConfirm&&h(GroupActionConfirmModal,{
+      action:groupActionConfirm,
+      groupName:selectedGroup&&selectedGroup.name,
+      onClose:function(){setGroupActionConfirm(null);},
+      onConfirm:function(){
+        var action=groupActionConfirm;
+        setGroupActionConfirm(null);
+        if(action.type==='transfer')runTransferGroup(action.tid);
+        else runDeleteGroup();
+      }
+    }),
     showConsent&&h(LsConsentModal,{
       onAccept:function(){localStorage.setItem(LS_CONSENT_KEY,'1');window.dispatchEvent(new Event('lp-ls-consent-given'));setShowConsent(false);},
       onDecline:function(){localStorage.setItem(LS_CONSENT_KEY,'0');setShowConsent(false);if(p.onBack)p.onBack();},
