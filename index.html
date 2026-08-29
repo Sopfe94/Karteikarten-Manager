@@ -908,7 +908,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.46";
+var KKM_VERSION="1.8.47";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1957,17 +1957,21 @@ function DeleteAccountConfirmModal(p){
 }
 
 function GroupActionConfirmModal(p){
-  var isTransfer=p.action.type==='transfer';
+  var type=p.action.type;
+  var title=type==='transfer'?'Gruppe übertragen?':type==='leave'?'Gruppe verlassen?':'Gruppe endgültig löschen?';
+  var msg=type==='transfer'
+    ? 'Gruppe an '+p.action.tid+' übertragen? Du wirst danach zum normalen Mitglied.'
+    : type==='leave'
+      ? 'Möchtest du die Gruppe "'+p.groupName+'" wirklich verlassen?'
+      : 'Wenn du bestätigst, wird die Gruppe "'+p.groupName+'" für alle Mitglieder unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.';
+  var confirmLabel=type==='transfer'?'Übertragen':type==='leave'?'Verlassen':'Endgültig löschen';
   return h("div",{className:"lp-modal-ov",onClick:p.onClose},
     h("div",{className:"lp-modal-box danger",onClick:function(e){e.stopPropagation();}},
-      h("div",{style:{fontSize:17,fontWeight:700,color:"#EF4444"}},isTransfer?'Gruppe übertragen?':'Gruppe endgültig löschen?'),
-      h("div",{style:{fontSize:13,color:"rgba(255,255,255,.65)",lineHeight:1.6}},
-        isTransfer
-          ? 'Gruppe an '+p.action.tid+' übertragen? Du wirst danach zum normalen Mitglied.'
-          : 'Wenn du bestätigst, wird die Gruppe "'+p.groupName+'" für alle Mitglieder unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.'),
+      h("div",{style:{fontSize:17,fontWeight:700,color:"#EF4444"}},title),
+      h("div",{style:{fontSize:13,color:"rgba(255,255,255,.65)",lineHeight:1.6}},msg),
       h("div",{className:"lp-modal-actions"},
         h(DsButton,{variant:"ghost",onClick:p.onClose},"Abbrechen"),
-        h(DsButton,{variant:"danger",onClick:p.onConfirm},isTransfer?'Übertragen':'Endgültig löschen'))));
+        h(DsButton,{variant:"danger",onClick:p.onConfirm},confirmLabel))));
 }
 
 function ThreeDotMenu(p){
@@ -4835,6 +4839,18 @@ function LernSpaceView(p){
       showToast('Gruppe gel\u00f6scht');
     }).catch(function(e){dbg('deleteGroup: \u274c catch',e&&e.message);showToast('Fehler beim L\u00f6schen');});
   }
+  function runLeaveGroup(){
+    var g=selectedGroup;
+    if(!g)return;
+    dbg('leaveGroup: starte '+g.id);
+    getSb().rpc('ls_leave_group',{p_group_id:g.id}).then(function(res){
+      if(res.error){dbg('leaveGroup: \u274c',res.error.message);showToast('Fehler');return;}
+      dbg('leaveGroup: \u2705');
+      var newGroups=(lsData.groups||[]).filter(function(x){return x.id!==g.id;});
+      saveData({groups:newGroups});
+      setSelectedGroup(null);setLsPage('groups');showToast('Gruppe verlassen');
+    }).catch(function(e){dbg('leaveGroup: \u274c catch',e&&e.message);showToast('Fehler');});
+  }
 
   function shareStackWith(deck,friendId){
     var copy=copyDeckNewIds(deck);
@@ -5259,6 +5275,17 @@ function LernSpaceView(p){
     var msgs=groupChats[gid]||[];
     var isAdmin=isGroupAdmin(g,MY_ID);
 
+    /* Frueher ein direkter Client-Upsert der kompletten Mitgliederliste
+       (lsSet('ls_groups',...)) plus natives confirm() - gleiche zwei
+       Bug-Klassen wie beim Loeschen/Uebertragen: confirm() kann in einer
+       installierten PWA (Standalone-Modus) ausbleiben, und ein aus dem
+       lokalen, moeglicherweise veralteten g.members gefiltertes Array
+       ueberschreibt beim Zurueckschreiben die serverseitige Mitgliederliste
+       komplett - inkl. zwischenzeitlicher Aenderungen anderer Mitglieder.
+       Jetzt: eigenes Modal + SECURITY DEFINER RPC (atomar, wie alle anderen
+       Cross-Row-Writes), inkl. serverseitig durchgesetzter "einziger Admin
+       muss zuerst uebertragen/loeschen"-Regel (der Client-Check bleibt als
+       schnelles Feedback, ist aber nicht mehr die einzige Absicherung). */
     function leaveGroup(){
       if(isAdmin){
         var otherAdmins=normalizeMembers(g.members).filter(function(m){return m.id!==MY_ID&&m.role==='admin';});
@@ -5266,15 +5293,7 @@ function LernSpaceView(p){
           showToast('Als einziger Admin zuerst Gruppe \u00fcbertragen oder l\u00f6schen');return;
         }
       }
-      if(!confirm('Gruppe "'+g.name+'" verlassen?'))return;
-      var newMembers=normalizeMembers(g.members).filter(function(m){return m.id!==MY_ID;});
-      lsSet('ls_groups',g.id,Object.assign({},g,{members:newMembers}))
-      .then(function(){
-        var newGroups=(lsData.groups||[]).filter(function(x){return x.id!==g.id;});
-        return saveData({groups:newGroups});
-      }).then(function(){
-        setSelectedGroup(null);setLsPage('groups');showToast('Gruppe verlassen');
-      }).catch(function(){showToast('Fehler');});
+      setGroupActionConfirm({type:'leave'});
     }
 
     function sendMsg(){
@@ -5457,6 +5476,7 @@ function LernSpaceView(p){
         var action=groupActionConfirm;
         setGroupActionConfirm(null);
         if(action.type==='transfer')runTransferGroup(action.tid);
+        else if(action.type==='leave')runLeaveGroup();
         else runDeleteGroup();
       }
     }),
