@@ -908,7 +908,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.47";
+var KKM_VERSION="1.8.48";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1958,13 +1958,16 @@ function DeleteAccountConfirmModal(p){
 
 function GroupActionConfirmModal(p){
   var type=p.action.type;
-  var title=type==='transfer'?'Gruppe übertragen?':type==='leave'?'Gruppe verlassen?':'Gruppe endgültig löschen?';
-  var msg=type==='transfer'
-    ? 'Gruppe an '+p.action.tid+' übertragen? Du wirst danach zum normalen Mitglied.'
-    : type==='leave'
-      ? 'Möchtest du die Gruppe "'+p.groupName+'" wirklich verlassen?'
-      : 'Wenn du bestätigst, wird die Gruppe "'+p.groupName+'" für alle Mitglieder unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.';
-  var confirmLabel=type==='transfer'?'Übertragen':type==='leave'?'Verlassen':'Endgültig löschen';
+  var specs={
+    transfer:{title:'Gruppe übertragen?',msg:'Gruppe an '+p.action.tid+' übertragen? Du wirst danach zum normalen Mitglied.',label:'Übertragen'},
+    leave:{title:'Gruppe verlassen?',msg:'Möchtest du die Gruppe "'+p.groupName+'" wirklich verlassen?',label:'Verlassen'},
+    removeMember:{title:'Mitglied entfernen?',msg:p.action.targetId+' aus der Gruppe entfernen?',label:'Entfernen'},
+    deleteCard:{title:'Karte löschen?',msg:'Diese Karte wirklich löschen?',label:'Löschen'},
+    deleteDeck:{title:'Stapel löschen?',msg:'Stapel "'+p.action.deckName+'" löschen? Der Stapel wird aus der Gruppe entfernt.',label:'Löschen'},
+    'delete':{title:'Gruppe endgültig löschen?',msg:'Wenn du bestätigst, wird die Gruppe "'+p.groupName+'" für alle Mitglieder unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',label:'Endgültig löschen'}
+  };
+  var spec=specs[type]||specs['delete'];
+  var title=spec.title,msg=spec.msg,confirmLabel=spec.label;
   return h("div",{className:"lp-modal-ov",onClick:p.onClose},
     h("div",{className:"lp-modal-box danger",onClick:function(e){e.stopPropagation();}},
       h("div",{style:{fontSize:17,fontWeight:700,color:"#EF4444"}},title),
@@ -4207,15 +4210,16 @@ function AvatarPickerModal(p){
 }
 
 
+/* Gruppen haben ab jetzt nur noch ein Foto statt Avatar-Auswahl/Emoji
+   (auf Sophies Wunsch) - vereinfacht gegenueber dem alten Drei-Wege-Picker.
+   Frueher schrieb das Speichern hier nur in den eigenen lokalen Cache,
+   nie in die kanonische ls_groups-Zeile - andere Mitglieder sahen das neue
+   Foto nie. Jetzt ueber ls_group_set_photo (siehe onSavePhoto-Aufrufer). */
 function GroupAvatarPickerModal(p){
-  var ts=useState('avatar');var tab=ts[0];var setTab=ts[1];
-  var ss=useState(p.current||'av1');var sel=ss[0];var setSel=ss[1];
   var phs=useState(p.currentPhoto||null);var photo=phs[0];var setPhoto=phs[1];
-  var es=useState(p.currentEmoji||'\uD83C\uDFEB');var selEmoji=es[0];var setSelEmoji=es[1];
   var cps=useState(false);var cropMode=cps[0];var setCropMode=cps[1];
   var raws=useState(null);var rawPhoto=raws[0];var setRawPhoto=raws[1];
   var fref=useRef(null);
-  var EMOJIS=['\uD83D\uDE0A','\uD83D\uDE0E','\uD83E\uDD13','\uD83E\uDDE0','\uD83D\uDCAA','\uD83D\uDE80','\u2B50','\u2728','\uD83C\uDF1F','\uD83D\uDCAB','\uD83D\uDCDA','\uD83D\uDCD6','\uD83D\uDD2C','\uD83E\uDDEA','\uD83C\uDF93','\uD83D\uDCDD','\uD83E\uDD81','\uD83D\uDC2F','\uD83E\uDD8A','\uD83D\uDC3A','\uD83E\uDD85','\uD83E\uDD8B','\uD83C\uDF08','\uD83C\uDFC6','\uD83C\uDFAF','\uD83C\uDFAE','\uD83D\uDD25','\u26A1','\uD83D\uDCA1','\uD83C\uDFEB','\uD83C\uDF19','\uD83C\uDF1E','\uD83C\uDFA8','\uD83C\uDFB5','\u26BD','\uD83C\uDFC0','\uD83C\uDFB2','\uD83C\uDFAD','\uD83D\uDC09','\uD83E\uDD8C','\uD83D\uDC08','\uD83D\uDC36','\uD83D\uDC31','\uD83D\uDC27','\uD83D\uDC3B','\uD83C\uDF0D','\uD83D\uDD2D','\uD83E\uDD96','\uD83E\uDD8F'];
   function handleFile(e){
     var f=e.target.files&&e.target.files[0];if(!f)return;
     var reader=new FileReader();
@@ -4227,51 +4231,23 @@ function GroupAvatarPickerModal(p){
       h('div',{className:'lp-modal-box',style:{maxWidth:'300px'},onClick:function(e){e.stopPropagation();}},
         h('div',{className:'lp-modal-title'},'Foto ausrichten'),
         h(CropperView,{imgSrc:rawPhoto,
-          onConfirm:function(b64){setPhoto(b64);setSel('photo');setCropMode(false);setRawPhoto(null);},
+          onConfirm:function(b64){setPhoto(b64);setCropMode(false);setRawPhoto(null);},
           onCancel:function(){setCropMode(false);setRawPhoto(null);}})
       )
     );
   }
-  var tabBtnBase={flex:1,padding:'8px 4px',borderRadius:10,border:'1px solid rgba(255,255,255,.1)',background:'rgba(255,255,255,.04)',color:'rgba(255,255,255,.45)',fontWeight:700,fontSize:'13px',cursor:'pointer'};
-  var tabBtnActive=Object.assign({},tabBtnBase,{background:'rgba(124,58,237,.16)',borderColor:'rgba(124,58,237,.5)',color:'#A78BFA'});
   var squareStyle={width:'68px',height:'68px',borderRadius:'20px',objectFit:'cover',border:'2.5px solid #a78bfa',display:'block',margin:'0 auto 16px'};
-  var previewSrc=sel==='photo'&&photo?photo:getAvatarSrc(sel);
   return h('div',{className:'lp-modal-ov',onClick:p.onClose},
     h('div',{className:'lp-modal-box',style:{maxWidth:'380px'},onClick:function(e){e.stopPropagation();}},
-      h('div',{className:'lp-modal-title'},'Gruppen-Avatar w\u00e4hlen'),
-      h('div',{style:{display:'flex',gap:8,marginBottom:16}},
-        h('button',{style:tab==='avatar'?tabBtnActive:tabBtnBase,onClick:function(){setTab('avatar');}},' Avatar'),
-        h('button',{style:tab==='emoji'?tabBtnActive:tabBtnBase,onClick:function(){setTab('emoji');}},'\uD83D\uDE0A Emoji')
-      ),
-      tab==='avatar'&&h('div',null,
-        h('img',{src:previewSrc,style:squareStyle}),
-        h('div',{className:'av-picker-grid'},
-          LS_AVATARS.map(function(av){
-            return h('div',{key:av.id,className:'av-picker-item-sq'+(sel===av.id?' apsel':''),
-              onClick:function(){setSel(av.id);setPhoto(null);}},
-              h('img',{src:getAvatarSrc(av.id),alt:av.name})
-            );
-          })
-        ),
-        h('button',{className:'av-photo-btn',onClick:function(){fref.current&&fref.current.click();}},'\uD83D\uDCF7 Eigenes Foto'),
-        h('input',{ref:fref,type:'file',accept:'image/*',style:{display:'none'},onChange:handleFile})
-      ),
-      tab==='emoji'&&h('div',null,
-        h('div',{style:{width:'68px',height:'68px',borderRadius:'20px',background:'transparent',border:'1px solid rgba(124,58,237,.55)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'30px',margin:'0 auto 16px',boxShadow:'0 0 14px rgba(124,58,237,.45),0 0 6px rgba(6,182,212,.3)'}},selEmoji),
-        h('div',{style:{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:8,margin:'12px 0 16px'}},
-          EMOJIS.map(function(em,i){
-            var isActive=em===selEmoji;
-            return h('div',{key:i,onClick:function(){setSelEmoji(em);},
-              style:{width:'42px',height:'42px',borderRadius:'10px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'24px',cursor:'pointer',background:isActive?'rgba(124,58,237,.18)':'rgba(255,255,255,.04)',border:isActive?'1.5px solid rgba(124,58,237,.6)':'1.5px solid rgba(255,255,255,.07)',transition:'.15s'}},em);
-          })
-        )
-      ),
-      h('div',{style:{display:'flex',gap:12,marginTop:4}},
+      h('div',{className:'lp-modal-title'},'Gruppen-Foto'),
+      photo
+        ?h('img',{src:photo,style:squareStyle})
+        :h('div',{style:Object.assign({},squareStyle,{background:'rgba(255,255,255,.04)',border:'1.5px dashed rgba(255,255,255,.25)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'26px'})},'\uD83D\uDCF7'),
+      h('button',{className:'av-photo-btn',onClick:function(){fref.current&&fref.current.click();}},'\uD83D\uDCF7 Foto ausw\u00e4hlen'),
+      h('input',{ref:fref,type:'file',accept:'image/*',style:{display:'none'},onChange:handleFile}),
+      h('div',{style:{display:'flex',gap:12,marginTop:16}},
         h(DsButton,{variant:'ghost',style:{flex:1},onClick:p.onClose},'Abbrechen'),
-        h('button',{className:'btn btn-p',style:{flex:1},onClick:function(){
-          if(tab==='emoji')p.onSaveEmoji(selEmoji);
-          else p.onSaveAvatar(sel,sel==='photo'?photo:null);
-        }},'\u2713 Speichern')
+        h('button',{className:'btn btn-p',style:{flex:1,opacity:photo?1:.5,pointerEvents:photo?'auto':'none'},onClick:function(){p.onSavePhoto(photo);}},'\u2713 Speichern')
       )
     )
   );
@@ -4670,12 +4646,24 @@ function LernSpaceView(p){
     getSb().rpc('ls_create_group',{p_id:gid,p_name:g.name,p_emoji:g.emoji||null,p_created:String(g.created)}).then(function(){},function(){});
   }
 
-  function applyGroupUpdate(updG){
+  /* Frueher ein roher Client-Upsert der KOMPLETTEN Gruppen-Zeile (inkl.
+     Mitgliederliste!) bei jeder Stapel-/Karten-Aenderung - schrieb dabei
+     einen moeglicherweise veralteten lokalen Snapshot zurueck. Bearbeiten
+     zwei Mitglieder gleichzeitig denselben geteilten Stapel (der Kern-
+     Anwendungsfall von "geteilte Stapel"), ueberschreibt der zweite
+     Speichervorgang die Aenderung des ersten stillschweigend - und zwar
+     nicht nur am Stapel, sondern potenziell auch an der Mitgliederliste.
+     Jetzt: atomare RPC ls_group_deck_upsert, die serverseitig nur den
+     betroffenen Stapel per id ersetzt - andere Stapel und Mitglieder
+     bleiben unberuehrt, egal was lokal sonst noch im State steht. */
+  function applyGroupUpdate(updG,changedDeck){
     setSelectedGroup(updG);
     var newGroups=(lsData.groups||[]).map(function(gr){return gr.id===updG.id?updG:gr;});
     if(!newGroups.find(function(gr){return gr.id===updG.id;}))newGroups=newGroups.concat([updG]);
     saveData({groups:newGroups});
-    return lsSet('ls_groups',updG.id,updG);
+    return getSb().rpc('ls_group_deck_upsert',{p_group_id:updG.id,p_deck:changedDeck}).then(function(res){
+      if(res.error)throw res.error;
+    });
   }
 
   function inviteMember(){
@@ -4770,7 +4758,11 @@ function LernSpaceView(p){
     if(!g)return;
     if(!isGroupAdmin(g,MY_ID)){showToast('Nur Admins');return;}
     if(targetId===MY_ID){showToast('Dich selbst nicht entfernbar');return;}
-    if(!confirm(targetId+' aus der Gruppe entfernen?'))return;
+    setGroupActionConfirm({type:'removeMember',targetId:targetId});
+  }
+  function runRemoveMember(targetId){
+    var g=selectedGroup;
+    if(!g)return;
     getSb().rpc('ls_group_remove_member',{p_group_id:g.id,p_target_ls_id:targetId}).then(function(res){
       if(res.error){showToast('Fehler');return;}
       var newMembers=normalizeMembers(g.members).filter(function(m){return m.id!==targetId;});
@@ -4850,6 +4842,30 @@ function LernSpaceView(p){
       saveData({groups:newGroups});
       setSelectedGroup(null);setLsPage('groups');showToast('Gruppe verlassen');
     }).catch(function(e){dbg('leaveGroup: \u274c catch',e&&e.message);showToast('Fehler');});
+  }
+  function runDeleteGroupCard(cardId){
+    var g=selectedGroup,deck=selectedGroupDeck;
+    if(!g||!deck)return;
+    var updCards=(deck.cards||[]).filter(function(c){return c.id!==cardId;});
+    var updDeck=Object.assign({},deck,{cards:updCards});
+    var updDecks=(g.groupDecks||[]).map(function(d){return d.id===updDeck.id?updDeck:d;});
+    var updG=Object.assign({},g,{groupDecks:updDecks});
+    setSelectedGroupDeck(updDeck);
+    applyGroupUpdate(updG,updDeck).catch(function(){showToast('Sync-Fehler');});
+    showToast('Karte gel\u00f6scht');
+  }
+  function runDeleteGroupDeck(deckId){
+    var g=selectedGroup;
+    if(!g)return;
+    var updDecks=(g.groupDecks||[]).filter(function(d){return d.id!==deckId;});
+    var updG=Object.assign({},g,{groupDecks:updDecks});
+    setSelectedGroup(updG);
+    getSb().rpc('ls_group_deck_delete',{p_group_id:g.id,p_deck_id:deckId}).then(function(res){
+      if(res.error){showToast('Fehler');return;}
+      var newGroups=(lsData.groups||[]).map(function(gr){return gr.id===updG.id?updG:gr;});
+      saveData({groups:newGroups});
+      showToast('Stapel gel\u00f6scht');
+    }).catch(function(){showToast('Sync-Fehler');});
   }
 
   function shareStackWith(deck,friendId){
@@ -5072,7 +5088,7 @@ function LernSpaceView(p){
       var updDecks=[].concat(groupDecks,[deck]);
       var updG=Object.assign({},g,{groupDecks:updDecks});
       setSelectedGroupDeck(deck);
-      applyGroupUpdate(updG).catch(function(){showToast('Sync-Fehler');});
+      applyGroupUpdate(updG,deck).catch(function(){showToast('Sync-Fehler');});
       setGroupStackPage('deck-detail');
       showToast('Stapel erstellt!');
     }
@@ -5084,21 +5100,14 @@ function LernSpaceView(p){
       var updDecks=(g.groupDecks||[]).map(function(d){return d.id===updDeck.id?updDeck:d;});
       var updG=Object.assign({},g,{groupDecks:updDecks});
       setSelectedGroupDeck(updDeck);
-      applyGroupUpdate(updG).catch(function(){showToast('Sync-Fehler');});
+      applyGroupUpdate(updG,updDeck).catch(function(){showToast('Sync-Fehler');});
       setNewCardFront('');setNewCardBack('');
       showToast('Karte gespeichert!');
       setGroupStackPage('deck-detail');
     }
 
     function deleteGroupCard(cardId){
-      if(!confirm('Karte l\u00f6schen?'))return;
-      var updCards=(selectedGroupDeck.cards||[]).filter(function(c){return c.id!==cardId;});
-      var updDeck=Object.assign({},selectedGroupDeck,{cards:updCards});
-      var updDecks=(g.groupDecks||[]).map(function(d){return d.id===updDeck.id?updDeck:d;});
-      var updG=Object.assign({},g,{groupDecks:updDecks});
-      setSelectedGroupDeck(updDeck);
-      applyGroupUpdate(updG).catch(function(){showToast('Sync-Fehler');});
-      showToast('Karte gel\u00f6scht');
+      setGroupActionConfirm({type:'deleteCard',cardId:cardId});
     }
 
     function saveEditGroupCard(){
@@ -5110,7 +5119,7 @@ function LernSpaceView(p){
       var updDecks=(g.groupDecks||[]).map(function(d){return d.id===updDeck.id?updDeck:d;});
       var updG=Object.assign({},g,{groupDecks:updDecks});
       setSelectedGroupDeck(updDeck);
-      applyGroupUpdate(updG).catch(function(){showToast('Sync-Fehler');});
+      applyGroupUpdate(updG,updDeck).catch(function(){showToast('Sync-Fehler');});
       setEditGroupCard(null);
       showToast('Karte aktualisiert!');
     }
@@ -5254,9 +5263,7 @@ function LernSpaceView(p){
               ),
               h('button',{style:{background:'rgba(239,68,68,.12)',border:'1px solid rgba(239,68,68,.28)',borderRadius:10,padding:'4px 8px',color:'#fca5a5',fontSize:'13px',cursor:'pointer',flexShrink:0},onClick:function(e){
                 e.stopPropagation();
-                if(!confirm('Stapel "'+deck.name+'" l\u00f6schen?\nDer Stapel wird aus der Gruppe entfernt.')){return;}
-                var updDecks=(g.groupDecks||[]).filter(function(d){return d.id!==deck.id;});
-                applyGroupUpdate(Object.assign({},g,{groupDecks:updDecks}));
+                setGroupActionConfirm({type:'deleteDeck',deckId:deck.id,deckName:deck.name});
               }},'\uD83D\uDDD1\uFE0F'),
               h('div',{style:{marginLeft:4,color:'rgba(255,255,255,.4)',fontSize:'17px'}},'\u203A')
             );
@@ -5405,20 +5412,18 @@ function LernSpaceView(p){
       onClose:function(){setShowAvPicker(false);}
     }),
     showGroupAvPicker&&selectedGroup&&h(GroupAvatarPickerModal,{
-      current:selectedGroup.avatar||'av1',
       currentPhoto:selectedGroup.avatarPhoto||null,
-      currentEmoji:selectedGroup.emoji||'\uD83C\uDFEB',
-      onSaveAvatar:function(avId,photo){
-        var upd=Object.assign({},selectedGroup,{avatar:avId,avatarPhoto:photo||null});
+      onSavePhoto:function(photo){
+        var gid=selectedGroup.id;
+        var upd=Object.assign({},selectedGroup,{avatar:'photo',avatarPhoto:photo});
         setSelectedGroup(upd);
         var newGroups=(lsData.groups||[]).map(function(g){return g.id===upd.id?upd:g;});
-        saveData({groups:newGroups});setShowGroupAvPicker(false);showToast('Avatar gespeichert!');
-      },
-      onSaveEmoji:function(emoji){
-        var upd=Object.assign({},selectedGroup,{emoji:emoji,avatar:null,avatarPhoto:null});
-        setSelectedGroup(upd);
-        var newGroups=(lsData.groups||[]).map(function(g){return g.id===upd.id?upd:g;});
-        saveData({groups:newGroups});setShowGroupAvPicker(false);showToast('Emoji gespeichert!');
+        saveData({groups:newGroups});
+        setShowGroupAvPicker(false);
+        getSb().rpc('ls_group_set_photo',{p_group_id:gid,p_avatar_photo:photo}).then(function(res){
+          if(res.error){showToast('Fehler beim Speichern');return;}
+          showToast('Foto gespeichert!');
+        }).catch(function(){showToast('Fehler beim Speichern');});
       },
       onClose:function(){setShowGroupAvPicker(false);}
     }),
@@ -5477,6 +5482,9 @@ function LernSpaceView(p){
         setGroupActionConfirm(null);
         if(action.type==='transfer')runTransferGroup(action.tid);
         else if(action.type==='leave')runLeaveGroup();
+        else if(action.type==='removeMember')runRemoveMember(action.targetId);
+        else if(action.type==='deleteCard')runDeleteGroupCard(action.cardId);
+        else if(action.type==='deleteDeck')runDeleteGroupDeck(action.deckId);
         else runDeleteGroup();
       }
     }),
