@@ -245,6 +245,8 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 .ls-gd-hero{text-align:center;padding:12px 0 16px;position:relative}
 .ls-gd-menu-btn{position:absolute;top:6px;right:0;width:38px;height:38px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#fff;font-size:20px;line-height:1;cursor:pointer;z-index:3;display:flex;align-items:center;justify-content:center}
 .ls-gd-av{width:68px;height:68px;border-radius:20px;background:linear-gradient(135deg,rgba(139,92,246,.3),rgba(124,58,237,.16));border:2px solid rgba(124,58,237,.55);display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 12px;box-shadow:0 0 44px rgba(139,92,246,.38),0 0 22px rgba(124,58,237,.3)}
+.ls-gd-av.round{border-radius:50%}
+.lp-avatar-tile-round{border-radius:50%}
 .ls-gd-av-wrap{position:relative;width:68px;margin:0 auto 12px;cursor:pointer}
 .ls-gd-av-wrap .ls-gd-av{margin:0}
 .ls-gd-av-cam{position:absolute;bottom:-4px;right:-4px;width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#06B6D4);border:2px solid rgba(6,12,42,.8);display:flex;align-items:center;justify-content:center;font-size:11px}
@@ -908,7 +910,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.48";
+var KKM_VERSION="1.8.49";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -5026,7 +5028,7 @@ function LernSpaceView(p){
         h('div',{className:'lp-seclbl'},'Gruppen-Einladungen ('+groupInvites.length+')'),
         groupInvites.map(function(invite,i){
           return h('div',{key:i,className:'lp-row'},
-            h('div',{className:'lp-avatar-tile'},h('span',{className:'lp-avatar-tile-label'},invite.emoji||(invite.name||'?').charAt(0).toUpperCase())),
+            h('div',{className:'lp-avatar-tile lp-avatar-tile-round'},h('span',{className:'lp-avatar-tile-label'},(invite.name||'?').charAt(0).toUpperCase())),
             h('div',{style:{flex:1,minWidth:0}},
               h('div',{className:'lp-row-title'},invite.name),
               h('div',{className:'lp-row-sub'},'Von '+invite.fromId+' · als '+(invite.role==='admin'?'Admin':'Mitglied'))),
@@ -5039,7 +5041,7 @@ function LernSpaceView(p){
           ?h('div',{className:'lp-empty2'},'Noch keine Gruppen – gründe jetzt deine erste!')
           :groups.map(function(g,i){
             return h('div',{key:i,className:'lp-row clickable',onClick:function(){setSelectedGroup(g);setGroupTab('members');setLsPage('group-detail');}},
-              h('div',{className:'lp-avatar-tile'},h('span',{className:'lp-avatar-tile-label'},g.emoji||(g.name||'?').charAt(0).toUpperCase())),
+              h('div',{className:'lp-avatar-tile lp-avatar-tile-round'},h('span',{className:'lp-avatar-tile-label'},(g.name||'?').charAt(0).toUpperCase())),
               h('div',{style:{flex:1,minWidth:0}},
                 h('div',{className:'lp-row-title',style:{fontSize:15}},g.name),
                 h('div',{className:'lp-row-sub'},(g.members||[]).length+' Mitglieder · '+(g.groupDecks||[]).length+' Stapel')),
@@ -5318,9 +5320,9 @@ function LernSpaceView(p){
       h('div',{className:'ls-gd-hero'},
         isAdmin&&h('button',{className:'ls-gd-menu-btn',onClick:function(){setShowGroupSettings(true);},title:'Admin-Einstellungen'},'\u22EE'),
         h('div',{className:'ls-gd-av-wrap',onClick:function(){setShowGroupAvPicker(true);}},
-          g.avatar
-            ?h('img',{src:g.avatar==='photo'&&g.avatarPhoto?g.avatarPhoto:getAvatarSrc(g.avatar),style:{width:'68px',height:'68px',borderRadius:'20px',objectFit:'cover',border:'1px solid rgba(124,58,237,.55)',display:'block',boxShadow:'0 0 14px rgba(124,58,237,.45),0 0 6px rgba(6,182,212,.3)'}})
-            :h('div',{className:'ls-gd-av'},g.emoji||'\ud83c\udfeb'),
+          g.avatarPhoto
+            ?h('img',{src:g.avatarPhoto,style:{width:'68px',height:'68px',borderRadius:'50%',objectFit:'cover',border:'1px solid rgba(124,58,237,.55)',display:'block',boxShadow:'0 0 14px rgba(124,58,237,.45),0 0 6px rgba(6,182,212,.3)'}})
+            :h('div',{className:'ls-gd-av round'},h('span',{className:'lp-avatar-tile-label',style:{fontSize:'28px'}},(g.name||'?').charAt(0).toUpperCase())),
           h('div',{className:'ls-gd-av-cam'},'\ud83d\udcf7')
         ),
         h('div',{className:'ls-gd-name'},g.name),
