@@ -908,7 +908,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.45";
+var KKM_VERSION="1.8.46";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -4700,12 +4700,28 @@ function LernSpaceView(p){
     }).catch(function(){doInvite(uname);});
   }
 
+  /* Wie saveDataRemoveShared: groupInvites/groups werden erst NACH lsGet()
+     anhand von remote gefiltert bzw. ergaenzt, nicht anhand des moeglicherweise
+     veralteten lokalen lsData - sonst koennte eine zwischen Laden und Annehmen/
+     Ablehnen frisch eingetroffene zweite Einladung stillschweigend verschwinden. */
   function acceptGroupInvite(invite){
     dbg('acceptGroupInvite:',invite.id);
-    var newInvites=(lsData.groupInvites||[]).filter(function(x){return x.id!==invite.id;});
     var groupEntry={id:invite.id,name:invite.name,emoji:invite.emoji,members:[],groupDecks:[],deckIds:[],created:invite.ts};
-    var newGroups=(lsData.groups||[]).filter(function(g){return g.id!==invite.id;}).concat([groupEntry]);
-    saveData({groupInvites:newInvites,groups:newGroups});
+    setLsData(function(prev){
+      var newInvites=(prev.groupInvites||[]).filter(function(x){return x.id!==invite.id;});
+      var newGroups=(prev.groups||[]).filter(function(g){return g.id!==invite.id;}).concat([groupEntry]);
+      return Object.assign({},prev,{groupInvites:newInvites,groups:newGroups});
+    });
+    savingRef.current=true;
+    lsGet('ls_users',MY_ID).then(function(remote){
+      remote=remote||defaultData;
+      var merged=Object.assign({},remote);
+      merged.groupInvites=(remote.groupInvites||[]).filter(function(x){return x.id!==invite.id;});
+      merged.groups=(remote.groups||[]).filter(function(g){return g.id!==invite.id;}).concat([groupEntry]);
+      return lsSet('ls_users',MY_ID,merged).then(function(){
+        savingRef.current=false;setLsData(merged);
+      });
+    }).catch(function(){savingRef.current=false;showToast('Sync-Fehler');});
     getSb().rpc('ls_accept_group_invite',{p_group_id:invite.id,p_role:invite.role||'user'}).then(function(res){
       if(res.error){dbg('acceptGroupInvite: \u274c',res.error.message);showToast('Fehler beim Beitreten');return;}
       dbg('acceptGroupInvite: \u2705 beigetreten');
@@ -4714,8 +4730,16 @@ function LernSpaceView(p){
   }
 
   function declineGroupInvite(invite){
-    var newInvites=(lsData.groupInvites||[]).filter(function(x){return x.id!==invite.id;});
-    saveData({groupInvites:newInvites});
+    setLsData(function(prev){return Object.assign({},prev,{groupInvites:(prev.groupInvites||[]).filter(function(x){return x.id!==invite.id;})});});
+    savingRef.current=true;
+    lsGet('ls_users',MY_ID).then(function(remote){
+      remote=remote||defaultData;
+      var merged=Object.assign({},remote);
+      merged.groupInvites=(remote.groupInvites||[]).filter(function(x){return x.id!==invite.id;});
+      return lsSet('ls_users',MY_ID,merged).then(function(){
+        savingRef.current=false;setLsData(merged);
+      });
+    }).catch(function(){savingRef.current=false;showToast('Sync-Fehler');});
     showToast('Einladung abgelehnt');
   }
 
@@ -4820,15 +4844,32 @@ function LernSpaceView(p){
     }).catch(function(){showToast('Fehler beim Teilen');});
   }
 
+  /* Wie saveDataAccept: die Ziel-Liste wird erst NACH dem lsGet() anhand
+     von remote.sharedIncoming gefiltert, nicht vorab anhand des moeglicherweise
+     veralteten lokalen lsData.sharedIncoming. Sonst genau derselbe Bug wie bei
+     groups moeglich - ein zwischen Laden und Annehmen/Ablehnen frisch
+     eingetroffener geteilter Stapel eines anderen Freundes wuerde beim
+     Zurueckschreiben stillschweigend verschwinden. */
+  function saveDataRemoveShared(ts){
+    setLsData(function(prev){return Object.assign({},prev,{sharedIncoming:(prev.sharedIncoming||[]).filter(function(x){return x.ts!==ts;})});});
+    savingRef.current=true;
+    return lsGet('ls_users',MY_ID).then(function(remote){
+      remote=remote||defaultData;
+      var merged=Object.assign({},remote);
+      merged.sharedIncoming=(remote.sharedIncoming||[]).filter(function(x){return x.ts!==ts;});
+      return lsSet('ls_users',MY_ID,merged).then(function(){
+        savingRef.current=false;setLsData(merged);return merged;
+      });
+    }).catch(function(){savingRef.current=false;showToast('Sync-Fehler');});
+  }
   function acceptShared(item){
     p.onAddDeck(item.deck);
-    var newInc=(lsData.sharedIncoming||[]).filter(function(x){return x.ts!==item.ts;});
-    saveData({sharedIncoming:newInc});
+    saveDataRemoveShared(item.ts);
     showToast('Stapel \u00fcbernommen!');
   }
 
   function declineShared(item){
-    saveData({sharedIncoming:(lsData.sharedIncoming||[]).filter(function(x){return x.ts!==item.ts;})});
+    saveDataRemoveShared(item.ts);
   }
 
   var friends=lsData?lsData.friends||[]:[];
