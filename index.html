@@ -908,7 +908,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.44";
+var KKM_VERSION="1.8.45";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -4507,13 +4507,25 @@ function LernSpaceView(p){
     }).catch(function(){loadingGroupsRef.current=false;});
   }
 
+  /* WICHTIG: merged wird aus remote + NUR den in d explizit uebergebenen
+     Feldern gebaut (Object.assign({},remote,d)) - NICHT aus dem gesamten
+     lokalen lsData (local). Grund: lsData im React-State kann zum
+     Zeitpunkt des Aufrufs veraltete Felder enthalten (z.B. groups, wenn
+     parallel ein anderer Sync-Call noch laeuft/nachzieht). Ein Object.assign
+     mit dem KOMPLETTEN lsData ueberschreibt dann serverseitig auch Felder,
+     die dieser Aufruf gar nicht aendern wollte, mit dem veralteten lokalen
+     Stand - genau das hat einmal live eine komplette Gruppen-Mitgliedschaft
+     kommentarlos geloescht (kein Fehler, kein Log, einfach weg). friends/
+     requests sind zusaetzlich per Vereinigung abgesichert (rein additiv,
+     kann daher nie etwas verlieren); alle anderen Felder (u.a. groups,
+     groupInvites) bleiben jetzt unangetastet, wenn sie nicht Teil von d sind. */
   function saveData(d){
     var local=Object.assign({},lsData,d);
     setLsData(local);
     savingRef.current=true;
     return lsGet('ls_users',MY_ID).then(function(remote){
       remote=remote||defaultData;
-      var merged=Object.assign({},remote,local);
+      var merged=Object.assign({},remote,d);
       var rReqs=remote.requests||[];var lReqs=local.requests||[];var allReqs=rReqs.slice();
       lReqs.forEach(function(r){if(!allReqs.find(function(x){return x.fromId===r.fromId;}))allReqs.push(r);});
       merged.requests=allReqs;
@@ -4528,7 +4540,7 @@ function LernSpaceView(p){
   function saveDataAccept(d,acceptedFromId){
     var local=Object.assign({},lsData,d);setLsData(local);savingRef.current=true;
     return lsGet('ls_users',MY_ID).then(function(remote){
-      remote=remote||defaultData;var merged=Object.assign({},remote,local);
+      remote=remote||defaultData;var merged=Object.assign({},remote,d);
       var rReqs=remote.requests||[];var lReqs=local.requests||[];var allReqs=rReqs.slice();
       lReqs.forEach(function(r){if(!allReqs.find(function(x){return x.fromId===r.fromId;}))allReqs.push(r);});
       merged.requests=allReqs.filter(function(r){return r.fromId!==acceptedFromId;});
@@ -4548,7 +4560,7 @@ function LernSpaceView(p){
     savingRef.current=true;
     return lsGet('ls_users',MY_ID).then(function(remote){
       remote=remote||defaultData;
-      var merged=Object.assign({},remote,local);
+      var merged=Object.assign({},remote,d);
       merged.friends=local.friends||[];
       var rReqs=remote.requests||[];var lReqs=local.requests||[];var allReqs=rReqs.slice();
       lReqs.forEach(function(r){if(!allReqs.find(function(x){return x.fromId===r.fromId;}))allReqs.push(r);});
