@@ -910,7 +910,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.49";
+var KKM_VERSION="1.8.50";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1948,6 +1948,22 @@ function ConsentModal(p){
         h("span",{className:"lp-btn-glow-label"},"Zustimmen und fortfahren"))));
 }
 
+/* Generisches Bestaetigungs-Modal fuer alle Loeschen/Verwerfen-Aktionen im
+   Kernbereich der App - ersetzt native confirm()-Aufrufe, die in einer
+   installierten PWA (Standalone-Modus, insb. iOS) ohne jede Fehlermeldung
+   ausbleiben koennen. Gleiches Muster wie GroupActionConfirmModal im
+   Netzwerk-Bereich, hier bewusst als schlanke, wiederverwendbare Variante
+   fuer einfache Ein-Text-Bestaetigungen ohne Typ-spezifische Sonderfaelle. */
+function ConfirmModal(p){
+  return h("div",{className:"lp-modal-ov",onClick:p.onClose},
+    h("div",{className:"lp-modal-box"+(p.danger===false?"":" danger"),onClick:function(e){e.stopPropagation();}},
+      h("div",{style:{fontSize:17,fontWeight:700,color:p.danger===false?"#fff":"#EF4444"}},p.title),
+      h("div",{style:{fontSize:13,color:"rgba(255,255,255,.65)",lineHeight:1.6}},p.message),
+      h("div",{className:"lp-modal-actions"},
+        h(DsButton,{variant:"ghost",onClick:p.onClose},"Abbrechen"),
+        h(DsButton,{variant:p.danger===false?"primary":"danger",onClick:p.onConfirm},p.confirmLabel||"Bestätigen"))));
+}
+
 function DeleteAccountConfirmModal(p){
   return h("div",{className:"lp-modal-ov",onClick:p.onClose},
     h("div",{className:"lp-modal-box danger",onClick:function(e){e.stopPropagation();}},
@@ -2334,6 +2350,7 @@ function LpCardEditor(p){
   var flippingRef=useRef(false);
   var sl=useState(null); var selected=sl[0]; var setSelected=sl[1];
   var mm=useState(false); var moveMode=mm[0]; var setMoveMode=mm[1];
+  var sdc=useState(false); var showDiscardConfirm=sdc[0]; var setShowDiscardConfirm=sdc[1];
   var hc=useState("#FBBF24"); var highlightColorHex=hc[0]; var setHighlightColorHex=hc[1];
   var ho=useState(0.35); var highlightOpacity=ho[0]; var setHighlightOpacity=ho[1];
   var lc=useState(null); var lastPickedColor=lc[0]; var setLastPickedColor=lc[1];
@@ -2703,7 +2720,12 @@ function LpCardEditor(p){
     },280);
   }
   function handleBack(){
-    if(dirtyRef.current&&!confirm("Ungespeicherte Karte verwerfen? Deine Änderungen gehen verloren."))return;
+    if(dirtyRef.current){setShowDiscardConfirm(true);return;}
+    clearDraft();
+    if(p.onCancel)p.onCancel();
+  }
+  function confirmDiscardBack(){
+    setShowDiscardConfirm(false);
     clearDraft();
     if(p.onCancel)p.onCancel();
   }
@@ -2923,6 +2945,14 @@ function LpCardEditor(p){
       el:curEls.find(function(x){return x.id===cropMaskEl;}),
       onConfirm:function(patch){pushHistory();updateElement(cropMaskEl,patch);setCropMaskEl(null);},
       onCancel:function(){setCropMaskEl(null);}
+    }),
+
+    showDiscardConfirm&&h(ConfirmModal,{
+      title:"Ungespeicherte Karte verwerfen?",
+      message:"Deine Änderungen gehen verloren.",
+      confirmLabel:"Verwerfen",
+      onClose:function(){setShowDiscardConfirm(false);},
+      onConfirm:confirmDiscardBack
     }));
 }
 
@@ -3198,6 +3228,7 @@ function DeckDetail(p){
   var vc=useState(null); var viewCard=vc[0]; var setViewCard=vc[1];
   var tm=useToast(); var toast=tm[0]; var showToast=tm[1];
   var es=useState(null); var editorSeed=es[0]; var setEditorSeed=es[1];
+  var pc=useState(null); var pendingConfirm=pc[0]; var setPendingConfirm=pc[1];
   var due=getDue(p.deck);
   var deckFolders=p.deck.folders||[];
 
@@ -3212,14 +3243,15 @@ function DeckDetail(p){
     }
     setEditorSeed(null);
   }
-  function delCard(id){ if(!confirm("Karte l\u00f6schen?"))return; p.onUpdate(Object.assign({},p.deck,{cards:p.deck.cards.filter(function(c){return c.id!==id;})})); }
+  function delCard(id){ setPendingConfirm({action:"delCard",id:id}); }
+  function runDelCard(id){ p.onUpdate(Object.assign({},p.deck,{cards:p.deck.cards.filter(function(c){return c.id!==id;})})); }
   /* Setzt fuer alle Karten dieses Stapels den Lernfortschritt zurueck
      (lvl, nextReview, roundPending) - fuer den Fall, dass bei einem
      Stapel durch einen frueheren Bug inkonsistente Werte haengen
      geblieben sind und Fortschrittsanzeige/Faellig-Zahl nicht mehr
      zusammenpassen. */
-  function resetProgress(){
-    if(!confirm("Fortschritt f\u00fcr diesen Stapel zur\u00fccksetzen? Alle "+p.deck.cards.length+" Karten gelten danach wieder als neu."))return;
+  function resetProgress(){ setPendingConfirm({action:"resetProgress"}); }
+  function runResetProgress(){
     p.onUpdate(Object.assign({},p.deck,{cards:p.deck.cards.map(function(c){
       return Object.assign({},c,{lvl:0,nextReview:null,roundPending:false});
     })}));
@@ -3234,8 +3266,8 @@ function DeckDetail(p){
   function saveProgress(updatedCard){ p.onUpdate(Object.assign({},p.deck,{cards:p.deck.cards.map(function(c){return c.id===updatedCard.id?updatedCard:c;}),updatedAt:new Date().toISOString()})); }
   function addFolder(d){ p.onUpdate(Object.assign({},p.deck,{folders:(deckFolders).concat([Object.assign({id:uid()},d)])})); setShowNewFolder(false); showToast("Fach erstellt!"); }
   function saveFolder(d){ p.onUpdate(Object.assign({},p.deck,{folders:deckFolders.map(function(f){return f.id===editFolderItem.id?Object.assign({},f,d):f;})})); setEditFolderItem(null); }
-  function delFolder(id){
-    if(!confirm("Ordner l\u00f6schen? Karten bleiben erhalten."))return;
+  function delFolder(id){ setPendingConfirm({action:"delFolder",id:id}); }
+  function runDelFolder(id){
     p.onUpdate(Object.assign({},p.deck,{
       folders:deckFolders.filter(function(f){return f.id!==id;}),
       cards:p.deck.cards.map(function(c){return c.folderId===id?Object.assign({},c,{folderId:null}):c;})
@@ -3345,6 +3377,18 @@ function DeckDetail(p){
     showNewFolder&&h(FolderModal,{onSave:addFolder,onClose:function(){setShowNewFolder(false);}}),
     editFolderItem&&h(FolderModal,{folder:editFolderItem,onSave:saveFolder,onClose:function(){setEditFolderItem(null);}}),
     showShare&&h(ShareModal,{deck:p.deck,onClose:function(){setShowShare(false);}}),
+    pendingConfirm&&h(ConfirmModal,{
+      title:pendingConfirm.action==="delCard"?"Karte löschen?":pendingConfirm.action==="delFolder"?"Ordner löschen?":"Fortschritt zurücksetzen?",
+      message:pendingConfirm.action==="delCard"?"Diese Karte wirklich löschen?":pendingConfirm.action==="delFolder"?"Karten bleiben erhalten.":"Alle "+p.deck.cards.length+" Karten gelten danach wieder als neu.",
+      confirmLabel:pendingConfirm.action==="resetProgress"?"Zurücksetzen":"Löschen",
+      onClose:function(){setPendingConfirm(null);},
+      onConfirm:function(){
+        var a=pendingConfirm;setPendingConfirm(null);
+        if(a.action==="delCard")runDelCard(a.id);
+        else if(a.action==="delFolder")runDelFolder(a.id);
+        else runResetProgress();
+      }
+    }),
     h(Toast,{msg:toast}));
 }
 
@@ -6008,6 +6052,9 @@ function App(p){
   var upds=useState(null); var pendingUpd=upds[0]; var setPendingUpd=upds[1];
   var srs=useState(false); var showReport=srs[0]; var setShowReport=srs[1];
   var dacs=useState(false); var showDeleteConfirm=dacs[0]; var setShowDeleteConfirm=dacs[1];
+  var frcs=useState(false); var showForceRestoreConfirm=frcs[0]; var setShowForceRestoreConfirm=frcs[1];
+  var pncs=useState(null); var pendingNavConfirm=pncs[0]; var setPendingNavConfirm=pncs[1];
+  var pdcs=useState(null); var pendingDeleteConfirm=pdcs[0]; var setPendingDeleteConfirm=pdcs[1];
   var dgs=useState(!dsgvoAccepted()); var showDsgvo=dgs[0]; var setShowDsgvo=dgs[1];
   var dlms=useState("home"); var deckListMode=dlms[0]; var setDeckListMode=dlms[1];
   /* Learn Explorer: Tab (Übersicht/Stapel/Fächer/Unterlagen), Suche, Fach-Filter */
@@ -6513,7 +6560,9 @@ function App(p){
      neuer" einstufte und nie nachlud. */
   function handleForceRestore(){
     if(!googleUser){showToast('Bitte zuerst mit Google anmelden.');return;}
-    if(!confirm('Deine lokalen Karteikarten werden durch den Stand aus der Cloud ersetzt. Fortfahren?'))return;
+    setShowForceRestoreConfirm(true);
+  }
+  function runForceRestore(){
     var myId=localStorage.getItem('kkm-ls-id');
     if(!myId){showToast('Kein Cloud-Konto gefunden.');return;}
     getSb().from('ls_users').select('app_data').eq('ls_id',myId).maybeSingle().then(function(res){
@@ -6573,10 +6622,13 @@ function App(p){
        stattdessen der Wiederherstellen-Dialog. */
     try{
       if(id!=='editor'&&view==='editor'&&localStorage.getItem('kkm-editor-draft')){
-        if(!confirm('Du hast eine ungespeicherte Karte im Editor. Trotzdem verlassen? Sie wird verworfen.'))return;
-        localStorage.removeItem('kkm-editor-draft');
+        setPendingNavConfirm(id);
+        return;
       }
     }catch(e){}
+    proceedSwitchNav(id);
+  }
+  function proceedSwitchNav(id){
     setDeckId(null);setQsStep(null);
     if(id==='dashboard'){setView('decks');setDeckListMode('home');if(p.onRefreshDashFriends)p.onRefreshDashFriends();}
     else if(id==='explorer'){setView('decks');setDeckListMode('manage');}
@@ -6585,6 +6637,12 @@ function App(p){
     else if(id==='kalender'){setView('kalender');}
     else if(id==='profil'){setView('einstellungen');}
     var sc=document.getElementById('lp-content-scroll'); if(sc)sc.scrollTop=0;
+  }
+  function confirmDiscardNav(){
+    var id=pendingNavConfirm;
+    setPendingNavConfirm(null);
+    try{localStorage.removeItem('kkm-editor-draft');}catch(e){}
+    proceedSwitchNav(id);
   }
   function saveCardFromEditorEntry(result){
     var deck=decks.find(function(d){return d.id===result.deckId;});
@@ -6628,7 +6686,8 @@ function App(p){
 
   function addDeck(d){patch({decks:decks.concat([Object.assign({id:uid()},d,{cards:[],created:todayStr(),updatedAt:new Date().toISOString()})])});setShowNew(false);showToast("Stapel erstellt!");}
   function saveEditDeck(d){patch({decks:decks.map(function(dk){return dk.id===editDeck.id?Object.assign({},dk,d,{updatedAt:new Date().toISOString()}):dk;})});setEditDeck(null);}
-  function delDeck(id){if(!confirm("Stapel l\u00f6schen?"))return;patch({decks:decks.filter(function(d){return d.id!==id;})});if(deckId===id)setDeckId(null);}
+  function delDeck(id){setPendingDeleteConfirm({action:"delDeck",id:id});}
+  function runDelDeck(id){patch({decks:decks.filter(function(d){return d.id!==id;})});if(deckId===id)setDeckId(null);}
   function updateDeck(u){
     var uu=u.cards?Object.assign({},u,{cards:rolloverPendingCards(u.cards)}):u;
     if(uu._groupId){
@@ -6651,7 +6710,8 @@ function App(p){
   }
   function addFolder(d){patch({folders:folders.concat([Object.assign({id:uid()},d)])});setShowNewFolder(false);showToast("Fach erstellt!");}
   function saveEditFolder(d){patch({folders:folders.map(function(f){return f.id===editFolder.id?Object.assign({},f,d):f;})});setEditFolder(null);}
-  function delFolder(id){if(!confirm("Fach l\u00f6schen? Stapel bleiben erhalten."))return;patch({folders:folders.filter(function(f){return f.id!==id;}),decks:decks.map(function(d){return d.folderId===id?Object.assign({},d,{folderId:null}):d;})});}
+  function delFolder(id){setPendingDeleteConfirm({action:"delFolder",id:id});}
+  function runDelFolder(id){patch({folders:folders.filter(function(f){return f.id!==id;}),decks:decks.map(function(d){return d.folderId===id?Object.assign({},d,{folderId:null}):d;})});}
   /* ═══════════════════════════════════════════════════════════
      LEARN EXPLORER — Übersicht · Stapel · Fächer · Unterlagen
      Markup nach Prototyp, Logik/Handler unveraendert aus dem
@@ -6899,14 +6959,10 @@ function App(p){
       setNewDocFolderModalOpen(false);loadDocsFolder(docsFolderId);
     }).catch(function(){ showToast("Ordner konnte nicht erstellt werden."); });
   }
-  function deleteDocFolder(f){
-    if(!confirm('Ordner "'+f.name+'" wirklich löschen? Enthaltene Dateien werden mitgelöscht.'))return;
-    driveDeleteFile(f.id).then(function(){ loadDocsFolder(docsFolderId); })
-      .catch(function(){ showToast("Löschen fehlgeschlagen."); });
-  }
-  function deleteDocFile(d){
-    if(!confirm('"'+d.name+'" wirklich löschen?'))return;
-    driveDeleteFile(d.id).then(function(){ loadDocsFolder(docsFolderId); })
+  function deleteDocFolder(f){ setPendingDeleteConfirm({action:"deleteDocFolder",id:f.id,name:f.name}); }
+  function deleteDocFile(d){ setPendingDeleteConfirm({action:"deleteDocFile",id:d.id,name:d.name}); }
+  function runDeleteDoc(id){
+    driveDeleteFile(id).then(function(){ loadDocsFolder(docsFolderId); })
       .catch(function(){ showToast("Löschen fehlgeschlagen."); });
   }
   function moveDocFile(fileId,newParentId){
@@ -7906,6 +7962,38 @@ function App(p){
     showDsgvo&&h(ConsentModal,{onAccept:function(){setShowDsgvo(false);}}),
     showReport&&h(ReportModal,{onClose:function(){setShowReport(false);}}),
     showDeleteConfirm&&h(DeleteAccountConfirmModal,{onClose:function(){setShowDeleteConfirm(false);},onConfirm:confirmDeleteAccount}),
+    showForceRestoreConfirm&&h(ConfirmModal,{
+      title:"Cloud-Stand laden?",
+      message:"Deine lokalen Karteikarten werden durch den Stand aus der Cloud ersetzt. Fortfahren?",
+      confirmLabel:"Laden",
+      onClose:function(){setShowForceRestoreConfirm(false);},
+      onConfirm:function(){setShowForceRestoreConfirm(false);runForceRestore();}
+    }),
+    pendingNavConfirm&&h(ConfirmModal,{
+      title:"Karte verwerfen?",
+      message:"Du hast eine ungespeicherte Karte im Editor. Trotzdem verlassen? Sie wird verworfen.",
+      confirmLabel:"Verlassen",
+      onClose:function(){setPendingNavConfirm(null);},
+      onConfirm:confirmDiscardNav
+    }),
+    pendingDeleteConfirm&&h(ConfirmModal,{
+      title:pendingDeleteConfirm.action==="delDeck"?"Stapel löschen?"
+        :pendingDeleteConfirm.action==="delFolder"?"Fach löschen?"
+        :pendingDeleteConfirm.action==="deleteDocFolder"?"Ordner löschen?"
+        :"Datei löschen?",
+      message:pendingDeleteConfirm.action==="delDeck"?"Diesen Stapel wirklich löschen?"
+        :pendingDeleteConfirm.action==="delFolder"?"Stapel bleiben erhalten."
+        :pendingDeleteConfirm.action==="deleteDocFolder"?'Ordner "'+pendingDeleteConfirm.name+'" wirklich löschen? Enthaltene Dateien werden mitgelöscht.'
+        :'"'+pendingDeleteConfirm.name+'" wirklich löschen?',
+      confirmLabel:"Löschen",
+      onClose:function(){setPendingDeleteConfirm(null);},
+      onConfirm:function(){
+        var a=pendingDeleteConfirm;setPendingDeleteConfirm(null);
+        if(a.action==="delDeck")runDelDeck(a.id);
+        else if(a.action==="delFolder")runDelFolder(a.id);
+        else runDeleteDoc(a.id);
+      }
+    }),
     showImp&&h(ImpressumModal,{onClose:function(){setShowImp(false);}}),
     showDat&&h(DatenschutzModal,{onClose:function(){setShowDat(false);}}),
     qsStep==="select"&&h(DeckSelectModal,{decks:decks.concat(effectiveGroupDecks),folders:folders,onNext:function(sel){setQsDecks(sel);setQsConfig({mode:"mixed"});setQsStep("study");},onClose:function(){setQsStep(null);}}),
