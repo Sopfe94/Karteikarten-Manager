@@ -562,9 +562,14 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 /* ══════════════ LERNPULS – SHARED MODAL / LIST / TAB SYSTEM ══════════════ */
 .lp-modal-ov{position:fixed;inset:0;background:rgba(10,6,20,0.65);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;padding-top:max(env(safe-area-inset-top),16px);overflow-y:auto}
 .lp-modal-ov.sheet{align-items:flex-end}
-.lp-modal-box{width:100%;max-width:420px;background:#0F0A1E;border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:16px;margin:16px 0;max-height:calc(100dvh - 48px);overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.55)}
+.lp-modal-box{width:100%;max-width:420px;background:#0F0A1E;border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:16px;margin:16px 0;max-height:calc(100dvh - 48px);overflow-y:auto;-webkit-overflow-scrolling:touch;box-shadow:0 24px 64px rgba(0,0,0,0.55)}
 .lp-modal-box.wide{max-width:560px}
 .lp-modal-box.sheet{border-radius:28px 28px 0 0;margin:0;max-height:88vh}
+/* Fuer lange Formulare in Sheets: nur der Feld-Bereich scrollt, Titel und
+   Aktions-Buttons (Speichern/Abbrechen) bleiben immer sichtbar/erreichbar -
+   overflow-y:auto allein auf .lp-modal-box hat sich auf iOS als nicht
+   zuverlaessig per Touch scrollbar erwiesen (Buttons unerreichbar). */
+.lp-modal-scroll-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:16px}
 .lp-modal-box.danger{border-color:rgba(239,68,68,0.4);box-shadow:0 0 40px rgba(239,68,68,0.15)}
 .lp-modal-title{font-size:17px;font-weight:600;color:#fff}
 .lp-modal-title.grad{align-self:flex-start;font-size:20px;font-weight:700;letter-spacing:-0.02em;background:var(--grad-brand);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
@@ -910,7 +915,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.51";
+var KKM_VERSION="1.8.52";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3567,28 +3572,29 @@ function KalenderView(p){
     showAdd&&h('div',{className:'lp-modal-ov sheet',onClick:function(){setShowAdd(false);}},
       h('div',{className:'lp-modal-box sheet',onClick:function(e){e.stopPropagation();}},
         h('div',{className:'lp-modal-title'},'Neue ',h('span',{style:{background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}},'Arbeit')),
-        h('div',{className:'lp-field'},h('label',{className:'lp-field-label'},'Titel'),
-          h('input',{className:'lp-dark-input',type:'text',value:form.title,placeholder:'z.B. Mathe Klausur',onInput:function(e){setForm(Object.assign({},form,{title:e.target.value}));}})),
-        h('div',{className:'lp-field'},h('label',{className:'lp-field-label'},'Datum'),
-          h('div',{style:{display:'flex',gap:8}},
-            h('select',{className:'lp-dark-input',style:{flex:1},value:dateParts.tag,onChange:function(e){setDatePart('tag',e.target.value);}},
-              h('option',{value:''},'Tag'),
-              TAG_OPTIONS.map(function(d){return h('option',{key:d,value:d},String(Number(d)));})),
-            h('select',{className:'lp-dark-input',style:{flex:1.3},value:dateParts.monat,onChange:function(e){setDatePart('monat',e.target.value);}},
-              h('option',{value:''},'Monat'),
-              MONTHS.map(function(m,i){return h('option',{key:i,value:String(i+1).padStart(2,'0')},m);})),
-            h('select',{className:'lp-dark-input',style:{flex:1},value:dateParts.jahr,onChange:function(e){setDatePart('jahr',e.target.value);}},
-              h('option',{value:''},'Jahr'),
-              JAHR_OPTIONS.map(function(y){return h('option',{key:y,value:String(y)},String(y));})))),
-        h('div',{className:'lp-field'},h('label',{className:'lp-field-label'},'Art'),
-          h('select',{className:'lp-dark-input',value:form.type,onChange:function(e){setForm(Object.assign({},form,{type:e.target.value}));}},
-            APPOINTMENT_TYPES.map(function(t){return h('option',{key:t.id,value:t.id},t.label);}))),
-        h('div',{className:'lp-field'},h('label',{className:'lp-field-label'},'Fach'),
-          h('select',{className:'lp-dark-input',value:form.fachId,onChange:function(e){setForm(Object.assign({},form,{fachId:e.target.value}));}},
-            h('option',{value:''},'Kein Fach'),
-            folders.map(function(f){return h('option',{key:f.id,value:f.id},f.name);}))),
-        h('div',{className:'lp-field'},h('label',{className:'lp-field-label'},'Notiz (optional)'),
-          h('input',{className:'lp-dark-input',type:'text',value:form.note,placeholder:'z.B. Kapitel 1-5',onInput:function(e){setForm(Object.assign({},form,{note:e.target.value}));}})),
+        h('div',{className:'lp-modal-scroll-body'},
+          h('div',{className:'lp-field'},h('label',{className:'lp-field-label'},'Titel'),
+            h('input',{className:'lp-dark-input',type:'text',value:form.title,placeholder:'z.B. Mathe Klausur',onInput:function(e){setForm(Object.assign({},form,{title:e.target.value}));}})),
+          h('div',{className:'lp-field'},h('label',{className:'lp-field-label'},'Datum'),
+            h('div',{style:{display:'flex',gap:8}},
+              h('select',{className:'lp-dark-input',style:{flex:1},value:dateParts.tag,onChange:function(e){setDatePart('tag',e.target.value);}},
+                h('option',{value:''},'Tag'),
+                TAG_OPTIONS.map(function(d){return h('option',{key:d,value:d},String(Number(d)));})),
+              h('select',{className:'lp-dark-input',style:{flex:1.3},value:dateParts.monat,onChange:function(e){setDatePart('monat',e.target.value);}},
+                h('option',{value:''},'Monat'),
+                MONTHS.map(function(m,i){return h('option',{key:i,value:String(i+1).padStart(2,'0')},m);})),
+              h('select',{className:'lp-dark-input',style:{flex:1},value:dateParts.jahr,onChange:function(e){setDatePart('jahr',e.target.value);}},
+                h('option',{value:''},'Jahr'),
+                JAHR_OPTIONS.map(function(y){return h('option',{key:y,value:String(y)},String(y));})))),
+          h('div',{className:'lp-field'},h('label',{className:'lp-field-label'},'Art'),
+            h('select',{className:'lp-dark-input',value:form.type,onChange:function(e){setForm(Object.assign({},form,{type:e.target.value}));}},
+              APPOINTMENT_TYPES.map(function(t){return h('option',{key:t.id,value:t.id},t.label);}))),
+          h('div',{className:'lp-field'},h('label',{className:'lp-field-label'},'Fach'),
+            h('select',{className:'lp-dark-input',value:form.fachId,onChange:function(e){setForm(Object.assign({},form,{fachId:e.target.value}));}},
+              h('option',{value:''},'Kein Fach'),
+              folders.map(function(f){return h('option',{key:f.id,value:f.id},f.name);}))),
+          h('div',{className:'lp-field'},h('label',{className:'lp-field-label'},'Notiz (optional)'),
+            h('input',{className:'lp-dark-input',type:'text',value:form.note,placeholder:'z.B. Kapitel 1-5',onInput:function(e){setForm(Object.assign({},form,{note:e.target.value}));}}))),
         h('div',{className:'lp-modal-actions'},
           h(DsButton,{variant:'ghost',style:{flex:1},onClick:function(){setShowAdd(false);}},'Abbrechen'),
           h(DsButton,{variant:'primary',style:{flex:1},onClick:save},h('span',{className:'lp-btn-glow-label'},'Speichern'))),
