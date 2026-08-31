@@ -981,7 +981,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.64";
+var KKM_VERSION="1.8.65";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3687,6 +3687,92 @@ function ProfilView(p){
   var name=loadUsername()||(p.googleUser?(p.googleUser.email||'').split('@')[0]:'Gast');
   var email=p.googleUser?p.googleUser.email:'Gast-Modus – nicht angemeldet';
   var avatarLetter=(name||'?').charAt(0).toUpperCase();
+  var ads=useState(false);var showAdmin=ads[0];var setShowAdmin=ads[1];
+
+  /* Testphase-Dankeschön: solange proExpiresAt noch nicht gesetzt ist
+     (Testphase laeuft noch), zeigt der Timer statisch 60 Tage ohne zu
+     zaehlen - erst wenn die Testphase endet, vergibt ls_admin_set_test_
+     phase serverseitig fuer alle gleichzeitig Pro mit Ablaufdatum, und
+     der Timer zaehlt ab da echt herunter. */
+  var proExpiresAt=p.proExpiresAt?new Date(p.proExpiresAt):null;
+  var testTimerRunning=!!proExpiresAt;
+  var testTimerDays=testTimerRunning?Math.max(0,Math.ceil((proExpiresAt-new Date())/86400000)):60;
+
+  /* Admin-Bereich (nur is_admin): Codes generieren/verwalten + Testphase-
+     Schalter. Eigene RPCs (ls_admin_*), die serverseitig selbst nochmal
+     is_ls_admin() pruefen - die Sichtbarkeit hier ist nur UI-Komfort,
+     keine Sicherheitsgrenze. */
+  var acs=useState([]);var adminCodes=acs[0];var setAdminCodes=acs[1];
+  var acls=useState(false);var adminLoading=acls[0];var setAdminLoading=acls[1];
+  var ants=useState('');var adminNote=ants[0];var setAdminNote=ants[1];
+  var agcs=useState('');var adminGenCode=agcs[0];var setAdminGenCode=agcs[1];
+  function loadAdminCodes(){
+    setAdminLoading(true);
+    getSb().rpc('ls_admin_list_codes').then(function(res){
+      setAdminLoading(false);
+      if(res&&res.data)setAdminCodes(res.data);
+    }).catch(function(){setAdminLoading(false);});
+  }
+  useEffect(function(){ if(showAdmin)loadAdminCodes(); },[showAdmin]);
+  function adminGenerateCode(){
+    setAdminLoading(true);
+    getSb().rpc('ls_admin_generate_code',{p_note:adminNote||null}).then(function(res){
+      setAdminLoading(false);
+      if(res&&res.data){setAdminGenCode(res.data);setAdminNote('');loadAdminCodes();}
+    }).catch(function(){setAdminLoading(false);});
+  }
+  function adminResetBinding(code){
+    getSb().rpc('ls_admin_reset_code_binding',{p_code:code}).then(function(){loadAdminCodes();}).catch(function(){});
+  }
+  function adminDeleteCode(code){
+    getSb().rpc('ls_admin_delete_code',{p_code:code}).then(function(){loadAdminCodes();}).catch(function(){});
+  }
+  function adminToggleTestPhase(){
+    var next=!p.testPhaseActive;
+    setAdminLoading(true);
+    getSb().rpc('ls_admin_set_test_phase',{p_active:next}).then(function(){
+      setAdminLoading(false);
+      p.onGateChanged&&p.onGateChanged();
+      loadAdminCodes();
+    }).catch(function(){setAdminLoading(false);});
+  }
+
+  if(showAdmin){
+    return h('div',null,
+      h("button",{className:"back-btn",style:{marginBottom:8,marginTop:4},onClick:function(){setShowAdmin(false);}},"← Zurück"),
+      h('div',{style:{padding:'12px 4px 40px',maxWidth:640}},
+        h('div',{style:{fontSize:24,fontWeight:700,letterSpacing:'-0.03em',background:'var(--grad-brand)',WebkitBackgroundClip:'text',backgroundClip:'text',WebkitTextFillColor:'transparent',display:'inline-block',marginBottom:20}},'Testphase-Admin'),
+
+        h('div',{className:'lp-settings-row'},
+          h('div',null,
+            h('div',{style:{fontSize:15,color:'#fff',fontWeight:600}},'Geschlossene Testphase'),
+            h('div',{style:{fontSize:13,color:'rgba(255,255,255,.35)',marginTop:4,maxWidth:300}},'Solange aktiv, brauchen alle (auch Bestandskonten) einen Einladungscode. Beim Ausschalten wird einmalig allen gebundenen Test-Usern gleichzeitig 60 Tage Pro geschenkt.')),
+          h('button',{className:'lp-switch',style:{background:p.testPhaseActive?'var(--grad-brand)':'rgba(255,255,255,.14)'},
+            onClick:adminToggleTestPhase},
+            h('span',{className:'lp-switch-knob',style:{left:p.testPhaseActive?21:3}}))),
+
+        h('div',{style:{display:'inline-block',fontSize:18,fontWeight:600,letterSpacing:'-0.02em',background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text',margin:'24px 0 12px'}},'Code generieren'),
+        h('div',{style:{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}},
+          h('input',{type:'text',className:'lp-dark-input',placeholder:'Notiz (optional, z.B. "für Mama")',style:{flex:1,minWidth:180},value:adminNote,onInput:function(e){setAdminNote(e.target.value);}}),
+          h(DsButton,{variant:'primary',disabled:adminLoading,onClick:adminGenerateCode},h('span',{className:'lp-btn-glow-label'},'Generieren'))),
+        adminGenCode&&h('div',{style:{marginTop:12,padding:'12px 16px',borderRadius:12,background:'rgba(124,58,237,0.12)',border:'1px solid rgba(124,58,237,0.35)',fontFamily:'var(--font-mono)',fontSize:20,fontWeight:700,letterSpacing:'0.15em',textAlign:'center',color:'#fff'}},adminGenCode),
+
+        h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',margin:'28px 0 12px'}},
+          h('div',{style:{display:'inline-block',fontSize:18,fontWeight:600,letterSpacing:'-0.02em',background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}},'Codes'),
+          h('button',{className:'settings-q-btn',onClick:loadAdminCodes},'↻')),
+        adminCodes.length===0&&h('div',{style:{fontSize:13,color:'rgba(255,255,255,.35)'}},adminLoading?'Lädt…':'Noch keine Codes geladen – auf ↻ tippen.'),
+        h('div',{style:{display:'flex',flexDirection:'column',gap:8}},
+          adminCodes.map(function(c){
+            return h('div',{key:c.code,style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,padding:'10px 14px',borderRadius:12,background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)'}},
+              h('div',null,
+                h('div',{style:{fontFamily:'var(--font-mono)',fontWeight:700,letterSpacing:'0.1em',color:'#fff'}},c.code,c.note?h('span',{style:{fontFamily:'var(--font-sans)',fontWeight:400,color:'rgba(255,255,255,.4)'}},' – '+c.note):null),
+                h('div',{style:{fontSize:12,color:c.bound_ls_id?'rgba(255,255,255,.5)':'rgba(255,255,255,.3)',marginTop:2}},
+                  c.bound_ls_id?('eingelöst von '+(c.bound_username||c.bound_ls_id)):'noch nicht eingelöst')),
+              h('div',{style:{display:'flex',gap:6}},
+                c.bound_ls_id&&h('button',{className:'settings-q-btn',title:'Bindung zurücksetzen',onClick:function(){adminResetBinding(c.code);}},'⟲'),
+                h('button',{className:'settings-q-btn',title:'Löschen',onClick:function(){adminDeleteCode(c.code);}},'×')));
+          }))));
+  }
 
   var suggestPdfReread=sets.suggestPdfReread!==false;
   function toggleSuggestPdfReread(){ p.onChange(Object.assign({},sets,{suggestPdfReread:!suggestPdfReread})); }
@@ -3766,6 +3852,11 @@ function ProfilView(p){
               h('span',{style:{fontSize:15,fontWeight:600,minWidth:64,textAlign:'center',color:'#fff'}},dailyGoal+' Karten'),
               h('button',{className:'lp-stepper-btn',onClick:function(){stepGoal(5);}},'+'))),
 
+          p.isTestUser&&h('div',{className:'lp-settings-row',style:{flexDirection:'column',alignItems:'stretch',gap:8}},
+            h('div',{style:{display:'inline-block',alignSelf:'flex-start',fontSize:22,fontWeight:600,letterSpacing:'-0.02em',background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}},'Test User'),
+            h('div',{style:{fontSize:13,color:'rgba(255,255,255,.5)',lineHeight:1.5,maxWidth:420}},'Danke, dass du Lernpuls in der Testphase mit ausprobierst! Als Dankeschön bekommst du nach dem Ende der Testphase automatisch 2 Monate Lernpuls Pro geschenkt.'),
+            h('div',{style:{fontSize:24,fontWeight:700,color:'#fff'}},testTimerDays,' ',h('span',{style:{fontSize:13,fontWeight:400,color:'rgba(255,255,255,.5)'}},testTimerRunning?'Tage Pro übrig':'Tage Pro-Geschenk (startet nach Ende der Testphase)'))),
+
           h('div',{className:'lp-settings-row'},
             h('span',{style:{fontSize:15,maxWidth:240,lineHeight:1.4,color:'#fff'}},'Bei nicht gewusster Karteikarte die passende Textstelle zum erneuten Lesen vorschlagen'),
             h('button',{className:'lp-switch',style:{background:suggestPdfReread?'var(--grad-brand)':'rgba(255,255,255,.14)'},
@@ -3823,7 +3914,8 @@ function ProfilView(p){
         h('button',{className:'lp-profil-link',onClick:p.onShowDat},h('span',null,'Datenschutz'),h('span',null,'→')),
         h('button',{className:'lp-profil-link',onClick:p.onShowImp},h('span',null,'Impressum'),h('span',null,'→')),
         h('button',{className:'lp-profil-link',onClick:p.onShowFaq},h('span',null,'FAQ'),h('span',null,'→')),
-        h('button',{className:'lp-profil-link',onClick:p.onShowReport},h('span',null,'Kontakt / Problem melden'),h('span',null,'→')))),
+        h('button',{className:'lp-profil-link',onClick:p.onShowReport},h('span',null,'Kontakt / Problem melden'),h('span',null,'→')),
+        p.isAdmin&&h('button',{className:'lp-profil-link',onClick:function(){setShowAdmin(true);}},h('span',null,'Testphase-Admin'),h('span',null,'→')))),
 
     showQ&&h('div',{className:'settings-overlay',onClick:function(){setShowQ(false);}},
       h('div',{className:'settings-overlay-box',onClick:function(e){e.stopPropagation();}},
@@ -4019,6 +4111,66 @@ function UsernamePickerModal(p){
       h('div',{style:{minHeight:24,fontSize:13}},statusEl),
       h('div',{className:'lp-modal-actions'},
         h(DsButton,{variant:'primary',style:{width:'auto',padding:'0 24px',height:40,opacity:status==='available'?1:0.5},onClick:handleSave,disabled:status!=='available'},h('span',{className:'lp-btn-glow-label'},'Speichern')))));
+}
+
+/* Geschlossene Testphase: wird VOR LoginScreen gezeigt (frueher Early-
+   Return in App(), siehe dort), solange test_phase_active=true und der
+   Aufrufer noch keinen Code eingeloest hat. Prueft den Code hier nur
+   passiv (ls_peek_invite_code, kein Login/Binding noetig) - die echte
+   Einloesung passiert erst nach dem eigentlichen Login, wenn die ls_id
+   final feststeht (siehe tryRedeemPendingGateCode in App()). */
+function GateCodeScreen(p){
+  var cs=useState('');var code=cs[0];var setCode=cs[1];
+  var es=useState('');var err=es[0];var setErr=es[1];
+  var ls=useState(false);var loading=ls[0];var setLoading=ls[1];
+  function submit(){
+    var v=code.trim();
+    if(!v){setErr('Bitte einen Code eingeben.');return;}
+    setLoading(true);setErr('');
+    getSb().rpc('ls_peek_invite_code',{p_code:v}).then(function(res){
+      setLoading(false);
+      var d=res&&res.data;
+      if(!d||!d.exists){setErr('Diesen Code gibt es nicht. Bitte prüfe die Eingabe.');return;}
+      if(d.bound){setErr('Dieser Code wurde bereits eingelöst.');return;}
+      try{sessionStorage.setItem('kkm-pending-gate-code',v.toUpperCase());}catch(e){}
+      p.onCodeAccepted();
+    }).catch(function(){setLoading(false);setErr('Etwas ist schiefgelaufen. Bitte nochmal versuchen.');});
+  }
+  return h('div',{id:"lp-onboarding",className:"screen active",style:{display:"flex"}},
+    h('div',{className:"lp-onb-inner"},
+      h('div',{className:"lp-onb-logo-wrap"},
+        h('div',{className:"lp-onb-logo-inner"},
+          h('div',{className:"lp-onb-ring r1"}),
+          h('div',{className:"lp-onb-ring r2"}),
+          h('div',{className:"lp-onb-ring r3"}),
+          h('div',{style:{display:'flex',alignItems:'baseline',gap:0,lineHeight:1}},
+            h('span',{style:{fontSize:30,fontWeight:600,letterSpacing:'-0.04em',color:'#fff'}},'Lern'),
+            h('span',{style:{fontSize:30,fontWeight:600,letterSpacing:'-0.04em',background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}},'puls')),
+          h('div',{style:{height:3,width:44,background:'var(--grad-brand)',borderRadius:6}}),
+          h('div',{style:{fontFamily:'var(--font-mono)',fontSize:11,fontWeight:300,letterSpacing:'0.14em',textTransform:'uppercase',color:'rgba(255,255,255,.75)',marginTop:4}},'Smart lernen'))),
+      h('div',null,
+        h('div',{className:"lp-onb-headline"},'Geschlossene',h('br',null),'Testphase',h('span',{className:"dot"},'.')),
+        h('div',{className:"lp-onb-sub"},'Lernpuls ist aktuell nur für persönlich eingeladene Personen geöffnet. Die App kann noch ein paar Fehler enthalten – meld sie mir gern direkt über das ',
+          h('button',{onClick:p.onShowReport,style:{background:'none',border:'none',padding:0,color:'#A78BFA',textDecoration:'underline',cursor:'pointer',font:'inherit'}},'Kontaktformular'),'.')),
+      h('div',{className:"lp-onb-actions"},
+        h('input',{type:'text',className:'lp-dark-input',placeholder:'Einladungscode',value:code,maxLength:6,autoFocus:true,
+          style:{textAlign:'center',letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:700},
+          onInput:function(e){setCode(e.target.value);setErr('');},
+          onKeyDown:function(e){if(e.key==='Enter'&&!loading)submit();}}),
+        err&&h('div',{style:{fontSize:13,color:'#f44336',textAlign:'center'}},err),
+        h(DsButton,{variant:"primary",size:"lg",fullWidth:true,disabled:loading,onClick:submit},
+          h('span',{className:'lp-btn-glow-label'},loading?'Prüfe…':'Weiter')))));
+}
+
+function GateWrongAccountModal(p){
+  return h("div",{className:"lp-modal-ov"},
+    h("div",{className:"lp-modal-box",onClick:function(e){e.stopPropagation();}},
+      h("div",{className:"lp-modal-title"},"Falsches Konto"),
+      h("p",{style:{fontSize:14,color:"rgba(255,255,255,.65)",lineHeight:1.5}},
+        "Dieser Code ist bereits mit einem anderen Konto verknüpft. Melde dich mit dem richtigen Konto an – oder schreib mir über das Kontaktformular, falls du denkst, das ist ein Fehler."),
+      h("div",{className:"lp-modal-actions"},
+        h(DsButton,{variant:'ghost',onClick:p.onShowReport},'Kontakt'),
+        h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:p.onRetry},h('span',{className:'lp-btn-glow-label'},'Erneut versuchen')))));
 }
 
 function LoginScreen(p){
@@ -6240,6 +6392,61 @@ function App(p){
   var erk=useState(0); var editorResetKey=erk[0]; var setEditorResetKey=erk[1];
   var sess=useState(false); var showSessionExpired=sess[0]; var setShowSessionExpired=sess[1];
   var gus=useState(null); var googleUser=gus[0]; var setGoogleUser=gus[1];
+
+  /* Geschlossene Testphase (Einladungscodes): gateState kommt aus der
+     RPC ls_check_gate_status und ist die serverseitige Wahrheit -
+     gateCodeEntered ist nur ein lokaler UI-Fortschritt ("Code-Screen
+     schon durchlaufen, jetzt zum normalen Login"), keine eigene
+     Sicherheitspruefung (die uebernimmt vollstaendig die RLS). Default
+     gate_passed:true, damit die eine erste Renderzeile vor Abschluss
+     des Checks nicht faelschlich den Gate-Screen aufblitzen laesst -
+     das passiert ohnehin komplett unsichtbar hinter dem Splash. */
+  var gts=useState({loading:true,test_phase_active:false,gate_passed:true,is_admin:false,is_test_user:false,pro_expires_at:null});
+  var gateState=gts[0]; var setGateState=gts[1];
+  var gces=useState(function(){try{return !!sessionStorage.getItem('kkm-pending-gate-code');}catch(e){return false;}});
+  var gateCodeEntered=gces[0]; var setGateCodeEntered=gces[1];
+  var gwas=useState(false); var gateWrongAccount=gwas[0]; var setGateWrongAccount=gwas[1];
+  function refreshGateStatus(){
+    getSb().rpc('ls_check_gate_status').then(function(res){
+      var d=res&&res.data;
+      if(d)setGateState(Object.assign({loading:false},d));
+      else setGateState(function(s){return Object.assign({},s,{loading:false});});
+    }).catch(function(){setGateState(function(s){return Object.assign({},s,{loading:false});});});
+  }
+  function tryRedeemPendingGateCode(){
+    var code=null;
+    try{code=sessionStorage.getItem('kkm-pending-gate-code');}catch(e){}
+    if(!code)return;
+    getSb().rpc('ls_redeem_invite_code',{p_code:code}).then(function(res){
+      var d=res&&res.data;
+      if(d&&d.ok){
+        try{sessionStorage.removeItem('kkm-pending-gate-code');}catch(e){}
+        setGateWrongAccount(false);
+        refreshGateStatus();
+      } else if(d&&d.error==='wrong_account'){
+        setGateWrongAccount(true);
+      }
+      /* 'not_found'/'not_authenticated': sollte nach der Vorab-Pruefung
+         im GateCodeScreen (ls_peek_invite_code) praktisch nicht mehr
+         vorkommen - bewusst kein Endlos-Retry-Modal dafuer. */
+    }).catch(function(){});
+  }
+  function retryGateWrongAccount(){
+    setGateWrongAccount(false);
+    if(googleUser){
+      /* Anderes Google-Konto waehlen: der Code bleibt gemerkt, nur die
+         Identitaet wechselt. */
+      handleGoogleLogout();
+      setShowLogin(true);
+    } else {
+      /* Gast-Identitaet aendert sich zwischen Versuchen nicht (feste
+         lokale ls_id) - ein Retry mit derselben Identitaet wuerde immer
+         wieder denselben Fehler bringen. Sinnvoll ist hier nur ein
+         anderer Code. */
+      try{sessionStorage.removeItem('kkm-pending-gate-code');}catch(e){}
+      setGateCodeEntered(false);
+    }
+  }
   /* Google-Profilbild: erst aus dem Cache lesen (falls von einer
      frueheren Session schon geladen), damit wiederkehrende Nutzer es
      sofort sehen; wird in handleAuthUser aktualisiert sobald der
@@ -6472,7 +6679,10 @@ function App(p){
        gegen Erraten fremder ls_id) keine authUid-IS-NULL-Ausnahme hat.
        Die SECURITY DEFINER-Funktion umgeht RLS komplett, exakt wie die
        anderen Cross-Row-Writes (ls_invite_group_member etc.). */
-    getSb().rpc('ls_claim_own_id',{p_ls_id:myId}).then(function(){},function(){});
+    getSb().rpc('ls_claim_own_id',{p_ls_id:myId}).then(function(){
+      refreshGateStatus();
+      tryRedeemPendingGateCode();
+    },function(){refreshGateStatus();});
   }
   useEffect(function(){
     var sb=getSb();
@@ -6659,6 +6869,8 @@ function App(p){
           setShowUsernameModal(true);
         }
         setupRealtimeSync();
+        refreshGateStatus();
+        tryRedeemPendingGateCode();
       } else {
         // Neuer Google-User → E-Mail als ls_id
         var emailId=user.email;
@@ -6675,6 +6887,8 @@ function App(p){
             } else {
               setShowUsernameModal(true);
               setupRealtimeSync();
+              refreshGateStatus();
+              tryRedeemPendingGateCode();
             }
           } else {
             dbg('❌ Upsert Fehler:',r.error.message);
@@ -8023,6 +8237,21 @@ function App(p){
       )
     ):null;
 
+  /* Geschlossene Testphase: kommt VOR dem normalen Login-Screen und
+     greift unabhaengig von "kkm-onboarded" - auch Bestandsnutzer
+     muessen einmalig einen Code eingeben (siehe Konzept). Die
+     eigentliche Absicherung ist serverseitig via RLS (ls_gate_ok in
+     den Policies); dieser Screen ist nur die UI-Fuehrung dazu. */
+  if(gateWrongAccount){
+    return h(R.Fragment,null,
+      h(GateWrongAccountModal,{onRetry:retryGateWrongAccount,onShowReport:function(){setShowReport(true);}}),
+      showReport&&h(ReportModal,{onClose:function(){setShowReport(false);}}));
+  }
+  if(gateState.test_phase_active&&!gateState.gate_passed&&!gateCodeEntered){
+    return h(R.Fragment,null,
+      h(GateCodeScreen,{onCodeAccepted:function(){setGateCodeEntered(true);setShowLogin(true);},onShowReport:function(){setShowReport(true);}}),
+      showReport&&h(ReportModal,{onClose:function(){setShowReport(false);}}));
+  }
   if(showLogin)return h(LoginScreen,{onDone:function(){setShowLogin(false);},onGuestDone:function(){setShowLogin(false);if(!localStorage.getItem('kkm-social-username-v1'))setShowUsernameModal(true);},onDataLoaded:function(d){setData(d);},onGoogleLogin:handleGoogleLogin});
   var navId = view==="editor" ? "editor"
     : view==="lernspace" ? "netzwerk"
@@ -8107,7 +8336,7 @@ function App(p){
           view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,isPro:proUser,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck,onStudyingChange:setIsStudying,onEdit:function(){setEditDeck(activeDeck);},onDelete:function(){delDeck(activeDeck.id);},onRequestPdfLink:requestPdfLink,onOpenPdfLink:openPdfLinkForStudy,suggestPdfReread:data.settings&&data.settings.suggestPdfReread!==false,onPrefetchPdf:prefetchCardPdfLink}),
           qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs,onProgress:saveQsProgress,onOpenPdfLink:openPdfLinkForStudy,suggestPdfReread:data.settings&&data.settings.suggestPdfReread!==false,onPrefetchPdf:prefetchCardPdfLink}),
           view==="editor"&&!qsStep&&h(LpCardEditor,{key:"editor-"+editorResetKey,initialFrontElements:[],initialBackElements:[],deckPicker:decks,showToast:showToast,isPro:proUser,onCancel:function(){switchNav('explorer');},onSave:saveCardFromEditorEntry,onRequestPdfLink:requestPdfLink}),
-          view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,presenceVisible:lsConsent&&presenceOn,presenceOn:presenceOn,onTogglePresence:togglePresence,docPrefetchEnabled:docPrefetchEnabled,onToggleDocPrefetch:toggleDocPrefetch,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onForceRestore:handleForceRestore,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast})),
+          view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,presenceVisible:lsConsent&&presenceOn,presenceOn:presenceOn,onTogglePresence:togglePresence,docPrefetchEnabled:docPrefetchEnabled,onToggleDocPrefetch:toggleDocPrefetch,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onForceRestore:handleForceRestore,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast,isTestUser:gateState.is_test_user,proExpiresAt:gateState.pro_expires_at,isAdmin:gateState.is_admin,testPhaseActive:gateState.test_phase_active,onGateChanged:refreshGateStatus})),
           view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,googleUser:googleUser,presence:presence,presenceVisible:lsConsent&&presenceOn,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},onGroupDecksForHome:onGroupDecksForHome})),
           view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}})),
           view==="updates"&&!qsStep&&h(UpdatesView,{onBack:function(){setView("decks");setDeckListMode("home");},onShowImp:function(){setShowImp(true);},onShowDat:function(){setShowDat(true);}}))),
