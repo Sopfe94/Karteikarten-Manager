@@ -915,7 +915,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.53";
+var KKM_VERSION="1.8.54";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -979,7 +979,12 @@ function driveRefreshAccessToken(){
   var rt=driveGetStoredRefreshToken();
   if(!rt) return Promise.reject(new Error('no_refresh_token'));
   return fetch('/api/google-refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refresh_token:rt})})
-    .then(function(r){ if(!r.ok) throw new Error('refresh_failed'); return r.json(); })
+    .then(function(r){
+      return r.json().catch(function(){return {};}).then(function(d){
+        if(!r.ok) throw new Error('refresh_failed:'+r.status+(d.detail?(':'+d.detail):(d.error?(':'+d.error):'')));
+        return d;
+      });
+    })
     .then(function(d){ driveSetAccessToken(d.access_token,d.expires_in); return d.access_token; });
 }
 function driveGetAccessToken(){
@@ -1830,6 +1835,7 @@ function recordReview(deckId){
 }
 function getTodayStats(){ var nav=loadTodayLog(); var log=nav.todayLog; return {hours:parseFloat((log.totalSeconds/3600).toFixed(1)),cards:log.cardCount,decks:log.decks.length}; }
 function getLogDb(){ try{ var all=localStorage.getItem(LEARN_LOG_KEY); return all?JSON.parse(all):{}; }catch(e){ return {}; } }
+var _lastStreakDbgLine=null;
 function calcStreak(){
   var logDb=getLogDb();
   var curGoal=((loadStore().settings||{}).dailyGoal)||30;
@@ -1867,7 +1873,13 @@ function calcStreak(){
       var l=logDb[k];
       return k+':'+(l?('cards='+l.cardCount+' goalAtTime='+l.goalAtTime):'kein Eintrag');
     }).join(' | ');
-    dbg('calcStreak: curGoal='+curGoal+' resetDate='+resetDate+' todayKey='+todayKey+' -> streak='+streak+' || '+dbgDays);
+    var dbgLine='calcStreak: curGoal='+curGoal+' resetDate='+resetDate+' todayKey='+todayKey+' -> streak='+streak+' || '+dbgDays;
+    /* calcStreak() wird bei jedem Render von App()/ProfilView() neu
+       aufgerufen (nicht memoized) - ungefiltertes dbg() hier hat den
+       60-Zeilen-Debug-Log geflutet und andere Fehler (z.B. Drive-
+       Verbindungsfehler) binnen Sekunden aus dem Puffer verdraengt.
+       Nur bei tatsaechlicher Aenderung loggen. */
+    if(dbgLine!==_lastStreakDbgLine){ _lastStreakDbgLine=dbgLine; dbg(dbgLine); }
   }catch(e){}
   return streak;
 }
@@ -6922,11 +6934,11 @@ function App(p){
         saveDocsCache(id,{folders:folders,files:files,counts:(loadDocsCache(id)||{}).counts||{}});
         loadDocFolderCounts(id,folders);
       }).catch(function(e){
-        if(!cached){setDocsError("Verbindung zu Google Drive fehlgeschlagen.");setDocsLoading(false);}
+        if(!cached){setDocsError("Verbindung zu Google Drive fehlgeschlagen. ("+e.message+")");setDocsLoading(false);}
         dbg("❌ Drive-Fehler:",e.message);
       });
     }).catch(function(e){
-      setDocsError("Verbindung zu Google Drive fehlgeschlagen.");setDocsLoading(false);
+      setDocsError("Verbindung zu Google Drive fehlgeschlagen. ("+e.message+")");setDocsLoading(false);
       dbg("❌ Drive-Fehler:",e.message);
     });
   },[xpTab,googleUser,docsRootId,linkPickerOpen]);
@@ -6958,7 +6970,7 @@ function App(p){
       saveDocsCache(id,{folders:folders,files:files,counts:(loadDocsCache(id)||{}).counts||{}});
       loadDocFolderCounts(id,folders);
     }).catch(function(e){
-      if(!cached){setDocsError("Verbindung zu Google Drive fehlgeschlagen.");setDocsLoading(false);}
+      if(!cached){setDocsError("Verbindung zu Google Drive fehlgeschlagen. ("+e.message+")");setDocsLoading(false);}
       dbg("❌ Drive-Fehler:",e.message);
     });
   }
