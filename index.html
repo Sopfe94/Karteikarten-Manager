@@ -764,8 +764,15 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
    Punkte-Indikator statt Pfeil-Buttons zeigt die Position an.
    -webkit-overflow-scrolling analog zur Modal-Lehre von weiter oben
    (Netzwerk-Sheet-Fix). */
+/* overflow-x:auto clippt jeden Kindinhalt, der ueber die eigene
+   Border-Box hinausragt - der .lp-hover-glow-Leuchtrand der Karte
+   (Box-Shadow, bleedet nach aussen) wurde dadurch links/rechts hart
+   abgeschnitten, weil die Karte (flex:0 0 100%) exakt an den Raendern
+   des Scroll-Containers anliegt. Kleines horizontales Padding gibt dem
+   Glow Platz innerhalb der Clip-Grenze, ohne dass die Karte spuerbar
+   schmaler wirkt. */
 .lp-doc-carousel{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;
-  -webkit-overflow-scrolling:touch;padding-bottom:4px;scrollbar-width:none}
+  -webkit-overflow-scrolling:touch;padding:6px 6px 10px;scrollbar-width:none}
 .lp-doc-carousel::-webkit-scrollbar{display:none}
 .lp-doc-carousel-card{flex:0 0 100%;box-sizing:border-box;scroll-snap-align:start;min-height:150px;
   display:flex;align-items:center;gap:16px;background:rgba(255,255,255,0.03);
@@ -939,7 +946,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.60";
+var KKM_VERSION="1.8.61";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
