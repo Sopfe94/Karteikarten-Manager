@@ -915,7 +915,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.55";
+var KKM_VERSION="1.8.56";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6097,6 +6097,11 @@ function App(p){
   var xfs=useState(null); var xpSubject=xfs[0]; var setXpSubject=xfs[1];
   var les=useState([]); var lernEmpf=les[0]; var setLernEmpf=les[1];
   var lss=useState(false); var showLernEmpf=lss[0]; var setShowLernEmpf=lss[1];
+  /* Nur einmal pro echtem App-Start zeigen, nicht bei jeder Rueckkehr
+     zur Startseite - ueberlebt daher bewusst NICHT in localStorage,
+     sondern nur als Ref fuer die Lebensdauer dieser einen App-Instanz
+     (Ref statt State, damit das Setzen selbst kein Re-Render ausloest). */
+  var lernEmpfShownRef=useRef(false);
   useEffect(function(){ backfillDsgvoAcceptedIfMissing(); },[]);
   /* Netzwerk-Consent app-weit: die Online-Praesenz (siehe unten) lief
      bisher schon beim App-Start, ganz ohne dass der Consent-Dialog je
@@ -6160,10 +6165,10 @@ function App(p){
     }).catch(function(){});
   },[lsConsent,presenceOn]);
   useEffect(function(){
-    if(view!=="decks"||deckListMode!=="home")return;
+    if(view!=="decks"||deckListMode!=="home"||lernEmpfShownRef.current)return;
     var t=setTimeout(function(){
       var items=buildLernEmpfehlungen(loadStore());
-      if(items.length>0){setLernEmpf(items);setShowLernEmpf(true);}
+      if(items.length>0){lernEmpfShownRef.current=true;setLernEmpf(items);setShowLernEmpf(true);}
     },1000);
     return function(){clearTimeout(t);};
   },[view,deckListMode]);
