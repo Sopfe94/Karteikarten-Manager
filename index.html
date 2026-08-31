@@ -765,19 +765,26 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
    -webkit-overflow-scrolling analog zur Modal-Lehre von weiter oben
    (Netzwerk-Sheet-Fix). */
 /* overflow-x:auto clippt jeden Kindinhalt, der ueber die eigene
-   Border-Box hinausragt - der .lp-hover-glow-Leuchtrand der Karte
-   (Box-Shadow, bleedet nach aussen) wurde dadurch links/rechts hart
-   abgeschnitten, weil die Karte (flex:0 0 100%) exakt an den Raendern
-   des Scroll-Containers anliegt. Kleines horizontales Padding gibt dem
-   Glow Platz innerhalb der Clip-Grenze, ohne dass die Karte spuerbar
-   schmaler wirkt. */
+   Border-Box hinausragt. Der app-weite .lp-hover-glow-Leuchtrand
+   (Box-Shadow, bleedet bis zu 34px nach aussen) wuerde hier IMMER an
+   irgendeiner Kante anschneiden, egal wie viel Padding man dem
+   Scroll-Container gibt - solange die Karte selbst volle Breite haben
+   soll (Padding fuer Glow-Freiraum wuerde die Karte exakt um diesen
+   Betrag schmaler machen, das war der Denkfehler beim ersten Versuch).
+   Deshalb hier bewusst KEIN nach aussen bleedender Glow, sondern eine
+   in sich geschlossene Hervorhebung (Rahmenfarbe + leichtes Innen-
+   Leuchten), die komplett innerhalb der eigenen Border-Box bleibt und
+   dadurch strukturell gar nicht mehr abschneidbar ist. */
 .lp-doc-carousel{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;
-  -webkit-overflow-scrolling:touch;padding:6px 6px 10px;scrollbar-width:none}
+  -webkit-overflow-scrolling:touch;padding-bottom:4px;scrollbar-width:none}
 .lp-doc-carousel::-webkit-scrollbar{display:none}
 .lp-doc-carousel-card{flex:0 0 100%;box-sizing:border-box;scroll-snap-align:start;min-height:150px;
   display:flex;align-items:center;gap:16px;background:rgba(255,255,255,0.03);
   border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:20px 24px;cursor:pointer;
+  transition:border-color 200ms ease,background 200ms ease;
   font-family:var(--font-sans);color:#fff;text-align:left}
+.lp-doc-carousel-card:hover,.lp-doc-carousel-card:active{
+  border-color:rgba(167,139,250,0.55);background:rgba(124,58,237,0.06)}
 .lp-doc-carousel-icon{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;
   justify-content:center;flex-shrink:0;background:rgba(124,58,237,0.12)}
 .lp-doc-carousel-name{font-size:17px;font-weight:600;letter-spacing:-0.02em;color:#F5F3FF;
@@ -946,7 +953,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.61";
+var KKM_VERSION="1.8.62";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -8011,7 +8018,7 @@ function App(p){
                 h("button",{className:"lp-section-link",onClick:function(){setXpTab('unterlagen');switchNav('explorer');}},"Alle anzeigen →")),
               h("div",{className:"lp-doc-carousel",ref:docCarouselRef,onScroll:onDocCarouselScroll},
                 recentDocs.slice(0,5).map(function(d){
-                  return h("button",{key:d.id,className:"lp-doc-carousel-card lp-hover-glow",onClick:function(){openDocViewer(d);}},
+                  return h("button",{key:d.id,className:"lp-doc-carousel-card",onClick:function(){openDocViewer(d);}},
                     h("div",{className:"lp-doc-carousel-icon"},docFileIcon(d.id,28)),
                     h("div",{style:{minWidth:0,flex:1}},
                       h("div",{className:"lp-doc-carousel-name"},d.name),
