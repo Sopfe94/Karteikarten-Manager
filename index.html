@@ -758,18 +758,25 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
   transform:scale(1.03);transition:transform 120ms ease,box-shadow 120ms ease}
 .lp-xp-cardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
 /* Dateien-Karussell auf der Startseite: horizontal wischbar mit
-   Scroll-Snap statt einer langen vertikalen Liste, Karten bewusst
-   kompakt (Icon + Name, keine Metazeile) - Punkte-Indikator statt
-   Pfeil-Buttons zeigt die Position an. -webkit-overflow-scrolling
-   analog zur Modal-Lehre von weiter oben (Netzwerk-Sheet-Fix). */
-.lp-doc-carousel{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;
+   Scroll-Snap statt einer langen vertikalen Liste. Karten bewusst
+   genauso gross wie die Stapel-Karten darueber (volle Breite,
+   min-height 150px) statt der anfangs zu kompakt geratenen Version -
+   Punkte-Indikator statt Pfeil-Buttons zeigt die Position an.
+   -webkit-overflow-scrolling analog zur Modal-Lehre von weiter oben
+   (Netzwerk-Sheet-Fix). */
+.lp-doc-carousel{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;
   -webkit-overflow-scrolling:touch;padding-bottom:4px;scrollbar-width:none}
 .lp-doc-carousel::-webkit-scrollbar{display:none}
-.lp-doc-carousel-card{flex:0 0 112px;scroll-snap-align:start;display:flex;flex-direction:column;
-  align-items:center;gap:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);
-  border-radius:16px;padding:14px 10px;cursor:pointer;font-family:var(--font-sans);color:#fff}
-.lp-doc-carousel-name{font-size:12px;font-weight:600;text-align:center;width:100%;overflow:hidden;
-  text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3}
+.lp-doc-carousel-card{flex:0 0 100%;box-sizing:border-box;scroll-snap-align:start;min-height:150px;
+  display:flex;align-items:center;gap:16px;background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:20px 24px;cursor:pointer;
+  font-family:var(--font-sans);color:#fff;text-align:left}
+.lp-doc-carousel-icon{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;background:rgba(124,58,237,0.12)}
+.lp-doc-carousel-name{font-size:17px;font-weight:600;letter-spacing:-0.02em;color:#F5F3FF;
+  overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;
+  -webkit-box-orient:vertical;line-height:1.3}
+.lp-doc-carousel-meta{font-size:13px;color:rgba(255,255,255,0.45);margin-top:6px}
 .lp-doc-carousel-dots{display:flex;justify-content:center;gap:6px;margin-top:10px}
 .lp-doc-carousel-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.15);
   transition:background .15s,transform .15s}
@@ -932,7 +939,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.57";
+var KKM_VERSION="1.8.58";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -7998,8 +8005,10 @@ function App(p){
               h("div",{className:"lp-doc-carousel",ref:docCarouselRef,onScroll:onDocCarouselScroll},
                 recentDocs.slice(0,5).map(function(d){
                   return h("button",{key:d.id,className:"lp-doc-carousel-card lp-hover-glow",onClick:function(){openDocViewer(d);}},
-                    docFileIcon(d.id,22),
-                    h("span",{className:"lp-doc-carousel-name"},d.name));
+                    h("div",{className:"lp-doc-carousel-icon"},docFileIcon(d.id,28)),
+                    h("div",{style:{minWidth:0,flex:1}},
+                      h("div",{className:"lp-doc-carousel-name"},d.name),
+                      h("div",{className:"lp-doc-carousel-meta"},docFileMeta(d))));
                 })),
               recentDocs.slice(0,5).length>1&&h("div",{className:"lp-doc-carousel-dots"},
                 recentDocs.slice(0,5).map(function(d,i){
