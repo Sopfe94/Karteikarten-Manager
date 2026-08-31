@@ -915,7 +915,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.54";
+var KKM_VERSION="1.8.55";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -7700,8 +7700,17 @@ function App(p){
 
       docsError&&h("div",{className:"lp-xp-soon",style:{padding:24}},
         h("p",null,docsError),
-        h("button",{className:"lp-section-link",style:{fontSize:14},
-          onClick:function(){setDocsRootId(null);}},"Erneut versuchen")),
+        h("div",{style:{display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap"}},
+          h("button",{className:"lp-section-link",style:{fontSize:14},
+            onClick:function(){setDocsRootId(null);}},"Erneut versuchen"),
+          /* Bei abgelaufenem/widerrufenem Google-Drive-Token (z.B. "invalid_grant")
+             hilft "Erneut versuchen" nichts, weil derselbe kaputte Refresh-Token
+             wiederverwendet wird - braucht eine frische Google-Zustimmung. Das
+             geht ohne volles Ab-/Neuanmelden, da handleGoogleLogin() bereits
+             prompt:'consent' setzt und dadurch immer einen neuen Refresh-Token
+             liefert. */
+          h("button",{className:"lp-section-link",style:{fontSize:14},
+            onClick:handleGoogleLogin},"Google Drive neu verbinden"))),
 
       !docsError&&docsLoading&&h("div",{style:{textAlign:"center",padding:"32px 0",color:"rgba(255,255,255,0.4)",fontSize:13}},"Lädt…"),
 
