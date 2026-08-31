@@ -761,40 +761,63 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
    Scroll-Snap statt einer langen vertikalen Liste. Karten bewusst
    genauso gross wie die Stapel-Karten darueber (volle Breite,
    min-height 150px) statt der anfangs zu kompakt geratenen Version -
-   Punkte-Indikator statt Pfeil-Buttons zeigt die Position an.
+   Punkte-Indikator zeigt zusaetzlich die Position an.
    -webkit-overflow-scrolling analog zur Modal-Lehre von weiter oben
-   (Netzwerk-Sheet-Fix). */
-/* overflow-x:auto clippt jeden Kindinhalt, der ueber die eigene
+   (Netzwerk-Sheet-Fix). Ab 768px (Desktop-Breakpoint der App - dort
+   wechselt auch die Navigation auf Seitenleisten-Optik) 3 Karten pro
+   Seite + Pfeil-Buttons statt Touch-Wisch, da Desktop weder Wisch-
+   Gesten noch eine sichtbare Scrollbar hat.
+
+   overflow-x:auto clippt jeden Kindinhalt, der ueber die eigene
    Border-Box hinausragt. Der app-weite .lp-hover-glow-Leuchtrand
-   (Box-Shadow, bleedet bis zu 34px nach aussen) wuerde hier IMMER an
-   irgendeiner Kante anschneiden, egal wie viel Padding man dem
-   Scroll-Container gibt - solange die Karte selbst volle Breite haben
-   soll (Padding fuer Glow-Freiraum wuerde die Karte exakt um diesen
-   Betrag schmaler machen, das war der Denkfehler beim ersten Versuch).
-   Deshalb hier bewusst KEIN nach aussen bleedender Glow, sondern eine
-   in sich geschlossene Hervorhebung (Rahmenfarbe + leichtes Innen-
-   Leuchten), die komplett innerhalb der eigenen Border-Box bleibt und
-   dadurch strukturell gar nicht mehr abschneidbar ist. */
-.lp-doc-carousel{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;
-  -webkit-overflow-scrolling:touch;padding-bottom:4px;scrollbar-width:none}
+   (Box-Shadow, bleedet bis zu 34px nach aussen) wuerde dadurch IMMER an
+   irgendeiner Kante anschneiden, wenn die Karte exakt so breit ist wie
+   der Scroll-Container selbst. Trick dagegen: der Scroll-Container
+   bekommt 36px Padding UND 36px negatives Margin auf der Horizontalen -
+   dadurch ist seine sichtbare Content-Box (wo die Karten sitzen) exakt
+   so breit wie zuvor (keine Kartenschrumpfung mehr wie beim ersten
+   Versuch), waehrend seine tatsaechliche Render-Box 36px ueber die
+   Karte hinausreicht - genug Puffer fuer den 34px-Blur.
+   WICHTIG: scroll-snap-align MUSS hier "center" sein, nicht "start" -
+   mit "start" hat der Browser beim Laden automatisch bis zum naechsten
+   gueltigen Snap-Punkt vorgescrollt (die erste Karte buendig an den
+   Rand gezogen) und damit den ganzen Puffer wieder zunichtegemacht,
+   auch mit korrektem Padding/Margin (empirisch nachgewiesen, nicht nur
+   vermutet). "center" verankert die Karte symmetrisch in der (absichtlich
+   breiteren) Render-Box, ohne dass der Browser das beim Laden wegkorrigiert. */
+.lp-doc-carousel-wrap{position:relative}
+.lp-doc-carousel{display:flex;gap:24px;overflow-x:auto;scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;padding:36px 36px 40px;margin:-36px -36px -6px;
+  scrollbar-width:none}
 .lp-doc-carousel::-webkit-scrollbar{display:none}
-.lp-doc-carousel-card{flex:0 0 100%;box-sizing:border-box;scroll-snap-align:start;min-height:150px;
+.lp-doc-carousel-card{flex:0 0 100%;box-sizing:border-box;scroll-snap-align:center;min-height:150px;
   display:flex;align-items:center;gap:16px;background:rgba(255,255,255,0.03);
   border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:20px 24px;cursor:pointer;
-  transition:border-color 200ms ease,background 200ms ease;
   font-family:var(--font-sans);color:#fff;text-align:left}
-.lp-doc-carousel-card:hover,.lp-doc-carousel-card:active{
-  border-color:rgba(167,139,250,0.55);background:rgba(124,58,237,0.06)}
 .lp-doc-carousel-icon{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;
   justify-content:center;flex-shrink:0;background:rgba(124,58,237,0.12)}
 .lp-doc-carousel-name{font-size:17px;font-weight:600;letter-spacing:-0.02em;color:#F5F3FF;
   overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;
   -webkit-box-orient:vertical;line-height:1.3}
 .lp-doc-carousel-meta{font-size:13px;color:rgba(255,255,255,0.45);margin-top:6px}
-.lp-doc-carousel-dots{display:flex;justify-content:center;gap:6px;margin-top:10px}
+.lp-doc-carousel-dots{display:flex;justify-content:center;gap:6px;margin-top:4px}
 .lp-doc-carousel-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.15);
   transition:background .15s,transform .15s}
 .lp-doc-carousel-dot.active{background:var(--color-violet-light,#A78BFA);transform:scale(1.3)}
+/* Pfeil-Buttons: auf Mobile unsichtbar (dort Touch-Wisch), ab 768px
+   sichtbar UND Karten auf Drittelbreite (3 pro Seite). */
+.lp-doc-carousel-arrow{display:none}
+@media(min-width:768px){
+  .lp-doc-carousel-card{flex:0 0 calc((100% - 48px) / 3)}
+  .lp-doc-carousel-arrow{display:flex;align-items:center;justify-content:center;
+    position:absolute;top:50%;transform:translateY(-50%);width:36px;height:36px;
+    border-radius:50%;border:1px solid rgba(255,255,255,0.12);
+    background:rgba(15,10,30,0.9);color:#fff;cursor:pointer;z-index:2;
+    box-shadow:0 4px 16px rgba(0,0,0,0.4)}
+  .lp-doc-carousel-arrow:hover{border-color:rgba(167,139,250,0.55)}
+  .lp-doc-carousel-arrow.prev{left:-14px}
+  .lp-doc-carousel-arrow.next{right:-14px}
+}
 @media(min-width:768px){
   .lp-deck-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
 }
@@ -953,7 +976,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.62";
+var KKM_VERSION="1.8.63";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6312,18 +6335,56 @@ function App(p){
   var dcas=useState(0); var docCarouselActive=dcas[0]; var setDocCarouselActive=dcas[1];
   var docCarouselRef=useRef(null);
   function onDocCarouselScroll(){
-    var el=docCarouselRef.current; if(!el||!el.firstChild)return;
-    /* Bei schmalen Bildschirmen passt oft nicht genug Restbreite hinter
-       der letzten Karte, um rechnerisch (scrollLeft/Kartenbreite) exakt
-       deren Index zu erreichen - der Scrollbereich endet vorher, die
-       letzten Punkte wuerden sonst nie aktiv werden. Am rechten Rand
-       (Toleranz fuer Rundungsfehler) daher hart auf den letzten Index
-       springen statt zu runden. */
-    var atEnd=el.scrollLeft+el.clientWidth>=el.scrollWidth-2;
-    if(atEnd){setDocCarouselActive(recentDocs.length-1);return;}
-    var cardW=el.firstChild.getBoundingClientRect().width+12;
-    var idx=Math.round(el.scrollLeft/cardW);
-    setDocCarouselActive(Math.max(0,Math.min(recentDocs.length-1,idx)));
+    var el=docCarouselRef.current; if(!el)return;
+    /* Nicht mehr aus scrollLeft/Kartenbreite hochgerechnet - seit die
+       Karten per scroll-snap-align:center (statt "start") verankert
+       sind, damit der Leucht-Glow Platz hat (siehe CSS-Kommentar bei
+       .lp-doc-carousel), passt die alte Formel nicht mehr zu den
+       tatsaechlichen Snap-Positionen. Stattdessen direkt die Karte
+       suchen, deren Mittelpunkt am naechsten am Viewport-Mittelpunkt
+       liegt - robust unabhaengig von Puffer/Gap/Card-Anzahl pro Seite
+       (1 auf Mobile, 3 auf Desktop). */
+    var cards=el.querySelectorAll('.lp-doc-carousel-card');
+    if(!cards.length)return;
+    var viewportCenter=el.scrollLeft+el.clientWidth/2;
+    var closest=0,closestDist=Infinity;
+    for(var i=0;i<cards.length;i++){
+      var cardCenter=cards[i].offsetLeft+cards[i].offsetWidth/2;
+      var dist=Math.abs(cardCenter-viewportCenter);
+      if(dist<closestDist){closestDist=dist;closest=i;}
+    }
+    setDocCarouselActive(closest);
+  }
+  /* Desktop-Pfeil-Buttons (kein Touch-Wisch, keine sichtbare Scrollbar
+     dort) - scrollt um genau eine "Seite" weiter/zurueck, egal ob
+     gerade 1 (Mobile) oder 3 (Desktop ab 768px) Karten gleichzeitig
+     passen. Nicht einfach um clientWidth scrollen (der ist wegen des
+     Glow-Puffers absichtlich groesser als eine Kartenbreite, das
+     wuerde zu weit springen) - stattdessen die tatsaechlich sichtbare
+     Kartenzahl zaehlen und exakt so viele Karten weiterspringen, zur
+     naechsten Zielkarte zentriert (passend zu scroll-snap-align:center). */
+  function scrollDocCarousel(dir){
+    var el=docCarouselRef.current; if(!el)return;
+    var cards=el.querySelectorAll('.lp-doc-carousel-card');
+    if(!cards.length)return;
+    var wrap=el.closest('.lp-doc-carousel-wrap');
+    var wrapRect=(wrap||el).getBoundingClientRect();
+    var visibleCount=0;
+    for(var i=0;i<cards.length;i++){
+      var r=cards[i].getBoundingClientRect();
+      if(r.left>=wrapRect.left-1&&r.right<=wrapRect.right+1)visibleCount++;
+    }
+    visibleCount=Math.max(1,visibleCount);
+    var viewportCenter=el.scrollLeft+el.clientWidth/2;
+    var curIdx=0,curDist=Infinity;
+    for(var j=0;j<cards.length;j++){
+      var cc=cards[j].offsetLeft+cards[j].offsetWidth/2;
+      var d=Math.abs(cc-viewportCenter);
+      if(d<curDist){curDist=d;curIdx=j;}
+    }
+    var targetIdx=Math.max(0,Math.min(cards.length-1,curIdx+dir*visibleCount));
+    var target=cards[targetIdx];
+    el.scrollTo({left:target.offsetLeft+target.offsetWidth/2-el.clientWidth/2,behavior:'smooth'});
   }
   /* PDF-Viewer: docViewerFileId===null heisst geschlossen. Markierungen/
      Textfelder werden lokal je Drive-Datei-ID gespeichert (kkm-docv-<id>),
@@ -8016,14 +8077,19 @@ function App(p){
               h("div",{className:"lp-section-hdr"},
                 h("div",{className:"lp-section-title"},"Zuletzt aufgerufene Unterlagen"),
                 h("button",{className:"lp-section-link",onClick:function(){setXpTab('unterlagen');switchNav('explorer');}},"Alle anzeigen →")),
-              h("div",{className:"lp-doc-carousel",ref:docCarouselRef,onScroll:onDocCarouselScroll},
-                recentDocs.slice(0,5).map(function(d){
-                  return h("button",{key:d.id,className:"lp-doc-carousel-card",onClick:function(){openDocViewer(d);}},
-                    h("div",{className:"lp-doc-carousel-icon"},docFileIcon(d.id,28)),
-                    h("div",{style:{minWidth:0,flex:1}},
-                      h("div",{className:"lp-doc-carousel-name"},d.name),
-                      h("div",{className:"lp-doc-carousel-meta"},docFileMeta(d))));
-                })),
+              h("div",{className:"lp-doc-carousel-wrap"},
+                recentDocs.slice(0,5).length>1&&h("button",{className:"lp-doc-carousel-arrow prev","aria-label":"Zurück",
+                  onClick:function(){scrollDocCarousel(-1);}},"←"),
+                h("div",{className:"lp-doc-carousel",ref:docCarouselRef,onScroll:onDocCarouselScroll},
+                  recentDocs.slice(0,5).map(function(d){
+                    return h("button",{key:d.id,className:"lp-doc-carousel-card lp-hover-glow",onClick:function(){openDocViewer(d);}},
+                      h("div",{className:"lp-doc-carousel-icon"},docFileIcon(d.id,28)),
+                      h("div",{style:{minWidth:0,flex:1}},
+                        h("div",{className:"lp-doc-carousel-name"},d.name),
+                        h("div",{className:"lp-doc-carousel-meta"},docFileMeta(d))));
+                  })),
+                recentDocs.slice(0,5).length>1&&h("button",{className:"lp-doc-carousel-arrow next","aria-label":"Weiter",
+                  onClick:function(){scrollDocCarousel(1);}},"→")),
               recentDocs.slice(0,5).length>1&&h("div",{className:"lp-doc-carousel-dots"},
                 recentDocs.slice(0,5).map(function(d,i){
                   return h("span",{key:d.id,className:"lp-doc-carousel-dot"+(i===docCarouselActive?" active":"")});
