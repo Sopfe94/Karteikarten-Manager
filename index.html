@@ -785,7 +785,6 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
    auch mit korrektem Padding/Margin (empirisch nachgewiesen, nicht nur
    vermutet). "center" verankert die Karte symmetrisch in der (absichtlich
    breiteren) Render-Box, ohne dass der Browser das beim Laden wegkorrigiert. */
-.lp-doc-carousel-wrap{position:relative}
 .lp-doc-carousel{display:flex;gap:24px;overflow-x:auto;scroll-snap-type:x mandatory;
   -webkit-overflow-scrolling:touch;padding:36px 36px 40px;margin:-36px -36px -6px;
   scrollbar-width:none}
@@ -800,7 +799,15 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
   overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;
   -webkit-box-orient:vertical;line-height:1.3}
 .lp-doc-carousel-meta{font-size:13px;color:rgba(255,255,255,0.45);margin-top:6px}
-.lp-doc-carousel-dots{display:flex;justify-content:center;gap:6px;margin-top:4px}
+/* Navigationszeile unter den Karten: Punkte + (ab Desktop) Pfeile in
+   einer Reihe statt der Pfeile als ueberlagerte Kreise auf Kartenhoehe.
+   justify-content:space-between mit den zwei gleich breiten Pfeilen aussen
+   zentriert die Punkte automatisch exakt mittig dazwischen. Auf Mobile
+   sind die Pfeile per display:none aus dem Flow, darum dort justify-
+   content:center, sonst wuerden die Punkte allein an den linken Rand
+   rutschen (space-between mit nur einem Kind = flex-start). */
+.lp-doc-carousel-nav{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:4px}
+.lp-doc-carousel-dots{display:flex;justify-content:center;gap:6px}
 .lp-doc-carousel-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.15);
   transition:background .15s,transform .15s}
 .lp-doc-carousel-dot.active{background:var(--color-violet-light,#A78BFA);transform:scale(1.3)}
@@ -809,14 +816,12 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
 .lp-doc-carousel-arrow{display:none}
 @media(min-width:768px){
   .lp-doc-carousel-card{flex:0 0 calc((100% - 48px) / 3)}
+  .lp-doc-carousel-nav{justify-content:space-between}
   .lp-doc-carousel-arrow{display:flex;align-items:center;justify-content:center;
-    position:absolute;top:50%;transform:translateY(-50%);width:36px;height:36px;
-    border-radius:50%;border:1px solid rgba(255,255,255,0.12);
-    background:rgba(15,10,30,0.9);color:#fff;cursor:pointer;z-index:2;
+    width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,0.12);
+    background:rgba(15,10,30,0.9);color:#fff;cursor:pointer;flex-shrink:0;
     box-shadow:0 4px 16px rgba(0,0,0,0.4)}
   .lp-doc-carousel-arrow:hover{border-color:rgba(167,139,250,0.55)}
-  .lp-doc-carousel-arrow.prev{left:-14px}
-  .lp-doc-carousel-arrow.next{right:-14px}
 }
 @media(min-width:768px){
   .lp-deck-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
@@ -976,7 +981,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.63";
+var KKM_VERSION="1.8.64";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -8078,8 +8083,6 @@ function App(p){
                 h("div",{className:"lp-section-title"},"Zuletzt aufgerufene Unterlagen"),
                 h("button",{className:"lp-section-link",onClick:function(){setXpTab('unterlagen');switchNav('explorer');}},"Alle anzeigen →")),
               h("div",{className:"lp-doc-carousel-wrap"},
-                recentDocs.slice(0,5).length>1&&h("button",{className:"lp-doc-carousel-arrow prev","aria-label":"Zurück",
-                  onClick:function(){scrollDocCarousel(-1);}},"←"),
                 h("div",{className:"lp-doc-carousel",ref:docCarouselRef,onScroll:onDocCarouselScroll},
                   recentDocs.slice(0,5).map(function(d){
                     return h("button",{key:d.id,className:"lp-doc-carousel-card lp-hover-glow",onClick:function(){openDocViewer(d);}},
@@ -8087,13 +8090,16 @@ function App(p){
                       h("div",{style:{minWidth:0,flex:1}},
                         h("div",{className:"lp-doc-carousel-name"},d.name),
                         h("div",{className:"lp-doc-carousel-meta"},docFileMeta(d))));
+                  }))),
+              recentDocs.slice(0,5).length>1&&h("div",{className:"lp-doc-carousel-nav"},
+                h("button",{className:"lp-doc-carousel-arrow prev","aria-label":"Zurück",
+                  onClick:function(){scrollDocCarousel(-1);}},"←"),
+                h("div",{className:"lp-doc-carousel-dots"},
+                  recentDocs.slice(0,5).map(function(d,i){
+                    return h("span",{key:d.id,className:"lp-doc-carousel-dot"+(i===docCarouselActive?" active":"")});
                   })),
-                recentDocs.slice(0,5).length>1&&h("button",{className:"lp-doc-carousel-arrow next","aria-label":"Weiter",
-                  onClick:function(){scrollDocCarousel(1);}},"→")),
-              recentDocs.slice(0,5).length>1&&h("div",{className:"lp-doc-carousel-dots"},
-                recentDocs.slice(0,5).map(function(d,i){
-                  return h("span",{key:d.id,className:"lp-doc-carousel-dot"+(i===docCarouselActive?" active":"")});
-                }))),
+                h("button",{className:"lp-doc-carousel-arrow next","aria-label":"Weiter",
+                  onClick:function(){scrollDocCarousel(1);}},"→"))),
 
             lpLernSpaceOn&&h(DashboardFriends,{onNav:switchNav,state:dashFriends,presence:presence})),
 
