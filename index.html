@@ -985,7 +985,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.69";
+var KKM_VERSION="1.8.70";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -4185,7 +4185,7 @@ function GateCodeScreen(p){
           h('div',{style:{fontFamily:'var(--font-mono)',fontSize:11,fontWeight:300,letterSpacing:'0.14em',textTransform:'uppercase',color:'rgba(255,255,255,.75)',marginTop:4}},'Smart lernen'))),
       h('div',null,
         h('div',{className:"lp-onb-headline"},'Geschlossene',h('br',null),'Testphase',h('span',{className:"dot"},'.')),
-        h('div',{className:"lp-onb-sub"},'Lernpuls ist aktuell nur für persönlich eingeladene Personen geöffnet. Die App kann noch ein paar Fehler enthalten – melde sie mir gern direkt über das Kontaktformular in den Einstellungen.')),
+        h('div',{className:"lp-onb-sub"},'Lernpuls ist aktuell nur für persönlich eingeladene Personen geöffnet. Die App kann noch ein paar Fehler enthalten – melden Sie mir diese gern direkt über das Kontaktformular in den Einstellungen.')),
       h('div',{className:"lp-onb-actions"},
         h('input',{type:'text',className:'lp-dark-input',placeholder:'Einladungscode',value:code,maxLength:8,autoFocus:true,
           style:{textAlign:'center',letterSpacing:'0.15em',textTransform:'uppercase',fontWeight:700},
