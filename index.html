@@ -985,7 +985,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.70";
+var KKM_VERSION="1.8.71";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1647,24 +1647,29 @@ function markHomeReady(){
 function onHomeReady(cb){
   if(_homeReady){cb();}else{_homeReadyCbs.push(cb);}
 }
-(function(){
+/* War bisher eine reine Start-IIFE, die genau einmal pro Seitenladung
+   lief - lief der erste Versuch waehrend der Testphase VOR der Code-
+   Einloesung (RLS blockiert dann den Schreibversuch), blieb der
+   Username in Supabase dauerhaft leer, bis die Seite manuell neu
+   geladen wurde. Jetzt als benannte Funktion, damit refreshGateStatus()
+   sie erneut anstossen kann, sobald das Gate tatsaechlich passiert -
+   kein Neustart mehr noetig. */
+function syncUsernameIfMissing(){
   var _id=localStorage.getItem('kkm-ls-id');
   var _un=localStorage.getItem('kkm-social-username-v1');
   if(!_id||!_un)return;
   _unCache[_id]=_un; // Session-Cache sofort befüllen
-  // Hintergrund-Sync: Falls Supabase den Username noch nicht kennt, nachholen
-  setTimeout(function(){
-    try{
-      withTimeout(getSb().from('ls_users').select('username').eq('ls_id',_id).maybeSingle(),12000).then(function(res){
-        if(res.data&&res.data.username)return; // Supabase hat schon einen Username → nichts zu tun
-        dbg('🔄 Username-Sync: Schreibe',_un,'nach Supabase für',_id);
-        withTimeout(getSb().from('ls_users').upsert({ls_id:_id,username:_un},{onConflict:'ls_id',ignoreDuplicates:false}),12000)
-          .then(function(r){if(r.error)dbg('❌ Username-Sync Fehler:',r.error.message);else dbg('✅ Username-Sync OK');})
-          .catch(function(e){dbg('❌ Username-Sync catch:',e);});
-      }).catch(function(){});
-    }catch(e){}
-  },2000); // 2s Verzögerung damit Supabase-Client sicher initialisiert ist
-})();
+  try{
+    withTimeout(getSb().from('ls_users').select('username').eq('ls_id',_id).maybeSingle(),12000).then(function(res){
+      if(res.data&&res.data.username)return; // Supabase hat schon einen Username → nichts zu tun
+      dbg('🔄 Username-Sync: Schreibe',_un,'nach Supabase für',_id);
+      withTimeout(getSb().from('ls_users').upsert({ls_id:_id,username:_un},{onConflict:'ls_id',ignoreDuplicates:false}),12000)
+        .then(function(r){if(r.error)dbg('❌ Username-Sync Fehler:',r.error.message);else dbg('✅ Username-Sync OK');})
+        .catch(function(e){dbg('❌ Username-Sync catch:',e);});
+    }).catch(function(){});
+  }catch(e){}
+}
+setTimeout(syncUsernameIfMissing,2000); // 2s Verzögerung damit Supabase-Client sicher initialisiert ist
 function UserLabel(p){
   var ds=useState(_unCache[p.id]||null);var disp=ds[0];var setDisp=ds[1];
   useEffect(function(){
@@ -6444,6 +6449,13 @@ function App(p){
       var d=res&&res.data;
       if(d)setGateState(Object.assign({loading:false},d));
       else setGateState(function(s){return Object.assign({},s,{loading:false});});
+      /* Falls der allererste Username-Sync-Versuch (Start-Timer) noch
+         vor der Code-Einloesung lief und deshalb an der RLS-Sperre
+         scheiterte, bleibt der Username in Supabase sonst dauerhaft
+         leer (Fallback-Anzeigen zeigen dann die rohe Geraete-ID statt
+         des gewaehlten Namens) - hier erneut anstossen, sobald das Gate
+         wirklich passiert ist. */
+      if(d&&d.gate_passed)syncUsernameIfMissing();
     }).catch(function(){setGateState(function(s){return Object.assign({},s,{loading:false});});});
   }
   function tryRedeemPendingGateCode(){
