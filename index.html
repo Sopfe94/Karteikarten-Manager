@@ -789,9 +789,13 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
   -webkit-overflow-scrolling:touch;padding:36px 36px 40px;margin:-36px -36px -6px;
   scrollbar-width:none}
 .lp-doc-carousel::-webkit-scrollbar{display:none}
+/* Hintergrund/Rand exakt wie DsCard (die Stapel-Karten daneben, #0D0A1A
+   + rgba(255,255,255,.07)-Rand) statt der vorherigen, deutlich helleren
+   rgba(255,255,255,.03)-Flaeche - sollte optisch zur selben Kartenfamilie
+   gehoeren wie der Rest der Startseite. */
 .lp-doc-carousel-card{flex:0 0 100%;box-sizing:border-box;scroll-snap-align:center;min-height:150px;
-  display:flex;align-items:center;gap:16px;background:rgba(255,255,255,0.03);
-  border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:20px 24px;cursor:pointer;
+  display:flex;align-items:center;gap:16px;background:#0D0A1A;
+  border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:20px 24px;cursor:pointer;
   font-family:var(--font-sans);color:#fff;text-align:left}
 .lp-doc-carousel-icon{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;
   justify-content:center;flex-shrink:0;background:rgba(124,58,237,0.12)}
@@ -981,7 +985,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.67";
+var KKM_VERSION="1.8.68";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1132,6 +1136,16 @@ function loadRecentDocs(){
 }
 function pushRecentDoc(list,file){
   var next=[file].concat((list||[]).filter(function(d){return d.id!==file.id;})).slice(0,8);
+  try{ localStorage.setItem(RECENT_DOCS_KEY,JSON.stringify(next)); }catch(e){}
+  return next;
+}
+/* Fehlte bisher: geloeschte Dateien blieben in dieser rein lokalen
+   Liste stehen (loadDocsFolder nach dem Loeschen aktualisiert nur die
+   aktuell geoeffnete Ordner-Ansicht, nicht diesen unabhaengigen Cache),
+   darum tauchte eine geloeschte Datei weiter im Startseiten-Karussell
+   auf, obwohl sie in Drive laengst weg war. */
+function removeRecentDoc(list,id){
+  var next=(list||[]).filter(function(d){return d.id!==id;});
   try{ localStorage.setItem(RECENT_DOCS_KEY,JSON.stringify(next)); }catch(e){}
   return next;
 }
@@ -7347,8 +7361,10 @@ function App(p){
   function deleteDocFolder(f){ setPendingDeleteConfirm({action:"deleteDocFolder",id:f.id,name:f.name}); }
   function deleteDocFile(d){ setPendingDeleteConfirm({action:"deleteDocFile",id:d.id,name:d.name}); }
   function runDeleteDoc(id){
-    driveDeleteFile(id).then(function(){ loadDocsFolder(docsFolderId); })
-      .catch(function(){ showToast("Löschen fehlgeschlagen."); });
+    driveDeleteFile(id).then(function(){
+      loadDocsFolder(docsFolderId);
+      setRecentDocs(function(cur){return removeRecentDoc(cur,id);});
+    }).catch(function(){ showToast("Löschen fehlgeschlagen."); });
   }
   function moveDocFile(fileId,newParentId){
     driveMoveFile(fileId,newParentId,docsFolderId).then(function(){
