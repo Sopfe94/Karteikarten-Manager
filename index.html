@@ -963,6 +963,8 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
 .lp-docv-glowbtn:hover{border-color:rgba(124,58,237,0.9);box-shadow:0 0 26px rgba(124,58,237,0.75),0 0 14px rgba(6,182,212,0.55)}
 .lp-docv-glowbtn.active{background:rgba(124,58,237,0.35)}
 .lp-docv-glowbtn.ghost{background:rgba(255,255,255,0.05)}
+.lp-docv-glowbtn.danger{background:transparent;border-color:rgba(239,68,68,0.4);color:#EF4444;box-shadow:none}
+.lp-docv-glowbtn.danger:hover{border-color:rgba(239,68,68,0.7);box-shadow:0 0 20px rgba(239,68,68,0.4)}
 .lp-docv-glowlabel{background:var(--grad-brand);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
   background-clip:text;filter:drop-shadow(0 0 6px rgba(124,58,237,0.6))}
 .lp-docv-swatch{width:22px;height:22px;border-radius:50%;cursor:pointer;padding:0;flex-shrink:0;border:none}
@@ -985,7 +987,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.72";
+var KKM_VERSION="1.8.73";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2055,7 +2057,7 @@ function ConfirmModal(p){
       h("div",{style:{fontSize:17,fontWeight:700,color:p.danger===false?"#fff":"#EF4444"}},p.title),
       h("div",{style:{fontSize:13,color:"rgba(255,255,255,.65)",lineHeight:1.6}},p.message),
       h("div",{className:"lp-modal-actions"},
-        h(DsButton,{variant:"ghost",onClick:p.onClose},"Abbrechen"),
+        h(DsButton,{variant:"danger",onClick:p.onClose},"Abbrechen"),
         h(DsButton,{variant:p.danger===false?"primary":"danger",onClick:p.onConfirm},p.confirmLabel||"Bestätigen"))));
 }
 
@@ -2065,7 +2067,7 @@ function DeleteAccountConfirmModal(p){
       h("div",{style:{fontSize:17,fontWeight:700,color:"#EF4444"}},"Konto endgültig löschen?"),
       h("div",{style:{fontSize:13,color:"rgba(255,255,255,.65)",lineHeight:1.6}},"Wenn du bestätigst, werden dein Konto und alle deine Daten unwiderruflich gelöscht. Du wirst danach automatisch abgemeldet. Diese Aktion kann nicht rückgängig gemacht werden."),
       h("div",{className:"lp-modal-actions"},
-        h(DsButton,{variant:"ghost",onClick:p.onClose},"Abbrechen"),
+        h(DsButton,{variant:"danger",onClick:p.onClose},"Abbrechen"),
         h(DsButton,{variant:"danger",onClick:p.onConfirm},"Endgültig löschen"))));
 }
 
@@ -2086,7 +2088,7 @@ function GroupActionConfirmModal(p){
       h("div",{style:{fontSize:17,fontWeight:700,color:"#EF4444"}},title),
       h("div",{style:{fontSize:13,color:"rgba(255,255,255,.65)",lineHeight:1.6}},msg),
       h("div",{className:"lp-modal-actions"},
-        h(DsButton,{variant:"ghost",onClick:p.onClose},"Abbrechen"),
+        h(DsButton,{variant:"danger",onClick:p.onClose},"Abbrechen"),
         h(DsButton,{variant:"danger",onClick:p.onConfirm},confirmLabel))));
 }
 
@@ -2174,7 +2176,7 @@ function CardModal(p){
           var seedBack=(p.card&&p.card.backElements&&p.card.backElements.length)?p.card.backElements:(b.trim()?[makeSeedTextEl(b.trim())]:[]);
           p.onOpenEditor({folderId:fid||null,frontElements:seedFront,backElements:seedBack});
         },style:{color:"var(--color-violet-light)",cursor:"pointer"}},"Karteikarten Editor"),"."),
-      h("div",{className:"lp-modal-actions"},h(DsButton,{variant:"ghost",onClick:p.onClose},"Abbrechen"),h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:save},h("span",{className:"lp-btn-glow-label"},"Speichern")))));
+      h("div",{className:"lp-modal-actions"},h(DsButton,{variant:"danger",onClick:p.onClose},"Abbrechen"),h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:save},h("span",{className:"lp-btn-glow-label"},"Speichern")))));
 }
 
 /* ---- Karteikarten Editor (freie Textfelder/Bilder, Drag/Resize, Formatierung) ---- */
@@ -3022,7 +3024,7 @@ function LpCardEditor(p){
               pdFolders.map(function(fo){return h("option",{key:fo.id,value:fo.id},fo.emoji+" "+fo.name);})));
         })(),
         h("div",{className:"lp-modal-actions"},
-          h(DsButton,{variant:"ghost",onClick:function(){setShowDeckPicker(false);}},"Abbrechen"),
+          h(DsButton,{variant:"danger",onClick:function(){setShowDeckPicker(false);}},"Abbrechen"),
           h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:confirmDeckPickerSave},h("span",{className:"lp-btn-glow-label"},"Speichern"))))),
 
     showRestorePrompt&&h("div",{className:"lp-modal-ov"},
@@ -3686,7 +3688,7 @@ function KalenderView(p){
           h('div',{className:'lp-field'},h('label',{className:'lp-field-label'},'Notiz (optional)'),
             h('input',{className:'lp-dark-input',type:'text',value:form.note,placeholder:'z.B. Kapitel 1-5',onInput:function(e){setForm(Object.assign({},form,{note:e.target.value}));}}))),
         h('div',{className:'lp-modal-actions'},
-          h(DsButton,{variant:'ghost',style:{flex:1},onClick:function(){setShowAdd(false);}},'Abbrechen'),
+          h(DsButton,{variant:'danger',style:{flex:1},onClick:function(){setShowAdd(false);}},'Abbrechen'),
           h(DsButton,{variant:'primary',style:{flex:1},onClick:save},h('span',{className:'lp-btn-glow-label'},'Speichern'))),
         h(Toast,{msg:toast}))));
 }
@@ -3991,7 +3993,7 @@ function ProfilView(p){
           'Wenn du dein Tagesziel jetzt auf ',h('strong',{style:{background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}},pendingLowerGoal+' Karten'),' senkst, wird deine aktuelle Streak-Serie von ',h('strong',{style:{background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}},streak+(streak===1?' Tag':' Tagen')),' auf 0 zurückgesetzt.'
         ),
         h('div',{style:{display:'flex',gap:12,marginTop:16,justifyContent:'flex-end'}},
-          h(DsButton,{variant:'primary',style:{width:'auto',padding:'0 20px',height:44},onClick:function(){setPendingLowerGoal(null);}},h('span',{className:'lp-btn-glow-label'},'Abbrechen')),
+          h(DsButton,{variant:'danger',style:{width:'auto',padding:'0 20px',height:44},onClick:function(){setPendingLowerGoal(null);}},'Abbrechen'),
           h(DsButton,{variant:'danger',style:{width:'auto',padding:'0 20px',height:44},onClick:confirmLowerGoal},'Ja, Ziel senken')
         )
       )
@@ -4531,7 +4533,7 @@ function AvatarPickerModal(p){
       h('button',{className:'av-photo-btn',onClick:function(){fref.current&&fref.current.click();}},'\uD83D\uDCF7 Eigenes Foto'),
       h('input',{ref:fref,type:'file',accept:'image/*',style:{display:'none'},onChange:handleFile}),
       h('div',{style:{display:'flex',gap:12,marginTop:4}},
-        h(DsButton,{variant:'ghost',style:{flex:1},onClick:p.onClose},'Abbrechen'),
+        h(DsButton,{variant:'danger',style:{flex:1},onClick:p.onClose},'Abbrechen'),
         h(DsButton,{variant:'primary',style:{flex:1},onClick:function(){p.onSave(sel,sel==='photo'?photo:null);}},h('span',{className:'lp-btn-glow-label'},'\u2713 Speichern'))
       )
     )
@@ -4575,7 +4577,7 @@ function GroupAvatarPickerModal(p){
       h('button',{className:'av-photo-btn',onClick:function(){fref.current&&fref.current.click();}},'\uD83D\uDCF7 Foto ausw\u00e4hlen'),
       h('input',{ref:fref,type:'file',accept:'image/*',style:{display:'none'},onChange:handleFile}),
       h('div',{style:{display:'flex',gap:12,marginTop:16}},
-        h(DsButton,{variant:'ghost',style:{flex:1},onClick:p.onClose},'Abbrechen'),
+        h(DsButton,{variant:'danger',style:{flex:1},onClick:p.onClose},'Abbrechen'),
         h('button',{className:'btn btn-p',style:{flex:1,opacity:photo?1:.5,pointerEvents:photo?'auto':'none'},onClick:function(){p.onSavePhoto(photo);}},'\u2713 Speichern')
       )
     )
@@ -4597,7 +4599,7 @@ function LsConsentModal(p){
         h("p",{style:{marginTop:12}},h("span",{style:{color:"#A78BFA",cursor:"pointer",textDecoration:"underline"},onClick:p.onShowDat},"► Datenschutzerklärung lesen (Punkt 13)"))
       ),
       h("div",{className:"lp-modal-actions",style:{gap:12}},
-        h(DsButton,{variant:"ghost",style:{flex:1},onClick:p.onDecline},"Abbrechen"),
+        h(DsButton,{variant:"danger",style:{flex:1},onClick:p.onDecline},"Abbrechen"),
         h(DsButton,{variant:"primary",style:{flex:1},onClick:p.onAccept},h("span",{className:"lp-btn-glow-label"},"✔ Okay"))
       )
     )
@@ -6023,7 +6025,7 @@ function LpDashboardGreeting(){
         h('div',{className:'lp-modal-title grad'},'Wie heißt du?'),
         h('input',{type:'text',className:'lp-dark-input',placeholder:'Dein Name',value:tempName,onInput:function(e){setTempName(e.target.value);},autoFocus:true,onKeyDown:function(e){if(e.key==='Enter')handleSave();}}),
         h('div',{className:'lp-modal-actions'},
-          h(DsButton,{variant:'ghost',onClick:function(){setShowModal(false);}},userName?'Abbrechen':'Überspringen'),
+          h(DsButton,{variant:userName?'danger':'ghost',onClick:function(){setShowModal(false);}},userName?'Abbrechen':'Überspringen'),
           h(DsButton,{variant:'primary',style:{width:'auto',padding:'0 24px',height:40},onClick:handleSave},
             h('span',{className:'lp-btn-glow-label'},'Speichern'))))));
 }
@@ -7817,7 +7819,7 @@ function App(p){
                 docFileIcon(d.id,18),h("span",{className:"lp-row-title",style:{marginLeft:8}},d.name));
             }))),
         h("div",{className:"lp-modal-actions"},
-          h(DsButton,{variant:"ghost",onClick:function(){setLinkPickerOpen(false);}},"Abbrechen"))));
+          h(DsButton,{variant:"danger",onClick:function(){setLinkPickerOpen(false);}},"Abbrechen"))));
   }
   function addDocTextField(){
     var id='tf'+Date.now();
@@ -8021,7 +8023,7 @@ function App(p){
                     h("span",{className:"lp-docv-glowlabel"},"✓ Weiter lernen"))
                 :h("button",{className:"lp-docv-glowbtn",style:{height:40},onClick:saveDocViewer},
                     h("span",{className:"lp-docv-glowlabel"},"Speichern")),
-            h("button",{className:"lp-docv-glowbtn ghost",style:{height:38,padding:"0 16px",fontSize:13},
+            h("button",{className:"lp-docv-glowbtn danger",style:{height:38,padding:"0 16px",fontSize:13},
               onClick:docViewerLinkMode?closeDocViewer:backFromDocViewer},"Abbrechen")))),
       !docViewerLoading&&!docViewerError&&h("div",{className:"lp-docv-bottombar"},
         !docViewerLinkMode&&h("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
