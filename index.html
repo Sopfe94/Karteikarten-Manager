@@ -991,7 +991,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.75";
+var KKM_VERSION="1.8.76";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6527,8 +6527,7 @@ function App(p){
   var rdf=useState(null); var renameDocFolder=rdf[0]; var setRenameDocFolder=rdf[1];
   var mdf=useState(null); var moveDocFolder=mdf[0]; var setMoveDocFolder=mdf[1];
   var mdid=useState(null); var moveDestFolderId=mdid[0]; var setMoveDestFolderId=mdid[1];
-  var mdp=useState([]); var moveDestPath=mdp[0]; var setMoveDestPath=mdp[1];
-  var mdfl=useState([]); var moveDestFolders=mdfl[0]; var setMoveDestFolders=mdfl[1];
+  var mdt=useState([]); var moveDestTree=mdt[0]; var setMoveDestTree=mdt[1];
   var mdl=useState(false); var moveDestLoading=mdl[0]; var setMoveDestLoading=mdl[1];
   var dpf=useState(loadDocPrefetchPref()); var docPrefetchEnabled=dpf[0]; var setDocPrefetchEnabled=dpf[1];
   function toggleDocPrefetch(){
@@ -7420,29 +7419,36 @@ function App(p){
       setRenameDocFolder(null);loadDocsFolder(docsFolderId);
     }).catch(function(){ showToast("Umbenennen fehlgeschlagen."); });
   }
-  function loadMoveDestFolder(id,excludeId){
-    setMoveDestFolderId(id);setMoveDestLoading(true);
-    driveListChildren(id).then(function(children){
-      var folders=children.filter(function(c){return c.mimeType===DRIVE_FOLDER_MIME&&c.id!==excludeId;});
-      setMoveDestFolders(folders);setMoveDestLoading(false);
-    }).catch(function(){ setMoveDestFolders([]);setMoveDestLoading(false); });
+  /* Laedt rekursiv den kompletten Unterordnerbaum ab rootId fuer das
+     Zielordner-Dropdown beim Verschieben. excludeId (der zu verschiebende
+     Ordner) wird bei jeder Ebene herausgefiltert, bevor in sie hinab-
+     gestiegen wird - dadurch sind auch seine Unterordner nie erreichbar,
+     ein Verschieben in sich selbst ist also strukturell ausgeschlossen. */
+  function loadMoveDestTree(rootId,excludeId){
+    function walk(id,depth){
+      return driveListChildren(id).then(function(children){
+        var folders=children.filter(function(c){return c.mimeType===DRIVE_FOLDER_MIME&&c.id!==excludeId;});
+        var chain=Promise.resolve([]);
+        folders.forEach(function(fo){
+          chain=chain.then(function(acc){
+            return walk(fo.id,depth+1).then(function(sub){
+              return acc.concat([{id:fo.id,name:fo.name,depth:depth}]).concat(sub);
+            });
+          });
+        });
+        return chain;
+      });
+    }
+    return walk(rootId,0);
   }
   function startMoveDocFolder(f){
     setDocFolderActionsFor(null);
-    setMoveDocFolder(f);setMoveDestPath([]);
-    loadMoveDestFolder(docsRootId,f.id);
+    setMoveDocFolder(f);setMoveDestFolderId(docsFolderId);setMoveDestLoading(true);
+    loadMoveDestTree(docsRootId,f.id).then(function(tree){
+      setMoveDestTree(tree);setMoveDestLoading(false);
+    }).catch(function(){ setMoveDestTree([]);setMoveDestLoading(false); });
   }
   function closeMoveDocFolder(){ setMoveDocFolder(null); }
-  function openMoveDestFolder(fo){
-    setMoveDestPath(function(prev){return prev.concat([{id:fo.id,name:fo.name}]);});
-    loadMoveDestFolder(fo.id,moveDocFolder.id);
-  }
-  function goToMoveDestRoot(){ setMoveDestPath([]);loadMoveDestFolder(docsRootId,moveDocFolder.id); }
-  function goToMoveDestPathIndex(i){
-    var next=moveDestPath.slice(0,i+1);
-    setMoveDestPath(next);
-    loadMoveDestFolder(next.length?next[next.length-1].id:docsRootId,moveDocFolder.id);
-  }
   function confirmMoveDocFolder(){
     var f=moveDocFolder;
     driveMoveFile(f.id,moveDestFolderId,docsFolderId).then(function(){
@@ -8253,32 +8259,23 @@ function App(p){
       renameDocFolder&&h(FolderModal,{folder:renameDocFolder,onSave:saveRenameDocFolder,onClose:function(){setRenameDocFolder(null);}}),
 
       moveDocFolder&&h("div",{className:"lp-modal-ov",onClick:closeMoveDocFolder},
-        h("div",{className:"lp-modal-box",style:{maxWidth:440,width:"100%",maxHeight:"80vh",display:"flex",flexDirection:"column"},
-            onClick:function(e){e.stopPropagation();}},
+        h("div",{className:"lp-modal-box",onClick:function(e){e.stopPropagation();}},
           h("div",{className:"lp-modal-title grad"},'"'+moveDocFolder.name+'" verschieben'),
-          h("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",
-              fontSize:12,color:"rgba(255,255,255,0.4)",marginBottom:4}},
-            h("span",{style:{cursor:"pointer",color:"var(--color-violet-light)"},onClick:goToMoveDestRoot},"Startseite"),
-            moveDestPath.map(function(p,i){
-              return h(R.Fragment,{key:p.id},
-                h("span",null,"/"),
-                h("span",{style:{color:"#fff",cursor:i<moveDestPath.length-1?"pointer":"default"},
-                  onClick:i<moveDestPath.length-1?function(){goToMoveDestPathIndex(i);}:undefined},p.name));
-            })),
-          h("div",{style:{overflowY:"auto",display:"flex",flexDirection:"column",gap:4,minHeight:120}},
-            moveDestLoading&&h("div",{style:{textAlign:"center",padding:"24px 0",color:"rgba(255,255,255,0.4)",fontSize:13}},"Lädt…"),
-            !moveDestLoading&&moveDestFolders.length===0&&
-              h("div",{style:{padding:"24px 0",textAlign:"center",color:"rgba(255,255,255,0.35)",fontSize:13}},"Keine Unterordner hier."),
-            !moveDestLoading&&moveDestFolders.map(function(fo){
-              return h("button",{key:fo.id,className:"lp-row lp-hover-glow",style:{textAlign:"left",cursor:"pointer",fontFamily:"var(--font-sans)"},
-                onClick:function(){openMoveDestFolder(fo);}},
-                h("span",{style:{marginRight:8}},"📁"),h("span",{className:"lp-row-title"},fo.name));
-            })),
+          moveDestLoading&&h("div",{style:{textAlign:"center",padding:"24px 0",color:"rgba(255,255,255,0.4)",fontSize:13}},"Lädt…"),
+          !moveDestLoading&&h("div",{className:"lp-field"},
+            h("label",{className:"lp-field-label"},"Zielordner"),
+            h("select",{className:"lp-dark-input",value:moveDestFolderId||"",
+                onChange:function(e){setMoveDestFolderId(e.target.value);}},
+              h("option",{value:docsRootId},"Startseite (oberste Ebene)"),
+              moveDestTree.map(function(fo){
+                var indent=Array(fo.depth+1).join("    ");
+                return h("option",{key:fo.id,value:fo.id},indent+fo.name);
+              }))),
           h("div",{className:"lp-modal-actions"},
             h(DsButton,{variant:"danger",onClick:closeMoveDocFolder},"Abbrechen"),
             h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},
-                disabled:moveDestFolderId===docsFolderId,onClick:confirmMoveDocFolder},
-              h("span",{className:"lp-btn-glow-label"},"Hierher verschieben"))))),
+                disabled:moveDestLoading||moveDestFolderId===docsFolderId,onClick:confirmMoveDocFolder},
+              h("span",{className:"lp-btn-glow-label"},"Verschieben"))))),
 
       scanNameModalOpen&&h("div",{className:"lp-modal-ov",style:{zIndex:1200},onClick:cancelScanName},
         h("div",{className:"lp-modal-box",onClick:function(e){e.stopPropagation();}},
