@@ -985,7 +985,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.71";
+var KKM_VERSION="1.8.72";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1128,14 +1128,15 @@ function saveDocsCache(id,data){
 /* Geraete-lokale Liste der zuletzt in Lernpuls geoeffneten Unterlagen
    (fuer die Startseiten-Sektion) - unabhaengig vom Drive-eigenen
    "zuletzt angesehen"-Datum, das auch Aufrufe ausserhalb der App
-   einschliessen wuerde. Neuester Eintrag zuerst, auf 8 begrenzt
-   (Startseite zeigt davon nur die ersten 5). */
+   einschliessen wuerde. Neuester Eintrag zuerst, auf 15 begrenzt
+   (Startseite zeigt davon auf Mobile nur die ersten 5, auf Desktop
+   alle 15 - siehe carouselDocs in App()). */
 var RECENT_DOCS_KEY='kkm-recent-docs';
 function loadRecentDocs(){
   try{ var raw=localStorage.getItem(RECENT_DOCS_KEY); return raw?JSON.parse(raw):[]; }catch(e){ return []; }
 }
 function pushRecentDoc(list,file){
-  var next=[file].concat((list||[]).filter(function(d){return d.id!==file.id;})).slice(0,8);
+  var next=[file].concat((list||[]).filter(function(d){return d.id!==file.id;})).slice(0,15);
   try{ localStorage.setItem(RECENT_DOCS_KEY,JSON.stringify(next)); }catch(e){}
   return next;
 }
@@ -6591,6 +6592,23 @@ function App(p){
   var rdocs=useState(loadRecentDocs); var recentDocs=rdocs[0]; var setRecentDocs=rdocs[1];
   var dcas=useState(0); var docCarouselActive=dcas[0]; var setDocCarouselActive=dcas[1];
   var docCarouselRef=useRef(null);
+  /* Ab 768px (Desktop-Breakpoint der App) zeigt das Karussell 15 statt 5
+     Dokumente, 3 Karten pro Ansicht statt 1 - darum muss JS (nicht nur
+     CSS) wissen, in welchem Modus wir sind: die Punkte darunter sollen
+     auf Desktop eine "Seite" (3 Karten) reprasentieren statt einer
+     einzelnen Karte, sonst ueberspringt ein Pfeil-Klick (der immer um
+     3 Karten weiterscrollt) sichtbar 3 Punkte auf einmal. */
+  var idcs=useState(function(){try{return window.matchMedia('(min-width:768px)').matches;}catch(e){return false;}});
+  var isDesktopCarousel=idcs[0]; var setIsDesktopCarousel=idcs[1];
+  useEffect(function(){
+    var mq;
+    try{mq=window.matchMedia('(min-width:768px)');}catch(e){return;}
+    function onChange(){setIsDesktopCarousel(mq.matches);}
+    if(mq.addEventListener)mq.addEventListener('change',onChange);else mq.addListener(onChange);
+    return function(){if(mq.removeEventListener)mq.removeEventListener('change',onChange);else mq.removeListener(onChange);};
+  },[]);
+  var carouselPageSize=isDesktopCarousel?3:1;
+  var carouselDocs=recentDocs.slice(0,isDesktopCarousel?15:5);
   function onDocCarouselScroll(){
     var el=docCarouselRef.current; if(!el)return;
     /* Nicht mehr aus scrollLeft/Kartenbreite hochgerechnet - seit die
@@ -6600,7 +6618,9 @@ function App(p){
        tatsaechlichen Snap-Positionen. Stattdessen direkt die Karte
        suchen, deren Mittelpunkt am naechsten am Viewport-Mittelpunkt
        liegt - robust unabhaengig von Puffer/Gap/Card-Anzahl pro Seite
-       (1 auf Mobile, 3 auf Desktop). */
+       (1 auf Mobile, 3 auf Desktop). Aktiver Punkt = Seiten-Index
+       (Karten-Index / carouselPageSize), nicht der Karten-Index selbst,
+       damit auf Desktop pro Scroll (3 Karten) nur ein Punkt weiterspringt. */
     var cards=el.querySelectorAll('.lp-doc-carousel-card');
     if(!cards.length)return;
     var viewportCenter=el.scrollLeft+el.clientWidth/2;
@@ -6610,6 +6630,7 @@ function App(p){
       var dist=Math.abs(cardCenter-viewportCenter);
       if(dist<closestDist){closestDist=dist;closest=i;}
     }
+    closest=Math.floor(closest/carouselPageSize);
     setDocCarouselActive(closest);
   }
   /* Desktop-Pfeil-Buttons (kein Touch-Wisch, keine sichtbare Scrollbar
@@ -8029,8 +8050,9 @@ function App(p){
   function docFileMeta(d){
     var pages=d.appProperties&&d.appProperties.pages;
     var kb=d.size?Math.round(d.size/1024):null;
+    var sizeLabel=kb?(kb>=1000?(kb/1024).toFixed(1)+" MB":kb+" KB"):null;
     var when=d.modifiedTime?new Date(d.modifiedTime).toLocaleDateString("de-DE"):"";
-    return (pages?pages+(pages==="1"?" Seite · ":" Seiten · "):"")+(kb?kb+" KB · ":"")+when;
+    return (pages?pages+(pages==="1"?" Seite · ":" Seiten · "):"")+(sizeLabel?sizeLabel+" · ":"")+when;
   }
   function renderXpUnterlagen(q){
     if(!googleUser){
@@ -8367,19 +8389,22 @@ function App(p){
                 h("button",{className:"lp-section-link",onClick:function(){setXpTab('unterlagen');switchNav('explorer');}},"Alle anzeigen →")),
               h("div",{className:"lp-doc-carousel-wrap"},
                 h("div",{className:"lp-doc-carousel",ref:docCarouselRef,onScroll:onDocCarouselScroll},
-                  recentDocs.slice(0,5).map(function(d){
+                  carouselDocs.map(function(d){
                     return h("button",{key:d.id,className:"lp-doc-carousel-card lp-hover-glow",onClick:function(){openDocViewer(d);}},
                       h("div",{className:"lp-doc-carousel-icon"},docFileIcon(d.id,28)),
                       h("div",{style:{minWidth:0,flex:1}},
                         h("div",{className:"lp-doc-carousel-name"},d.name),
                         h("div",{className:"lp-doc-carousel-meta"},docFileMeta(d))));
                   }))),
-              recentDocs.slice(0,5).length>1&&h("div",{className:"lp-doc-carousel-nav"},
+              carouselDocs.length>1&&h("div",{className:"lp-doc-carousel-nav"},
                 h("button",{className:"lp-doc-carousel-arrow prev","aria-label":"Zurück",
                   onClick:function(){scrollDocCarousel(-1);}},"←"),
                 h("div",{className:"lp-doc-carousel-dots"},
-                  recentDocs.slice(0,5).map(function(d,i){
-                    return h("span",{key:d.id,className:"lp-doc-carousel-dot"+(i===docCarouselActive?" active":"")});
+                  /* Auf Desktop 1 Punkt pro Dreier-Seite statt pro Karte,
+                     damit ein Pfeil-Klick (scrollt immer um 3 Karten)
+                     auch nur genau einen Punkt weiterspringt. */
+                  Array.from({length:Math.ceil(carouselDocs.length/carouselPageSize)}).map(function(_,i){
+                    return h("span",{key:i,className:"lp-doc-carousel-dot"+(i===docCarouselActive?" active":"")});
                   })),
                 h("button",{className:"lp-doc-carousel-arrow next","aria-label":"Weiter",
                   onClick:function(){scrollDocCarousel(1);}},"→"))),
