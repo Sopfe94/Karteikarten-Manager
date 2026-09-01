@@ -981,7 +981,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.65";
+var KKM_VERSION="1.8.66";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3706,35 +3706,56 @@ function ProfilView(p){
   var acls=useState(false);var adminLoading=acls[0];var setAdminLoading=acls[1];
   var ants=useState('');var adminNote=ants[0];var setAdminNote=ants[1];
   var agcs=useState('');var adminGenCode=agcs[0];var setAdminGenCode=agcs[1];
+  /* WICHTIG: Supabase-RPCs liefern Server-Fehler (z.B. "not_admin" bei
+     abgelaufener Session, oder jeder andere DB-Fehler) als res.error im
+     AUFGELÖSTEN Promise zurück, nicht als Promise-Rejection - .catch()
+     greift nur bei echten Netzwerkfehlern. Ohne res.error-Pruefung
+     verschwindet ein Fehlschlag spurlos (genau der Bug, den Sophie
+     gemeldet hat: Schalter liess sich nicht aktivieren, ohne jede
+     Fehlermeldung). Darum hier durchgaengig geprueft + als Toast
+     sichtbar gemacht. */
+  function adminRpcError(res,fallbackMsg){
+    var msg=res&&res.error&&(res.error.message||res.error.hint);
+    p.showToast&&p.showToast(msg||fallbackMsg);
+  }
   function loadAdminCodes(){
     setAdminLoading(true);
     getSb().rpc('ls_admin_list_codes').then(function(res){
       setAdminLoading(false);
+      if(res&&res.error){adminRpcError(res,'Codes konnten nicht geladen werden.');return;}
       if(res&&res.data)setAdminCodes(res.data);
-    }).catch(function(){setAdminLoading(false);});
+    }).catch(function(){setAdminLoading(false);p.showToast&&p.showToast('Codes konnten nicht geladen werden.');});
   }
   useEffect(function(){ if(showAdmin)loadAdminCodes(); },[showAdmin]);
   function adminGenerateCode(){
     setAdminLoading(true);
     getSb().rpc('ls_admin_generate_code',{p_note:adminNote||null}).then(function(res){
       setAdminLoading(false);
+      if(res&&res.error){adminRpcError(res,'Code konnte nicht erzeugt werden.');return;}
       if(res&&res.data){setAdminGenCode(res.data);setAdminNote('');loadAdminCodes();}
-    }).catch(function(){setAdminLoading(false);});
+    }).catch(function(){setAdminLoading(false);p.showToast&&p.showToast('Code konnte nicht erzeugt werden.');});
   }
   function adminResetBinding(code){
-    getSb().rpc('ls_admin_reset_code_binding',{p_code:code}).then(function(){loadAdminCodes();}).catch(function(){});
+    getSb().rpc('ls_admin_reset_code_binding',{p_code:code}).then(function(res){
+      if(res&&res.error){adminRpcError(res,'Bindung konnte nicht zurückgesetzt werden.');return;}
+      loadAdminCodes();
+    }).catch(function(){p.showToast&&p.showToast('Bindung konnte nicht zurückgesetzt werden.');});
   }
   function adminDeleteCode(code){
-    getSb().rpc('ls_admin_delete_code',{p_code:code}).then(function(){loadAdminCodes();}).catch(function(){});
+    getSb().rpc('ls_admin_delete_code',{p_code:code}).then(function(res){
+      if(res&&res.error){adminRpcError(res,'Code konnte nicht gelöscht werden.');return;}
+      loadAdminCodes();
+    }).catch(function(){p.showToast&&p.showToast('Code konnte nicht gelöscht werden.');});
   }
   function adminToggleTestPhase(){
     var next=!p.testPhaseActive;
     setAdminLoading(true);
-    getSb().rpc('ls_admin_set_test_phase',{p_active:next}).then(function(){
+    getSb().rpc('ls_admin_set_test_phase',{p_active:next}).then(function(res){
       setAdminLoading(false);
+      if(res&&res.error){adminRpcError(res,'Testphase-Schalter konnte nicht geändert werden.');return;}
       p.onGateChanged&&p.onGateChanged();
       loadAdminCodes();
-    }).catch(function(){setAdminLoading(false);});
+    }).catch(function(){setAdminLoading(false);p.showToast&&p.showToast('Testphase-Schalter konnte nicht geändert werden.');});
   }
 
   if(showAdmin){
@@ -4153,8 +4174,8 @@ function GateCodeScreen(p){
         h('div',{className:"lp-onb-sub"},'Lernpuls ist aktuell nur für persönlich eingeladene Personen geöffnet. Die App kann noch ein paar Fehler enthalten – meld sie mir gern direkt über das ',
           h('button',{onClick:p.onShowReport,style:{background:'none',border:'none',padding:0,color:'#A78BFA',textDecoration:'underline',cursor:'pointer',font:'inherit'}},'Kontaktformular'),'.')),
       h('div',{className:"lp-onb-actions"},
-        h('input',{type:'text',className:'lp-dark-input',placeholder:'Einladungscode',value:code,maxLength:6,autoFocus:true,
-          style:{textAlign:'center',letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:700},
+        h('input',{type:'text',className:'lp-dark-input',placeholder:'Einladungscode',value:code,maxLength:8,autoFocus:true,
+          style:{textAlign:'center',letterSpacing:'0.15em',textTransform:'uppercase',fontWeight:700},
           onInput:function(e){setCode(e.target.value);setErr('');},
           onKeyDown:function(e){if(e.key==='Enter'&&!loading)submit();}}),
         err&&h('div',{style:{fontSize:13,color:'#f44336',textAlign:'center'}},err),
