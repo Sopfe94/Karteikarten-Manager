@@ -985,7 +985,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.68";
+var KKM_VERSION="1.8.69";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -4185,8 +4185,7 @@ function GateCodeScreen(p){
           h('div',{style:{fontFamily:'var(--font-mono)',fontSize:11,fontWeight:300,letterSpacing:'0.14em',textTransform:'uppercase',color:'rgba(255,255,255,.75)',marginTop:4}},'Smart lernen'))),
       h('div',null,
         h('div',{className:"lp-onb-headline"},'Geschlossene',h('br',null),'Testphase',h('span',{className:"dot"},'.')),
-        h('div',{className:"lp-onb-sub"},'Lernpuls ist aktuell nur für persönlich eingeladene Personen geöffnet. Die App kann noch ein paar Fehler enthalten – meld sie mir gern direkt über das ',
-          h('button',{onClick:p.onShowReport,style:{background:'none',border:'none',padding:0,color:'#A78BFA',textDecoration:'underline',cursor:'pointer',font:'inherit'}},'Kontaktformular'),'.')),
+        h('div',{className:"lp-onb-sub"},'Lernpuls ist aktuell nur für persönlich eingeladene Personen geöffnet. Die App kann noch ein paar Fehler enthalten – melde sie mir gern direkt über das Kontaktformular in den Einstellungen.')),
       h('div',{className:"lp-onb-actions"},
         h('input',{type:'text',className:'lp-dark-input',placeholder:'Einladungscode',value:code,maxLength:8,autoFocus:true,
           style:{textAlign:'center',letterSpacing:'0.15em',textTransform:'uppercase',fontWeight:700},
@@ -4202,9 +4201,8 @@ function GateWrongAccountModal(p){
     h("div",{className:"lp-modal-box",onClick:function(e){e.stopPropagation();}},
       h("div",{className:"lp-modal-title"},"Falsches Konto"),
       h("p",{style:{fontSize:14,color:"rgba(255,255,255,.65)",lineHeight:1.5}},
-        "Dieser Code ist bereits mit einem anderen Konto verknüpft. Melde dich mit dem richtigen Konto an – oder schreib mir über das Kontaktformular, falls du denkst, das ist ein Fehler."),
+        "Dieser Code ist bereits mit einem anderen Konto verknüpft. Melde dich mit dem richtigen Konto an – falls du denkst, das ist ein Fehler, melde dich gern über das Kontaktformular in den Einstellungen."),
       h("div",{className:"lp-modal-actions"},
-        h(DsButton,{variant:'ghost',onClick:p.onShowReport},'Kontakt'),
         h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:p.onRetry},h('span',{className:'lp-btn-glow-label'},'Erneut versuchen')))));
 }
 
@@ -8279,15 +8277,14 @@ function App(p){
      muessen einmalig einen Code eingeben (siehe Konzept). Die
      eigentliche Absicherung ist serverseitig via RLS (ls_gate_ok in
      den Policies); dieser Screen ist nur die UI-Fuehrung dazu. */
+  /* Kontaktformular ist bewusst nirgends vor dem Login erreichbar (auch
+     nicht als Direkt-Link) - ohne gueltigen Code kommt man ohnehin nicht
+     rein, das Formular gehoert konsequent nur in die Einstellungen. */
   if(gateWrongAccount){
-    return h(R.Fragment,null,
-      h(GateWrongAccountModal,{onRetry:retryGateWrongAccount,onShowReport:function(){setShowReport(true);}}),
-      showReport&&h(ReportModal,{onClose:function(){setShowReport(false);}}));
+    return h(GateWrongAccountModal,{onRetry:retryGateWrongAccount});
   }
   if(gateState.test_phase_active&&!gateState.gate_passed&&!gateCodeEntered){
-    return h(R.Fragment,null,
-      h(GateCodeScreen,{onCodeAccepted:function(){setGateCodeEntered(true);setShowLogin(true);},onShowReport:function(){setShowReport(true);}}),
-      showReport&&h(ReportModal,{onClose:function(){setShowReport(false);}}));
+    return h(GateCodeScreen,{onCodeAccepted:function(){setGateCodeEntered(true);setShowLogin(true);}});
   }
   if(showLogin)return h(LoginScreen,{onDone:function(){setShowLogin(false);},onGuestDone:function(){setShowLogin(false);if(!localStorage.getItem('kkm-social-username-v1'))setShowUsernameModal(true);
     /* Bug-Fix: fuer Gaeste wurde ein gemerkter Einladungscode bisher nur
