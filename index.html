@@ -981,7 +981,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.66";
+var KKM_VERSION="1.8.67";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -8273,7 +8273,15 @@ function App(p){
       h(GateCodeScreen,{onCodeAccepted:function(){setGateCodeEntered(true);setShowLogin(true);},onShowReport:function(){setShowReport(true);}}),
       showReport&&h(ReportModal,{onClose:function(){setShowReport(false);}}));
   }
-  if(showLogin)return h(LoginScreen,{onDone:function(){setShowLogin(false);},onGuestDone:function(){setShowLogin(false);if(!localStorage.getItem('kkm-social-username-v1'))setShowUsernameModal(true);},onDataLoaded:function(d){setData(d);},onGoogleLogin:handleGoogleLogin});
+  if(showLogin)return h(LoginScreen,{onDone:function(){setShowLogin(false);},onGuestDone:function(){setShowLogin(false);if(!localStorage.getItem('kkm-social-username-v1'))setShowUsernameModal(true);
+    /* Bug-Fix: fuer Gaeste wurde ein gemerkter Einladungscode bisher nur
+       beim naechsten App-Neustart eingeloest (ueber bindGuestAuthUid im
+       Mount-Effect), nicht in dem Moment, in dem der Gast-Login hier
+       abgeschlossen wird - erst nach einem manuellen Neustart hat der
+       Code funktioniert. Google-Login hatte diesen Aufruf schon
+       (handleAuthUser), hier fehlte das Gegenstueck. */
+    refreshGateStatus();tryRedeemPendingGateCode();
+  },onDataLoaded:function(d){setData(d);},onGoogleLogin:handleGoogleLogin});
   var navId = view==="editor" ? "editor"
     : view==="lernspace" ? "netzwerk"
     : view==="kalender" ? "kalender"
