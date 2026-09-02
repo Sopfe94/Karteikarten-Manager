@@ -991,7 +991,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.77";
+var KKM_VERSION="1.8.78";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2048,7 +2048,7 @@ function ConsentModal(p){
           h("p",{style:{marginTop:8}},"Du nutzt die App auf eigene Verantwortung. F\u00fcr die Richtigkeit selbst erstellter Lerninhalte wird keine Haftung \u00fcbernommen."),
           h("p",{style:{marginTop:8}},"Mit Google-Login werden Karteikarten, Ordner, Lernstand und Netzwerk-Daten optional geger\u00e4te\u00fcbergreifend synchronisiert (siehe Datenschutzerkl\u00e4rung). Der Zugang kann jederzeit \u00fcber \u201eAbmelden\u201c oder \u201eKonto l\u00f6schen\u201c im Profil beendet werden."))),
       h(DsButton,{id:"lp-consent-accept-btn",variant:"primary",size:"lg",fullWidth:true,disabled:!ready,
-        onClick:function(){if(!ready)return;acceptDsgvo();p.onAccept();}},
+        onClick:function(){if(!ready)return;p.onAccept();}},
         h("span",{className:"lp-btn-glow-label"},"Zustimmen und fortfahren"))));
 }
 
@@ -6347,7 +6347,20 @@ function App(p){
   var frcs=useState(false); var showForceRestoreConfirm=frcs[0]; var setShowForceRestoreConfirm=frcs[1];
   var pncs=useState(null); var pendingNavConfirm=pncs[0]; var setPendingNavConfirm=pncs[1];
   var pdcs=useState(null); var pendingDeleteConfirm=pdcs[0]; var setPendingDeleteConfirm=pdcs[1];
-  var dgs=useState(!dsgvoAccepted()); var showDsgvo=dgs[0]; var setShowDsgvo=dgs[1];
+  /* Startet bewusst NICHT mehr auf !dsgvoAccepted() - der Login-Screen
+     (Gast/Google) soll sofort sichtbar sein. Fuer Gast wird die
+     Zustimmung erst beim tatsaechlichen Klick auf "Als Gast" eingeholt
+     (onGuestDone unten), fuer Google erst NACH dem Login geprueft
+     (handleAuthUser/finishAuthUser) - so muss ein Google-Nutzer, der auf
+     einem anderen Geraet schon zugestimmt hat, das nicht auf jedem
+     neuen Geraet wiederholen (dsgvo_accepted_at kommt dann aus der
+     bestehenden ls_users-Zeile). */
+  var dgs=useState(false); var showDsgvo=dgs[0]; var setShowDsgvo=dgs[1];
+  /* Gemerkter Google-User+bereits geladene ls_users-Zeile, waehrend auf
+     die Datenschutz+AGB-Zustimmung gewartet wird (nur gesetzt, wenn ein
+     frisch eingeloggter Google-Account noch kein dsgvo_accepted_at
+     hat) - wird nach Zustimmung an finishAuthUser() weitergereicht. */
+  var pgcs=useState(null); var pendingGoogleConsent=pgcs[0]; var setPendingGoogleConsent=pgcs[1];
   var dlms=useState("home"); var deckListMode=dlms[0]; var setDeckListMode=dlms[1];
   /* Learn Explorer: Tab (Übersicht/Stapel/Fächer/Unterlagen), Suche, Fach-Filter */
   var xts=useState("overview"); var xpTab=xts[0]; var setXpTab=xts[1];
@@ -6928,31 +6941,17 @@ function App(p){
     }).catch(function(){});
   },[googlePhoto,lsConsent]);
 
-  function handleAuthUser(user){
-    _syncUser=user;
-    var avatarUrl=user.user_metadata&&(user.user_metadata.avatar_url||user.user_metadata.picture);
-    if(avatarUrl){
-      /* Sofort die Live-Google-URL als Foto setzen (ein <img src> laedt
-         sie direkt, davon ist CORS nicht betroffen). Der Fetch+Base64-
-         Umweg darunter ist nur eine Offline-Cache-Optimierung - schlaegt
-         er fehl (z.B. CORS beim Byte-Zugriff per fetch()), bleibt die
-         Live-URL trotzdem aktiv und das Bild wird weiterhin angezeigt,
-         statt komplett zu fehlen. */
-      setGooglePhoto(function(cur){return cur||avatarUrl;});
-      fetch(avatarUrl).then(function(r){return r.blob();}).then(function(b){
-        var rd=new FileReader();
-        rd.onload=function(){
-          try{localStorage.setItem('kkm-gphoto',rd.result);}catch(e){}
-          setGooglePhoto(rd.result);
-        };
-        rd.readAsDataURL(b);
-      }).catch(function(){});
-    }
-    var sb=getSb();
-    sb.from('ls_users').select('ls_id,app_data,username,netzwerk_data').eq('authUid',user.id).maybeSingle().then(function(res){
-      if(res.data){
+  /* Enthaelt die eigentliche Konto-Logik (Wiederherstellen bzw. neu
+     anlegen) - ausgelagert aus handleAuthUser(), damit sie sowohl beim
+     "normalen" Weg (Account hat schon zugestimmt) als auch nach einer
+     frischen Zustimmung (siehe pendingGoogleConsent oben) aufgerufen
+     werden kann, ohne den Zustimmungs-Check zu duplizieren. `known` ist
+     das Ergebnis der ls_users-Abfrage aus handleAuthUser (oder null für
+     einen brandneuen Google-Account). */
+  function finishAuthUser(user,known){
+      if(known){
         // Bekannter User — ls_id ggf. wiederherstellen
-        var foundId=res.data.ls_id;
+        var foundId=known.ls_id;
         var cur=localStorage.getItem('kkm-ls-id');
         if(cur!==foundId){
           localStorage.setItem('kkm-ls-id',foundId);
@@ -6961,14 +6960,14 @@ function App(p){
           return;
         }
         // Social-Daten vorausladen (für sofortige Anzeige beim LernSpace-Öffnen)
-        if(res.data.netzwerk_data) _preloadedLsData=res.data.netzwerk_data;
+        if(known.netzwerk_data) _preloadedLsData=known.netzwerk_data;
         // App-Daten wiederherstellen wenn remote neuer
-        if(res.data.app_data){
-          var remoteTs=res.data.app_data._syncedAt||0;
+        if(known.app_data){
+          var remoteTs=known.app_data._syncedAt||0;
           var localTs=loadStore()._syncedAt||0;
           if(remoteTs>localTs){
             _applyingRemote=true;
-            var restored=applyRemoteExtras(res.data.app_data);
+            var restored=applyRemoteExtras(known.app_data);
             saveStore(restored);
             setData(restored);
             showToast('Karteikarten wiederhergestellt!');
@@ -6977,9 +6976,9 @@ function App(p){
           }
         }
         // Benutzername laden oder Modal zeigen
-        if(res.data.username){
-          saveSocialUsername(res.data.username);
-          setSocialUsername(res.data.username);
+        if(known.username){
+          saveSocialUsername(known.username);
+          setSocialUsername(known.username);
         } else {
           setShowUsernameModal(true);
         }
@@ -7009,6 +7008,46 @@ function App(p){
             dbg('❌ Upsert Fehler:',r.error.message);
           }
         });
+      }
+  }
+  /* Wird bei jedem Login (Gast-Session-Restore ausgenommen) aufgerufen -
+     prueft zuerst, ob dieser Account (per authUid, also geraeteuebergreifend
+     identisch fuer denselben Google-Account) schon in ls_users als
+     zugestimmt vermerkt ist. Wenn ja: lokal nachziehen und direkt
+     weiter, ohne den Dialog nochmal zu zeigen - genau das war Sophies
+     Anliegen, dass Google-Nutzer auf jedem neuen Geraet erneut zustimmen
+     mussten. Wenn nein (brandneuer Google-Account oder ausnahmsweise
+     doch noch kein dsgvo_accepted_at vermerkt): wie bei Gast blockt der
+     showDsgvo-Screen, bevor irgendetwas in ls_users geschrieben wird -
+     erst nach Zustimmung laeuft finishAuthUser() weiter. */
+  function handleAuthUser(user){
+    _syncUser=user;
+    var avatarUrl=user.user_metadata&&(user.user_metadata.avatar_url||user.user_metadata.picture);
+    if(avatarUrl){
+      /* Sofort die Live-Google-URL als Foto setzen (ein <img src> laedt
+         sie direkt, davon ist CORS nicht betroffen). Der Fetch+Base64-
+         Umweg darunter ist nur eine Offline-Cache-Optimierung - schlaegt
+         er fehl (z.B. CORS beim Byte-Zugriff per fetch()), bleibt die
+         Live-URL trotzdem aktiv und das Bild wird weiterhin angezeigt,
+         statt komplett zu fehlen. */
+      setGooglePhoto(function(cur){return cur||avatarUrl;});
+      fetch(avatarUrl).then(function(r){return r.blob();}).then(function(b){
+        var rd=new FileReader();
+        rd.onload=function(){
+          try{localStorage.setItem('kkm-gphoto',rd.result);}catch(e){}
+          setGooglePhoto(rd.result);
+        };
+        rd.readAsDataURL(b);
+      }).catch(function(){});
+    }
+    var sb=getSb();
+    sb.from('ls_users').select('ls_id,app_data,username,netzwerk_data,dsgvo_accepted_at').eq('authUid',user.id).maybeSingle().then(function(res){
+      if(res.data&&res.data.dsgvo_accepted_at){
+        try{localStorage.setItem(DSGVO_KEY,DSGVO_VERSION);}catch(e){}
+        finishAuthUser(user,res.data);
+      } else {
+        setPendingGoogleConsent({user:user,known:res.data});
+        setShowDsgvo(true);
       }
     });
   }
@@ -8442,14 +8481,30 @@ function App(p){
       )
     ):null;
 
-  /* Datenschutz+AGB kommt als allererstes, noch vor dem Login-Screen -
-     vorher entsteht ueberhaupt kein Supabase-Konto (weder Gast noch
-     Google), siehe startGuestAuthIfNeeded()/bindGuestAuthUid() weiter
-     unten, die beide dsgvoAccepted() vorher pruefen. Ohne Zustimmung
-     bleibt der Zugang zur App blockiert. */
+  /* Datenschutz+AGB blockt gezielt an zwei Stellen, nicht mehr pauschal
+     den ganzen Login-Screen: beim tatsaechlichen Klick auf "Als Gast"
+     (onGuestDone unten) und nach einem Google-Login, falls dieser
+     Account noch kein dsgvo_accepted_at in ls_users hat (siehe
+     finishAuthUser/handleAuthUser). Vorher entsteht in keinem der
+     beiden Faelle eine Supabase-Zeile - bei Google ist pendingGoogle-
+     Consent dann gesetzt und wird nach Zustimmung fertig verarbeitet;
+     bei Gast greift stattdessen startGuestAuthIfNeeded(). */
   if(showDsgvo)return h(ConsentModal,{onAccept:function(){
     setShowDsgvo(false);
-    startGuestAuthIfNeeded();
+    if(pendingGoogleConsent){
+      var pg=pendingGoogleConsent;
+      setPendingGoogleConsent(null);
+      finishAuthUser(pg.user,pg.known);
+      acceptDsgvo();
+    } else {
+      /* Fuer Gast greift acceptDsgvo() intern auf getLsId() zurueck,
+         das bei fehlender kkm-ls-id automatisch eine neue Gast-ID
+         erzeugt und speichert - anders als bei Google (siehe oben)
+         ist hier kein "richtiger" Account-Bezeichner abzuwarten, die
+         Reihenfolge zu startGuestAuthIfNeeded() spielt keine Rolle. */
+      acceptDsgvo();
+      startGuestAuthIfNeeded();
+    }
   }});
   /* Geschlossene Testphase: kommt VOR dem normalen Login-Screen und
      greift unabhaengig von "kkm-onboarded" - auch Bestandsnutzer
@@ -8465,7 +8520,15 @@ function App(p){
   if(gateState.test_phase_active&&!gateState.gate_passed&&!gateCodeEntered){
     return h(GateCodeScreen,{onCodeAccepted:function(){setGateCodeEntered(true);setShowLogin(true);}});
   }
-  if(showLogin)return h(LoginScreen,{onDone:function(){setShowLogin(false);},onGuestDone:function(){setShowLogin(false);if(!localStorage.getItem('kkm-social-username-v1'))setShowUsernameModal(true);
+  if(showLogin)return h(LoginScreen,{onDone:function(){setShowLogin(false);},onGuestDone:function(){
+    setShowLogin(false);
+    /* Fuer Gast gibt es keinen bestehenden Account, gegen den man die
+       Zustimmung pruefen koennte - also wird sie genau hier, beim
+       tatsaechlichen Klick auf "Als Gast", eingeholt, bevor
+       ueberhaupt eine Supabase-Session/Zeile entsteht. */
+    if(!dsgvoAccepted()){ setShowDsgvo(true); return; }
+    startGuestAuthIfNeeded();
+    if(!localStorage.getItem('kkm-social-username-v1'))setShowUsernameModal(true);
     /* Bug-Fix: fuer Gaeste wurde ein gemerkter Einladungscode bisher nur
        beim naechsten App-Neustart eingeloest (ueber bindGuestAuthUid im
        Mount-Effect), nicht in dem Moment, in dem der Gast-Login hier
