@@ -991,7 +991,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.76";
+var KKM_VERSION="1.8.77";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6757,6 +6757,11 @@ function App(p){
      werden (sonst wuerde z.B. handleAuthUser mit user.email=undefined
      falsch laufen). */
   function bindGuestAuthUid(uid){
+    /* Zweite Absicherung direkt hier (zusaetzlich zu den Aufrufstellen
+       unten), damit wirklich JEDER Aufrufpfad ohne Datenschutz+AGB-
+       Zustimmung ins Leere laeuft - unabhaengig davon, ob ein
+       zukuenftiger neuer Aufrufer diese Pruefung vergisst. */
+    if(!dsgvoAccepted())return;
     var myId=getLsId();
     if(!myId||!uid)return;
     /* RPC statt Direkt-Upsert: Ein noch nicht gebundenes ls_users-Row
@@ -6769,6 +6774,25 @@ function App(p){
       refreshGateStatus();
       tryRedeemPendingGateCode();
     },function(){refreshGateStatus();});
+  }
+  /* Wird direkt beim Zustimmen zu Datenschutz+AGB aufgerufen (siehe
+     showDsgvo-Screen oben) - holt das signInAnonymously()/
+     bindGuestAuthUid() nach, das der Mount-Effect unten mangels
+     Zustimmung uebersprungen hat. Bricht harmlos ab, falls zwischen-
+     zeitlich schon eine (Google-)Session existiert. */
+  function startGuestAuthIfNeeded(){
+    if(!dsgvoAccepted())return;
+    var sb=getSb();
+    sb.auth.getSession().then(function(res){
+      var session=res.data&&res.data.session;
+      if(session&&session.user){
+        if(session.user.is_anonymous)bindGuestAuthUid(session.user.id);
+        return;
+      }
+      sb.auth.signInAnonymously().then(function(r){
+        if(r.data&&r.data.user)bindGuestAuthUid(r.data.user.id);
+      }).catch(function(){});
+    }).catch(function(){});
   }
   useEffect(function(){
     var sb=getSb();
@@ -6793,7 +6817,12 @@ function App(p){
         var prevId=localStorage.getItem('kkm-ls-id');
         if(prevId&&prevId.indexOf('@')>-1){
           setShowSessionExpired(true);
-        } else {
+        } else if(dsgvoAccepted()){
+          /* Ohne Zustimmung wird hier bewusst gar nichts getan - kein
+             signInAnonymously(), kein Supabase-Kontakt ueberhaupt. Der
+             showDsgvo-Screen blockt in dem Fall ohnehin den kompletten
+             Login-Screen; sobald zugestimmt wird, holt
+             startGuestAuthIfNeeded() das hier nach. */
           sb.auth.signInAnonymously().then(function(r){
             if(r.data&&r.data.user)bindGuestAuthUid(r.data.user.id);
           }).catch(function(){});
@@ -8413,6 +8442,15 @@ function App(p){
       )
     ):null;
 
+  /* Datenschutz+AGB kommt als allererstes, noch vor dem Login-Screen -
+     vorher entsteht ueberhaupt kein Supabase-Konto (weder Gast noch
+     Google), siehe startGuestAuthIfNeeded()/bindGuestAuthUid() weiter
+     unten, die beide dsgvoAccepted() vorher pruefen. Ohne Zustimmung
+     bleibt der Zugang zur App blockiert. */
+  if(showDsgvo)return h(ConsentModal,{onAccept:function(){
+    setShowDsgvo(false);
+    startGuestAuthIfNeeded();
+  }});
   /* Geschlossene Testphase: kommt VOR dem normalen Login-Screen und
      greift unabhaengig von "kkm-onboarded" - auch Bestandsnutzer
      muessen einmalig einen Code eingeben (siehe Konzept). Die
@@ -8532,7 +8570,6 @@ function App(p){
     showNewFolder&&h(FolderModal,{kind:"fach",onSave:addFolder,onClose:function(){setShowNewFolder(false);}}),
     editFolder&&h(FolderModal,{kind:"fach",folder:editFolder,onSave:saveEditFolder,onClose:function(){setEditFolder(null);}}),
     showHelp&&h(HelpModal,{onClose:function(){setShowHelp(false);}}),
-    showDsgvo&&h(ConsentModal,{onAccept:function(){setShowDsgvo(false);}}),
     showReport&&h(ReportModal,{onClose:function(){setShowReport(false);}}),
     showDeleteConfirm&&h(DeleteAccountConfirmModal,{onClose:function(){setShowDeleteConfirm(false);},onConfirm:confirmDeleteAccount}),
     showForceRestoreConfirm&&h(ConfirmModal,{
