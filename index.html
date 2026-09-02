@@ -991,7 +991,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.78";
+var KKM_VERSION="1.8.79";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6607,6 +6607,11 @@ function App(p){
   var scmo=useState(null); var scanMode=scmo[0]; var setScanMode=scmo[1];
   var scp=useState([]); var scanPages=scp[0]; var setScanPages=scp[1];
   var scbs=useState(false); var scanBusy=scbs[0]; var setScanBusy=scbs[1];
+  /* "+ Unterlagen"-Modal zeigt zuerst Hochladen/Scannen zur Auswahl -
+     erst wenn Scannen gewaehlt wird, kommt die bestehende Einzelnes-
+     Foto/Mehrere-Seiten-Unterauswahl (scanMode). */
+  var ssc=useState(false); var scanScanChosen=ssc[0]; var setScanScanChosen=ssc[1];
+  var supg=useState(null); var scanUploadProgress=supg[0]; var setScanUploadProgress=supg[1];
   var scnm=useState(false); var scanNameModalOpen=scnm[0]; var setScanNameModalOpen=scnm[1];
   var scnp=useState(null); var scanNamePending=scnp[0]; var setScanNamePending=scnp[1];
   var scfn=useState(""); var scanFileName=scfn[0]; var setScanFileName=scfn[1];
@@ -6622,6 +6627,7 @@ function App(p){
   var scanCropImgRef=useRef(null);
   var scanCropDragRef=useRef(null);
   var docFileInputRef=useRef(null);
+  var docPdfInputRef=useRef(null);
   var recentDocs=data.recentDocs||[];
   var dcas=useState(0); var docCarouselActive=dcas[0]; var setDocCarouselActive=dcas[1];
   var docCarouselRef=useRef(null);
@@ -7590,12 +7596,41 @@ function App(p){
       window.removeEventListener("pointercancel",onUp);
     };
   },[docsFiles]);
-  function openScanModal(){ setScanMode(null);setScanPages([]);setScanModalOpen(true); }
-  function closeScanModal(){ setScanModalOpen(false);setScanMode(null);setScanPages([]); }
+  function openScanModal(){ setScanMode(null);setScanPages([]);setScanScanChosen(false);setScanUploadProgress(null);setScanModalOpen(true); }
+  function closeScanModal(){ setScanModalOpen(false);setScanMode(null);setScanPages([]);setScanScanChosen(false);setScanUploadProgress(null); }
   function triggerCameraCapture(){ if(docFileInputRef.current)docFileInputRef.current.click(); }
   function scanChooseSingle(){ setScanMode("single");triggerCameraCapture(); }
   function scanChooseMulti(){ setScanMode("multi");triggerCameraCapture(); }
   function addAnotherScanPage(){ triggerCameraCapture(); }
+  function triggerPdfUpload(){ if(docPdfInputRef.current)docPdfInputRef.current.click(); }
+  /* Vorhandene PDFs direkt hochladen (kein Umweg über Foto/Zuschnitt/
+     PDF-Bau wie beim Scannen) - genau der Fall "Datei schon als PDF
+     vorhanden, z.B. aus Downloads". Mehrfachauswahl moeglich, jede
+     Datei behaelt ihren Original-Dateinamen. */
+  function handlePdfUpload(e){
+    var all=Array.prototype.slice.call(e.target.files||[]);
+    e.target.value="";
+    var files=all.filter(function(f){return f.type==="application/pdf"||/\.pdf$/i.test(f.name);});
+    if(!files.length){ if(all.length)showToast("Nur PDF-Dateien werden unterstützt."); return; }
+    setScanBusy(true);
+    setScanUploadProgress({done:0,total:files.length});
+    var chain=Promise.resolve();
+    files.forEach(function(file,idx){
+      chain=chain.then(function(){
+        setScanUploadProgress({done:idx,total:files.length});
+        return driveUploadPdf(file,file.name,docsFolderId,null);
+      });
+    });
+    chain.then(function(){
+      setScanBusy(false);setScanModalOpen(false);setScanMode(null);setScanScanChosen(false);setScanUploadProgress(null);
+      loadDocsFolder(docsFolderId);
+      showToast(files.length===1?"Dokument hochgeladen.":files.length+" Dokumente hochgeladen.");
+    }).catch(function(err){
+      setScanBusy(false);setScanUploadProgress(null);
+      showToast("Hochladen fehlgeschlagen.");
+      dbg("❌ PDF-Upload-Fehler:",err.message);
+    });
+  }
   /* Vor dem Hochladen erst nach einem Namen fragen, statt automatisch
      einen Zeitstempel-Dateinamen zu vergeben - Sophie moechte selbst
      entscheiden wie die Datei in Drive heisst (z.B. "Debeka
@@ -8205,15 +8240,17 @@ function App(p){
     var mainContent=h("div",{style:{display:"flex",flexDirection:"column",gap:20,position:"relative"}},
       h("input",{type:"file",accept:"image/*",capture:"environment",ref:docFileInputRef,
         onChange:handleCameraCapture,style:{display:"none"}}),
+      h("input",{type:"file",accept:"application/pdf",multiple:true,ref:docPdfInputRef,
+        onChange:handlePdfUpload,style:{display:"none"}}),
       h("div",{className:"lp-xp-sechdr"},
         h("div",{style:{flex:"1 1 240px",minWidth:0}},
           h("div",{className:"lp-xp-h2"},"Unterlagen"),
-          h("div",{className:"lp-xp-h2sub"},"Scanne Arbeitsunterlagen mit der Kamera direkt als PDF in deine Ordner.")),
+          h("div",{className:"lp-xp-h2sub"},"Lade PDFs hoch oder scanne Arbeitsunterlagen mit der Kamera in deine Ordner.")),
         h("div",{style:{display:"flex",gap:10,flexShrink:0}},
           h(DsButton,{variant:"primary",size:"md",onClick:openNewDocFolderModal},
             h("span",{className:"lp-btn-glow-label"},"+ Ordner")),
           h(DsButton,{variant:"primary",size:"md",onClick:openScanModal},
-            h("span",{className:"lp-btn-glow-label"},"Scannen")))),
+            h("span",{className:"lp-btn-glow-label"},"+ Unterlagen")))),
 
       h("div",{style:{display:"flex",alignItems:"flex-start",gap:10,background:"rgba(124,58,237,0.08)",
           border:"1px solid rgba(124,58,237,0.25)",borderRadius:14,padding:"14px 16px",
@@ -8360,15 +8397,25 @@ function App(p){
 
       scanModalOpen&&h("div",{className:"lp-modal-ov",onClick:scanBusy?undefined:closeScanModal},
         h("div",{className:"lp-modal-box",onClick:function(e){e.stopPropagation();}},
-          h("div",{className:"lp-modal-title grad"},"Dokument scannen"),
-          scanBusy&&h("div",{style:{textAlign:"center",padding:"24px 0",color:"rgba(255,255,255,0.6)",fontSize:13}},"Wird gespeichert…"),
+          h("div",{className:"lp-modal-title grad"},scanScanChosen||scanMode?"Dokument scannen":"Dokument hinzufügen"),
+          scanBusy&&h("div",{style:{textAlign:"center",padding:"24px 0",color:"rgba(255,255,255,0.6)",fontSize:13}},
+            scanUploadProgress?("Lade Datei "+(scanUploadProgress.done+1)+" von "+scanUploadProgress.total+" hoch…"):"Wird gespeichert…"),
           !scanBusy&&scanMode&&h("div",{style:{display:"flex",flexDirection:"column",gap:14,alignItems:"center",textAlign:"center",padding:"12px 0"}},
             h("div",{style:{fontSize:13,color:"rgba(255,255,255,0.6)"}},scanPages.length+" Seite(n) aufgenommen"),
             h("div",{style:{display:"flex",gap:10}},
               h(DsButton,{variant:"ghost",onClick:addAnotherScanPage},"+ Weitere Seite"),
               h(DsButton,{variant:"primary",onClick:finishMultiScan},
                 h("span",{className:"lp-btn-glow-label"},"Als PDF speichern")))),
-          !scanBusy&&!scanMode&&h("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+          !scanBusy&&!scanMode&&!scanScanChosen&&h("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+            h("button",{className:"lp-row lp-hover-glow",style:{textAlign:"left",flexDirection:"column",
+                alignItems:"flex-start",gap:4,cursor:"pointer",fontFamily:"var(--font-sans)"},onClick:triggerPdfUpload},
+              h("div",{className:"lp-row-title"},"Hochladen"),
+              h("div",{className:"lp-row-sub"},"Vorhandene PDF-Datei(en) von diesem Gerät auswählen.")),
+            h("button",{className:"lp-row lp-hover-glow",style:{textAlign:"left",flexDirection:"column",
+                alignItems:"flex-start",gap:4,cursor:"pointer",fontFamily:"var(--font-sans)"},onClick:function(){setScanScanChosen(true);}},
+              h("div",{className:"lp-row-title"},"Scannen"),
+              h("div",{className:"lp-row-sub"},"Mit der Kamera ein neues Dokument aufnehmen."))),
+          !scanBusy&&!scanMode&&scanScanChosen&&h("div",{style:{display:"flex",flexDirection:"column",gap:10}},
             h("button",{className:"lp-row lp-hover-glow",style:{textAlign:"left",flexDirection:"column",
                 alignItems:"flex-start",gap:4,cursor:"pointer",fontFamily:"var(--font-sans)"},onClick:scanChooseSingle},
               h("div",{className:"lp-row-title"},"Einzelnes Foto"),
