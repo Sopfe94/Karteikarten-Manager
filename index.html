@@ -1035,7 +1035,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.94";
+var KKM_VERSION="1.8.95";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3601,19 +3601,24 @@ function loadUpdStore(){ try{ var r=localStorage.getItem(UPD_KEY); return r?JSON
 function saveUpdStore(d){ try{localStorage.setItem(UPD_KEY,JSON.stringify(d));}catch(e){} }
 function fetchUpdates(){ return fetch("./updates.json",{cache:"no-store"}).then(function(r){return r.json();}).catch(function(){return null;}); }
 
+/* Kurzer, versionsloser Hinweis statt des alten Update-Popups mit
+   Badge/Changelog-Text (das haengt an updates.json und zeigte dadurch
+   auf beta staendig veraltete Versions-/Changelog-Infos an). Merkt sich
+   beim Bestaetigen die aktuell laufende KKM_VERSION als "gesehen". */
 function UpdateOverlay(p){
-  var u=p.update;
-  var ls=useState(false); var loading=ls[0]; var setLoading=ls[1];
-  var es=useState(false); var err=es[0]; var setErr=es[1];
-  function doReload(){ setLoading(true);setErr(false); fetch("./index.html",{cache:"no-store"}).then(function(){var s=loadUpdStore();s.installed=u.version;s.pendingReload=false;saveUpdStore(s);window.location.reload();}).catch(function(){setLoading(false);setErr(true);}); }
-  return h("div",{className:"ov",onClick:null},
-    h("div",{className:"modal",style:{maxWidth:"400px"}},
-      h("div",{className:"upd-badge"},"Neues Update verf\u00fcgbar"),
-      h("div",{style:{fontSize:"20px",fontWeight:900,marginBottom:"4px",background:"linear-gradient(135deg,#fff,#a78bfa)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}},u.name),
-      h("div",{style:{fontSize:"11px",color:"var(--c-dim)",fontWeight:600,marginBottom:"16px"}},u.date),
-      h("div",{style:{background:"rgba(139,92,246,.08)",border:"1px solid var(--c-bor)",borderRadius:"10px",padding:"12px",marginBottom:"20px",fontSize:"13px",color:"rgba(255,255,255,.8)",lineHeight:1.85,fontWeight:600,whiteSpace:"pre-line"}},u.description),
-      err&&h("div",{className:"upd-err"},"Kein Internet verf\u00fcgbar."),
-      h("button",{className:"btn btn-p",style:{justifyContent:"center",width:"100%",padding:"12px",opacity:loading?.6:1},disabled:loading,onClick:doReload},loading?"Wird geladen\u2026":"\u26a1 Jetzt aktualisieren")));
+  function ack(){
+    var s=loadUpdStore();
+    s.installed=KKM_VERSION;
+    s.pendingReload=false;
+    saveUpdStore(s);
+    p.onClose();
+  }
+  return h("div",{className:"lp-modal-ov",onClick:ack},
+    h("div",{className:"lp-modal-box",onClick:function(e){e.stopPropagation();}},
+      h("div",{style:{fontSize:17,fontWeight:700,color:"#fff"}},"App aktualisiert"),
+      h("div",{style:{fontSize:13,color:"rgba(255,255,255,.65)",lineHeight:1.6}},"Lernpuls wurde im Hintergrund auf die neueste Version gebracht."),
+      h("div",{className:"lp-modal-actions"},
+        h(DsButton,{variant:"primary",style:{width:"100%"},onClick:ack},h("span",{className:"lp-btn-glow-label"},"Okay")))));
 }
 
 function UpdatesView(p){
@@ -6446,9 +6451,7 @@ function App(p){
   var shs=useState(false); var showHelp=shs[0]; var setShowHelp=shs[1];
   var sims=useState(false); var showImp=sims[0]; var setShowImp=sims[1];
   var sdts=useState(false); var showDat=sdts[0]; var setShowDat=sdts[1];
-  var uds=useState(null); var updData=uds[0]; var setUpdData=uds[1];
   var uos=useState(false); var showUpdOverlay=uos[0]; var setShowUpdOverlay=uos[1];
-  var upds=useState(null); var pendingUpd=upds[0]; var setPendingUpd=upds[1];
   var srs=useState(false); var showReport=srs[0]; var setShowReport=srs[1];
   var dacs=useState(false); var showDeleteConfirm=dacs[0]; var setShowDeleteConfirm=dacs[1];
   var frcs=useState(false); var showForceRestoreConfirm=frcs[0]; var setShowForceRestoreConfirm=frcs[1];
@@ -7208,20 +7211,17 @@ function App(p){
     }).catch(function(){showToast('Laden fehlgeschlagen.');});
   }
 
+  /* Zeigt nur noch kurz "App aktualisiert" ohne Versionsnummer/Changelog
+     (siehe UpdateOverlay) - Vergleich laeuft direkt gegen KKM_VERSION statt
+     gegen updates.json, damit das nicht mehr von der Aktualitaet dieser
+     Datei abhaengt (die nur bei main-Merges gepflegt wird, waehrend beta
+     staendig neue Versionen bekommt). Erstbesuch (installed noch "0")
+     merkt sich die Version still, ohne den Hinweis zu zeigen. */
   useEffect(function(){
     var us=loadUpdStore();
     if(us.pendingReload){us.pendingReload=false;saveUpdStore(us);window.location.reload();return;}
-    var isBeta=/beta|localhost/.test(location.hostname);
-    var now=Date.now(); var lastCheck=us.lastCheck||0; var oneDayMs=24*60*60*1000;
-    if(!isBeta&&now-lastCheck<oneDayMs){
-      if(us.cachedUpdate){setUpdData(us.cachedUpdate);var isNew=us.cachedUpdate.current.version!==us.installed;var isDismissed=us.cachedUpdate.current.version===us.dismissed;if(isNew&&!isDismissed){setPendingUpd(us.cachedUpdate.current);setShowUpdOverlay(true);}}
-      return;
-    }
-    fetchUpdates().then(function(d){
-      if(!d)return; setUpdData(d); var us2=loadUpdStore(); us2.lastCheck=now; us2.cachedUpdate=d; saveUpdStore(us2);
-      var isNew=d.current.version!==us2.installed; var isDismissed=d.current.version===us2.dismissed;
-      if(isNew&&!isDismissed){setPendingUpd(d.current);setShowUpdOverlay(true);}
-    }).catch(function(){if(us.cachedUpdate)setUpdData(us.cachedUpdate);});
+    if(us.installed==='0'){us.installed=KKM_VERSION;saveUpdStore(us);return;}
+    if(us.installed!==KKM_VERSION){setShowUpdOverlay(true);}
   },[]);
   useEffect(function(){
     saveStore(data);
@@ -8840,7 +8840,7 @@ function App(p){
     showImp&&h(ImpressumModal,{onClose:function(){setShowImp(false);}}),
     showDat&&h(DatenschutzModal,{onClose:function(){setShowDat(false);}}),
     qsStep==="select"&&h(DeckSelectModal,{decks:decks.concat(effectiveGroupDecks),folders:folders,onNext:function(sel){setQsDecks(sel);setQsConfig({mode:"mixed"});setQsStep("study");},onClose:function(){setQsStep(null);}}),
-    showUpdOverlay&&pendingUpd&&h(UpdateOverlay,{update:pendingUpd,onClose:function(){setShowUpdOverlay(false);}}),
+    showUpdOverlay&&h(UpdateOverlay,{onClose:function(){setShowUpdOverlay(false);}}),
     showSessionExpired&&h("div",{className:"lp-modal-ov"},
       h("div",{className:"lp-modal-box",onClick:function(e){e.stopPropagation();}},
         h("div",{className:"lp-modal-title"},"Anmeldung abgelaufen"),
