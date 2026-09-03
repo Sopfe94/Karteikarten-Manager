@@ -630,6 +630,10 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
 /* .lp-row-sub ist app-weit gedaempft-grau - hier bewusst nur innerhalb
    der Netzwerk-Kacheln auf Weiss angehoben, nicht global. */
 .lp-net-tile .lp-row-sub{color:#fff}
+/* Freunde-Liste: gleiche Kartenfarbe+Hover-Glow wie die Startseiten-
+   Karten. padding-right schafft Platz fuer den absolut positionierten
+   .lp-xp-topic-x Loeschen-Button (wie bei den Dokumentencards). */
+.lp-friend-card{position:relative;display:flex;align-items:center;gap:12px;padding:16px;padding-right:44px;background:#0D0A1A;border:1px solid rgba(255,255,255,0.07);border-radius:14px}
 /* Calendar */
 /* Kartenfarbe wie auf der Startseite (DsCard/.lp-doc-carousel-card):
    #0D0A1A statt des transparenten Weiss-Tons der Explorer-Karten. */
@@ -1010,7 +1014,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.87";
+var KKM_VERSION="1.8.88";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3625,6 +3629,10 @@ function UpdatesView(p){
    erhalten (nicht geloescht), einfach hier auf false setzen, sobald
    der Bereich freigegeben wird. */
 var NETZWERK_SOON_LOCKED=true;
+/* Stapel-Teilen-Button auf der Freunde-Card ist fuer den Start noch
+   ausgeblendet (Feature noch nicht fertig getestet) - Code bleibt
+   erhalten, einfach hier auf true setzen um ihn wieder einzublenden. */
+var FRIEND_SHARE_ENABLED=false;
 var APPOINTMENT_TYPES=[
   {id:'Klausur',label:'Klausur',color:'#F87171'},
   {id:'Test',label:'Test',color:'#FB923C'},
@@ -4731,7 +4739,7 @@ function LernSpaceView(p){
       }).catch(function(){});
     });
   },[lsData]);
-  var rfids=useState(null);var removingFid=rfids[0];var setRemovingFid=rfids[1];
+  var rfids=useState(null);var pendingRemoveFriend=rfids[0];var setPendingRemoveFriend=rfids[1];
   var tms=useToast();var toast=tms[0];var showToast=tms[1];
   var saps=useState(false);var showAvPicker=saps[0];var setShowAvPicker=saps[1];
   var ssis=useState(false);var showShareId=ssis[0];var setShowShareId=ssis[1];
@@ -5025,7 +5033,6 @@ function LernSpaceView(p){
     var newFriends=(lsData.friends||[]).filter(function(f){return f.id!==fid;});
     saveDataRemove({friends:newFriends});
     getSb().rpc('ls_remove_friend',{p_target_ls_id:fid}).then(function(){},function(){});
-    setRemovingFid(null);
     showToast('Freundschaft beendet');
   }
 
@@ -5399,20 +5406,15 @@ function LernSpaceView(p){
           ?h('div',{className:'lp-empty2'},'Noch keine Freunde – lade jemanden ein!')
           :friends.map(function(f,i){
             var fp=friendProfiles[f.id];
-            return h('div',{key:i,className:'lp-row'},
+            return h('div',{key:i,className:'lp-friend-card lp-hover-glow'},
               fp
                 ?h(DsAvatar,{size:'sm',src:(fp.avatar==='photo'&&fp.avatarPhoto)?fp.avatarPhoto:getAvatarSrc(fp.avatar||'av1'),online:fp.presenceOn===false?undefined:!!(p.presence||{})[f.id]})
                 :h('div',{className:'lp-avatar-tile',style:{borderRadius:'50%'}},'👤'),
               h('div',{style:{flex:1,minWidth:0}},
                 h('div',{className:'lp-row-title'},h(UserLabel,{id:f.id})),
                 h('div',{className:'lp-row-sub'},'Freund seit '+new Date(f.since).toLocaleDateString('de-DE'))),
-              p.decks&&p.decks.length>0&&h('button',{className:'lp-icon-btn-sm',title:'Stapel teilen',onClick:function(e){e.stopPropagation();if(p.decks[0])shareStackWith(p.decks[0],f.id);}},'↗'),
-              removingFid===f.id
-                ?h('div',{style:{display:'flex',gap:4,alignItems:'center'}},
-                    h('span',{style:{fontSize:13,color:'#f87171',whiteSpace:'nowrap'}},'Wirklich?'),
-                    h(DsButton,{variant:'danger',style:{height:28,padding:'0 12px',fontSize:13},onClick:function(e){e.stopPropagation();removeFriend(f.id);}},'Ja'),
-                    h(DsButton,{variant:'ghost',style:{height:28,padding:'0 12px',fontSize:13},onClick:function(e){e.stopPropagation();setRemovingFid(null);}},'Nein'))
-                : h('button',{className:'lp-icon-btn-sm del',title:'Freund entfernen',onClick:function(e){e.stopPropagation();setRemovingFid(f.id);}},'×'));
+              FRIEND_SHARE_ENABLED&&p.decks&&p.decks.length>0&&h('button',{className:'lp-icon-btn-sm',title:'Stapel teilen',onClick:function(e){e.stopPropagation();if(p.decks[0])shareStackWith(p.decks[0],f.id);}},'↗'),
+              h('button',{className:'lp-xp-topic-x',title:'Freund entfernen',onClick:function(e){e.stopPropagation();setPendingRemoveFriend(f);}},'×'));
           })),
       h('div',{style:{display:'flex',flexDirection:'column',gap:12}},
         h('div',{className:'lp-seclbl'},'Freund einladen'),
@@ -5902,6 +5904,13 @@ function LernSpaceView(p){
         else if(action.type==='deleteDeck')runDeleteGroupDeck(action.deckId);
         else runDeleteGroup();
       }
+    }),
+    pendingRemoveFriend&&h(ConfirmModal,{
+      title:'Freund entfernen?',
+      message:h('span',null,'Möchtest du ',h(UserLabel,{id:pendingRemoveFriend.id}),' wirklich als Freund entfernen?'),
+      confirmLabel:'Entfernen',
+      onClose:function(){setPendingRemoveFriend(null);},
+      onConfirm:function(){removeFriend(pendingRemoveFriend.id);setPendingRemoveFriend(null);}
     }),
     showConsent&&h(LsConsentModal,{
       onAccept:function(){localStorage.setItem(LS_CONSENT_KEY,'1');window.dispatchEvent(new Event('lp-ls-consent-given'));setShowConsent(false);},
