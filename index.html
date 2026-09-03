@@ -1035,7 +1035,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.96";
+var KKM_VERSION="1.8.97";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6545,14 +6545,20 @@ function App(p){
       return lsSet('ls_users',myId,Object.assign({},remote,{presenceOn:visible}));
     }).catch(function(){});
   },[lsConsent,presenceOn]);
+  /* Wartet bewusst, solange das Update-Overlay offen ist: sonst haengt
+     die Reihenfolge (Update zuerst, Lernempfehlung danach) nur an der
+     zufaelligen DOM-Position der beiden gleich priorisierten Overlays -
+     hier wird sie stattdessen erzwungen. Nach dem Schliessen des
+     Update-Overlays feuert dieser Effekt erneut (showUpdOverlay in den
+     Deps) und startet den Timer dann ganz normal. */
   useEffect(function(){
-    if(view!=="decks"||deckListMode!=="home"||lernEmpfShownRef.current)return;
+    if(view!=="decks"||deckListMode!=="home"||lernEmpfShownRef.current||showUpdOverlay)return;
     var t=setTimeout(function(){
       var items=buildLernEmpfehlungen(loadStore());
       if(items.length>0){lernEmpfShownRef.current=true;setLernEmpf(items);setShowLernEmpf(true);}
     },1000);
     return function(){clearTimeout(t);};
-  },[view,deckListMode]);
+  },[view,deckListMode,showUpdOverlay]);
   var sfns=useState(false); var showNewFolder=sfns[0]; var setShowNewFolder=sfns[1];
   var efs=useState(null); var editFolder=efs[0]; var setEditFolder=efs[1];
   var qss=useState(null); var qsStep=qss[0]; var setQsStep=qss[1];
