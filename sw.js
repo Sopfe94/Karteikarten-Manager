@@ -1,6 +1,6 @@
 // Service Worker v16 - CDN-Scripts (React, Supabase) offline cachen
-const CACHE = 'kkm-v307';
-const BASE = self.location.hostname === 'www.gross-apps.de' ? '/KM' : '';
+const CACHE = 'kkm-v308';
+const BASE = self.location.hostname === 'www.gross-apps.de' ? '/lernpuls' : '';
 const STATIC = [BASE+'/index.html', BASE+'/manifest.json', BASE+'/icon.png'];
 const CDN = [
 'https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js',
