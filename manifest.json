@@ -2,7 +2,7 @@
   "name": "Lernpuls",
   "short_name": "Lernpuls",
   "description": "Karteikarten mit Spaced Repetition – smart lernen",
-  "start_url": "/KM/",
+  "start_url": "/lernpuls/",
 
   "display": "standalone",
   "background_color": "#0F0A1E",
