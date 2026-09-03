@@ -1035,7 +1035,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.95";
+var KKM_VERSION="1.8.96";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -7220,7 +7220,16 @@ function App(p){
   useEffect(function(){
     var us=loadUpdStore();
     if(us.pendingReload){us.pendingReload=false;saveUpdStore(us);window.location.reload();return;}
-    if(us.installed==='0'){us.installed=KKM_VERSION;saveUpdStore(us);return;}
+    /* Echter Erstbesuch = der localStorage-Key existiert ueberhaupt
+       noch nicht. installed==="0" reicht dafuer NICHT als Kriterium:
+       das alte UpdateOverlay hat "installed" nur beim Klick auf
+       "Jetzt aktualisieren" geschrieben - wer den nie geklickt hat
+       (praktisch alle Bestandsnutzer), stand also trotz laengst
+       laufender App weiterhin auf "0" und wurde faelschlich als
+       Erstbesuch erkannt (Bug, der den Hinweis stumm uebersprungen hat). */
+    var firstVisit=true;
+    try{firstVisit=localStorage.getItem(UPD_KEY)===null;}catch(e){}
+    if(firstVisit){us.installed=KKM_VERSION;saveUpdStore(us);return;}
     if(us.installed!==KKM_VERSION){setShowUpdOverlay(true);}
   },[]);
   useEffect(function(){
