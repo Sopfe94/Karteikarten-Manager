@@ -1035,7 +1035,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.99";
+var KKM_VERSION="1.8.100";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -7308,8 +7308,22 @@ function App(p){
       if(googleUser){ getSb().auth.signOut().then(function(){window.location.reload();}).catch(function(){window.location.reload();}); }
       else window.location.reload();
     }
+    /* Frueher: direktes .delete() auf ls_users. Das konnte an einer
+       DB-Fremdschluessel-Sperre scheitern (z.B. ein eingeloester
+       Einladungscode, der noch an diese ls_id gebunden war) UND liess
+       ausserdem Karteileichen in fremden Freundeslisten/Anfragen
+       zurueck (Konto weg, aber immer noch als "Freund" gelistet) - der
+       Fehler wurde dabei still verschluckt (.catch(cleanup) rief
+       cleanup trotzdem auf), die Nutzerin dachte also faelschlich, das
+       Konto sei geloescht. Die RPC erledigt Bindungs-Aufloesung +
+       Karteileichen-Bereinigung + Loeschung atomar serverseitig, und
+       ein echter Fehler wird jetzt auch wirklich angezeigt statt
+       verschluckt. */
     if(myId){
-      getSb().from('ls_users').delete().eq('ls_id',myId).then(cleanup).catch(cleanup);
+      getSb().rpc('ls_delete_own_account').then(function(res){
+        if(res.error){ showToast('Konto konnte nicht gelöscht werden. Bitte erneut versuchen.'); return; }
+        cleanup();
+      }).catch(function(){ showToast('Konto konnte nicht gelöscht werden. Bitte erneut versuchen.'); });
     } else cleanup();
   }
   function onGroupDecksForHome(gdecks){
