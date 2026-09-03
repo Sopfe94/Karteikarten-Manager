@@ -1005,7 +1005,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.84";
+var KKM_VERSION="1.8.85";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3696,7 +3696,7 @@ function KalenderView(p){
           titleFirst,
           titleRest&&h('span',{style:{background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}},' '+titleRest)),
         h('div',{style:{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginTop:8}},
-          h('span',{style:{display:'inline-flex',alignItems:'center',gap:6,fontSize:12,fontWeight:600,color:'rgba(255,255,255,.75)'}},
+          h('span',{style:{display:'inline-flex',alignItems:'center',gap:6,fontSize:12,fontWeight:600,color:'#fff'}},
             h('span',{style:{width:8,height:8,borderRadius:'50%',flexShrink:0,background:ti.color,boxShadow:'0 0 6px '+ti.color}}),
             ti.label),
           fach&&h('span',{style:{fontSize:11,color:'rgba(255,255,255,.5)'}},fach.name),
