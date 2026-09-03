@@ -116,6 +116,12 @@
 }
 html,body{height:100%;font-family:var(--font-sans);color:var(--c-txt);
   background:var(--c-bg);-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+/* Handy: die Seite selbst darf nicht seitlich wegrutschen (z.B. beim
+   Wischen auf der Startseite) - nur vertikales Scrollen erlaubt.
+   Bewusst nur unter 767px, damit interne horizontale Scroller wie
+   .lp-tabbar/.lp-doc-carousel (eigenes overflow-x:auto) unberuehrt
+   bleiben und Desktop nicht betroffen ist. */
+@media(max-width:767px){html,body{overflow-x:hidden}}
 /* Basisgroesse aus der Typo-Skala: alles was nichts eigenes setzt, erbt --text-base.
    Ohne das faellt der Browser auf 16px zurueck — ein Wert, den es in Sophies
    Skala nicht gibt, und der bisher die meisten Texte in der App bestimmt hat. */
@@ -1014,7 +1020,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.89";
+var KKM_VERSION="1.8.90";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -8582,29 +8588,45 @@ function App(p){
   }
 
   var _le=lernEmpf;
+  var _leMonths=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
   var _leOverlay=showLernEmpf&&_le.length>0?h('div',{className:'lp-modal-ov',onClick:function(){setShowLernEmpf(false);}},
       h('div',{className:'lp-modal-box',onClick:function(e){e.stopPropagation();}},
         h('div',{className:'lp-modal-title grad'},_le.length>1?_le.length+' Lernempfehlungen':'Lernempfehlung'),
         h('div',{className:'lp-modal-sub'},'Bald anstehende Prüfungen'),
+        h('div',{style:{display:'flex',flexDirection:'column',gap:12}},
         _le.map(function(item){
           var ti=APPOINTMENT_TYPES.find(function(x){return x.id===item.arbeit.type;})||APPOINTMENT_TYPES[APPOINTMENT_TYPES.length-1];
-          return h('div',{key:item.arbeit.id,className:'lp-row',style:{flexDirection:'column',alignItems:'stretch',gap:12}},
-            h('div',{style:{display:'flex',alignItems:'center',gap:12}},
-              h('div',{className:'lp-avatar-tile'},item.fach?(item.fach.name||'?').charAt(0).toUpperCase():'📚'),
-              h('div',null,
-                h('div',{className:'lp-row-title'},item.arbeit.title),
-                h('div',{style:{display:'flex',alignItems:'center',gap:8,marginTop:4}},
-                  h('span',{className:'lp-cal-type-badge',style:{background:ti.color+'22',color:ti.color}},ti.label),
-                  h('span',{className:'lp-row-sub'},'in '+item.daysUntil+(item.daysUntil===1?' Tag':' Tagen'))))),
-            item.decks.slice(0,2).map(function(dk){
-              var dkPct=(dk.cards||[]).length>0?Math.round((dk.cards||[]).filter(function(c){return c.lvl>0;}).length/(dk.cards||[]).length*100):0;
-              return h('div',{key:dk.id,style:{display:'flex',alignItems:'center',gap:8,background:'rgba(255,255,255,.05)',borderRadius:10,padding:'8px 12px'}},
-                h('span',{style:{flex:1,fontSize:13,fontWeight:600,color:'#fff'}},dk.name),
-                h('span',{style:{fontSize:11,color:'#A78BFA',fontWeight:600}},dkPct+'%')
-              );
-            })
+          var d=new Date(item.arbeit.date+'T12:00:00');
+          var titleWords=(item.arbeit.title||'').split(' ');
+          var titleFirst=titleWords[0]||'';
+          var titleRest=titleWords.slice(1).join(' ');
+          return h('div',{key:item.arbeit.id,className:'lp-cal-item lp-hover-glow',onClick:function(){
+            setShowLernEmpf(false);
+            if(item.decks[0]){setView('decks');setDeckId(item.decks[0].id);setDeckListMode('manage');}
+          }},
+            h('div',{className:'lp-cal-datebox'},
+              h('div',{className:'lp-cal-day'},d.getDate()),
+              h('div',{className:'lp-cal-month'},_leMonths[d.getMonth()])),
+            h('div',{style:{flex:1,minWidth:0}},
+              h('div',{style:{fontSize:15,fontWeight:600,color:'#fff'}},
+                titleFirst,
+                titleRest&&h('span',{style:{background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}},' '+titleRest)),
+              h('div',{style:{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginTop:8}},
+                h('span',{style:{display:'inline-flex',alignItems:'center',gap:6,fontSize:12,fontWeight:600,color:'#fff'}},
+                  h('span',{style:{width:8,height:8,borderRadius:'50%',flexShrink:0,background:ti.color,boxShadow:'0 0 6px '+ti.color}}),
+                  ti.label),
+                item.fach&&h('span',{style:{fontSize:11,color:'rgba(255,255,255,.5)'}},item.fach.name),
+                h('span',{style:{fontSize:11,color:'rgba(255,255,255,.5)'}},'in '+item.daysUntil+(item.daysUntil===1?' Tag':' Tagen'))),
+              item.decks.slice(0,2).map(function(dk){
+                var dkPct=(dk.cards||[]).length>0?Math.round((dk.cards||[]).filter(function(c){return c.lvl>0;}).length/(dk.cards||[]).length*100):0;
+                return h('div',{key:dk.id,style:{display:'flex',alignItems:'center',gap:8,background:'rgba(255,255,255,.05)',borderRadius:10,padding:'8px 12px',marginTop:8}},
+                  h('span',{style:{flex:1,fontSize:13,fontWeight:600,color:'#fff'}},dk.name),
+                  h('span',{style:{fontSize:11,color:'#A78BFA',fontWeight:600}},dkPct+'%')
+                );
+              })
+            )
           );
-        }),
+        })),
         h('div',{className:'lp-modal-actions',style:{justifyContent:'stretch'}},
           h(DsButton,{variant:'ghost',style:{flex:1},onClick:function(){setShowLernEmpf(false);}},'Später'),
           h(DsButton,{variant:'primary',style:{flex:2},onClick:function(){
