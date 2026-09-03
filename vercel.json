@@ -25,7 +25,9 @@
       ]
     }
   ],
-  "routes": [
-    { "src": "/(.*)", "dest": "/$1" }
+  "rewrites": [
+    { "source": "/lernpuls",      "destination": "/index.html" },
+    { "source": "/lernpuls/",     "destination": "/index.html" },
+    { "source": "/lernpuls/:path*", "destination": "/:path*" }
   ]
 }
