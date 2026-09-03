@@ -626,7 +626,7 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
 .lp-net-tile{position:relative;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:20px;cursor:pointer;transition:box-shadow .2s}
 .lp-net-tile:hover{box-shadow:0 0 18px rgba(124,58,237,0.25)}
 /* Calendar */
-.lp-cal-item{display:flex;align-items:flex-start;gap:16px;padding:16px;border-radius:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);cursor:pointer}
+.lp-cal-item{position:relative;display:flex;align-items:flex-start;gap:16px;padding:16px;border-radius:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);cursor:pointer}
 .lp-cal-item.overdue{background:rgba(248,113,113,0.08)}
 .lp-cal-datebox{width:56px;flex-shrink:0;text-align:center;background:transparent;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:6px 0;
   transition:box-shadow 200ms ease,border-color 200ms ease}
@@ -993,7 +993,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.80";
+var KKM_VERSION="1.8.81";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3620,6 +3620,8 @@ function KalenderView(p){
      auf die Karte) - dasselbe Formular/Modal wie beim Neuanlegen, nur
      vorausgefuellt und beim Speichern onUpdate statt onAdd. */
   var eds=useState(null);var editId=eds[0];var setEditId=eds[1];
+  var pds=useState(null);var pendingDelete=pds[0];var setPendingDelete=pds[1];
+  function confirmDelete(a){ setPendingDelete(a); }
   var tm=useToast();var toast=tm[0];var showToast=tm[1];
   var MONTHS=['Jan','Feb','M\u00e4r','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
   var today=todayStr();
@@ -3668,18 +3670,25 @@ function KalenderView(p){
     var fach=folders.find(function(f){return f.id===a.fachId;});
     var isToday=a.date===today;
     var ti=typeInfo(a.type);
+    /* Erstes Wort bleibt weiss, ab dem zweiten Wort Marken-Farbverlauf -
+       gleiches Muster wie "Neue Arbeit" im Modal-Titel. */
+    var titleWords=(a.title||'').split(' ');
+    var titleFirst=titleWords[0]||'';
+    var titleRest=titleWords.slice(1).join(' ');
     return h('div',{key:a.id,className:'lp-cal-item lp-hover-glow'+(isOverdueGroup?' overdue':''),onClick:function(){openEdit(a);}},
       h('div',{className:'lp-cal-datebox'},
         h('div',{className:'lp-cal-day'},d.getDate()),
         h('div',{className:'lp-cal-month'},MONTHS[d.getMonth()])),
       h('div',{style:{flex:1,minWidth:0}},
-        h('div',{style:{fontSize:15,fontWeight:600,background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}},a.title),
+        h('div',{style:{fontSize:15,fontWeight:600,color:'#fff'}},
+          titleFirst,
+          titleRest&&h('span',{style:{background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}},' '+titleRest)),
         h('div',{style:{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginTop:8}},
           h(DsBadge,{variant:'dark',style:{background:ti.color+'22',color:ti.color}},ti.label),
           fach&&h('span',{style:{fontSize:11,color:'rgba(255,255,255,.5)'}},fach.name),
           isToday&&h(DsBadge,{variant:'dark'},'Heute!')),
         a.note&&h('div',{style:{fontSize:13,color:'rgba(255,255,255,.4)',marginTop:8}},a.note)),
-      h('button',{style:{border:'none',background:'none',color:'rgba(255,255,255,.4)',cursor:'pointer',fontSize:13,fontFamily:'var(--font-sans)',flexShrink:0},onClick:function(e){e.stopPropagation();p.onDelete(a.id);}},'L\u00F6schen'));
+      h('button',{className:'lp-xp-topic-x',title:'L\u00F6schen',onClick:function(e){e.stopPropagation();confirmDelete(a);}},'\u00D7'));
   }
 
   return h('div',null,
@@ -3721,7 +3730,13 @@ function KalenderView(p){
         h('div',{className:'lp-modal-actions'},
           h(DsButton,{variant:'danger',style:{flex:1},onClick:closeAdd},'Abbrechen'),
           h(DsButton,{variant:'primary',style:{flex:1},onClick:save},h('span',{className:'lp-btn-glow-label'},'Speichern'))),
-        h(Toast,{msg:toast}))));
+        h(Toast,{msg:toast}))),
+    pendingDelete&&h(ConfirmModal,{
+      title:'Termin löschen?',
+      message:'Termin "'+pendingDelete.title+'" wirklich löschen?',
+      confirmLabel:'Löschen',
+      onClose:function(){setPendingDelete(null);},
+      onConfirm:function(){p.onDelete(pendingDelete.id);setPendingDelete(null);}}));
 }
 
 
