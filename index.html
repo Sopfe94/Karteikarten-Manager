@@ -1035,7 +1035,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.98";
+var KKM_VERSION="1.8.99";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -4686,7 +4686,6 @@ function LsConsentModal(p){
   return h("div",{className:"lp-modal-ov",style:{zIndex:300}},
     h("div",{className:"lp-modal-box",onClick:function(e){e.stopPropagation();}},
       h("div",{style:{textAlign:"center",marginBottom:20}},
-        h("div",{style:{fontSize:"30px",marginBottom:8,filter:"drop-shadow(0 0 12px rgba(124,58,237,.5))"}},"🔒"),
         h("div",{className:"lp-modal-title",style:{margin:0,fontSize:"17px"}},"Netzwerk – Datenschutzhinweis")
       ),
       h("div",{className:"legal-body",style:{fontSize:"13px",color:"rgba(255,255,255,.72)",lineHeight:1.55,marginBottom:4}},
