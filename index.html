@@ -627,6 +627,9 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
    #0D0A1A statt transparentem Weiss-Ton, .lp-hover-glow statt eigenem
    schwaecherem Hover-Schatten. */
 .lp-net-tile{position:relative;background:#0D0A1A;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:20px;cursor:pointer}
+/* .lp-row-sub ist app-weit gedaempft-grau - hier bewusst nur innerhalb
+   der Netzwerk-Kacheln auf Weiss angehoben, nicht global. */
+.lp-net-tile .lp-row-sub{color:#fff}
 /* Calendar */
 /* Kartenfarbe wie auf der Startseite (DsCard/.lp-doc-carousel-card):
    #0D0A1A statt des transparenten Weiss-Tons der Explorer-Karten. */
@@ -1007,7 +1010,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.86";
+var KKM_VERSION="1.8.87";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -5343,19 +5346,19 @@ function LernSpaceView(p){
             }},'ID kopieren')))),
       h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}},
         h('div',{className:'lp-net-tile lp-hover-glow',onClick:function(){setLsPage('friends');}},
-          h('div',{style:{fontSize:20,fontWeight:700,color:'#fff'}},friends.length),
+          h('div',{style:{fontSize:20,fontWeight:700,display:'inline-block',background:'var(--grad-brand)',WebkitBackgroundClip:'text',backgroundClip:'text',WebkitTextFillColor:'transparent'}},friends.length),
           h('div',{className:'lp-row-sub'},'Freunde'),
           pendingReqs>0&&h('div',{className:'lp-badge-dot'})),
         h('div',{className:'lp-net-tile lp-hover-glow',onClick:function(){setLsPage('groups');}},
-          h('div',{style:{fontSize:20,fontWeight:700,color:'#fff'}},groups.length),
+          h('div',{style:{fontSize:20,fontWeight:700,display:'inline-block',background:'var(--grad-brand)',WebkitBackgroundClip:'text',backgroundClip:'text',WebkitTextFillColor:'transparent'}},groups.length),
           h('div',{className:'lp-row-sub'},'Gruppen'),
           pendingGroupInvites>0&&h('div',{className:'lp-badge-dot'})),
         h('div',{className:'lp-net-tile lp-hover-glow',onClick:function(){setLsPage('shared');}},
-          h('div',{style:{fontSize:15,fontWeight:600,color:'#fff'}},'Geteilt'),
+          h('div',{style:{fontSize:15,fontWeight:600,display:'inline-block',background:'var(--grad-brand)',WebkitBackgroundClip:'text',backgroundClip:'text',WebkitTextFillColor:'transparent'}},'Geteilt'),
           h('div',{className:'lp-row-sub'},pendingShared>0?pendingShared+' neu':'Keine neuen'),
           pendingShared>0&&h('div',{className:'lp-badge-dot'})),
         h('div',{className:'lp-net-tile lp-hover-glow',onClick:function(){setLsPage('challenges');}},
-          h('div',{style:{fontSize:15,fontWeight:600,color:'#fff'}},'Duelle'),
+          h('div',{style:{fontSize:15,fontWeight:600,display:'inline-block',background:'var(--grad-brand)',WebkitBackgroundClip:'text',backgroundClip:'text',WebkitTextFillColor:'transparent'}},'Duelle'),
           h('div',{className:'lp-row-sub'},'Bald verfügbar'))),
       activities.length>0&&h('div',{style:{display:'flex',flexDirection:'column',gap:12}},
         h('div',{className:'lp-seclbl'},'Aktivitäten'),
@@ -5425,7 +5428,6 @@ function LernSpaceView(p){
      (.lp-xp-soon). "Okay" fuehrt zurueck zur Netzwerk-Startseite. */
   function renderNetzwerkSoon(){
     return h('div',{className:'lp-xp-soon'},
-      h('div',{className:'lp-xp-soon-icon'},'🚀'),
       h('h2',null,'Bald verfügbar'),
       h('p',null,'Dieser Bereich ist noch nicht freigeschaltet. Er kommt in einer zukünftigen Version und wird im Laufe der Testphase veröffentlicht.'),
       h(DsButton,{variant:'primary',style:{width:'auto',padding:'0 28px',height:44},onClick:function(){setLsPage('home');}},
