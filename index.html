@@ -425,7 +425,16 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 .lp-mobile-topbar-logo .lp-logo-line{width:32px;height:1.4px}
 .lp-mobile-topbar-logo .lp-logo-slogan{font-size:8px}
 
-.lp-content-scroll{flex:1;overflow-y:auto;padding:24px 16px 96px;-webkit-overflow-scrolling:touch}
+/* overflow-x:hidden ist hier der eigentliche Fix fuer das horizontale
+   Wegrutschen der Startseite (nicht html/body - das ist ein anderer,
+   nicht scrollender Container). Grund: .lp-doc-carousel (Dokumente-
+   Karussell) hat bewusst -36px negativen Rand links/rechts, um dem
+   Hover-Glow der Karten Platz zu geben (siehe Kommentar dort). Der
+   dazwischenliegende .lp-doc-carousel-wrap faengt das nicht ab, also
+   blaeht dieser Rand-Trick sonst genau diesen Container (den echten
+   Scroll-Container der Seite) horizontal auf. overflow-y:auto bleibt
+   unveraendert - nur die X-Achse wird gekappt. */
+.lp-content-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:24px 16px 96px;-webkit-overflow-scrolling:touch}
 @media(min-width:768px){
   .lp-content-scroll{padding:32px 40px 40px}
   .lp-sidebar{display:flex}
@@ -1020,7 +1029,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.90";
+var KKM_VERSION="1.8.91";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
