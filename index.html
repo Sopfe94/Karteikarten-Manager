@@ -116,12 +116,13 @@
 }
 html,body{height:100%;font-family:var(--font-sans);color:var(--c-txt);
   background:var(--c-bg);-webkit-font-smoothing:antialiased;overscroll-behavior:none}
-/* Handy: die Seite selbst darf nicht seitlich wegrutschen (z.B. beim
-   Wischen auf der Startseite) - nur vertikales Scrollen erlaubt.
-   Bewusst nur unter 767px, damit interne horizontale Scroller wie
-   .lp-tabbar/.lp-doc-carousel (eigenes overflow-x:auto) unberuehrt
-   bleiben und Desktop nicht betroffen ist. */
-@media(max-width:767px){html,body{overflow-x:hidden}}
+/* Kein overflow-x:hidden auf html/body: auf iOS im installierten
+   App-Modus (display:standalone) bringt das die Berechnung des
+   unteren sicheren Bereichs durcheinander (dicke leere Flaeche unter
+   der Menueleiste). Der eigentliche Scroll-Container der App ist
+   ohnehin .lp-content-scroll (siehe dort) - das horizontale
+   Wegrutschen ist bereits dort behoben, html/body braucht diese
+   Regel nicht zusaetzlich. */
 /* Basisgroesse aus der Typo-Skala: alles was nichts eigenes setzt, erbt --text-base.
    Ohne das faellt der Browser auf 16px zurueck — ein Wert, den es in Sophies
    Skala nicht gibt, und der bisher die meisten Texte in der App bestimmt hat. */
@@ -1034,7 +1035,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.92";
+var KKM_VERSION="1.8.93";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
