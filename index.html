@@ -1035,7 +1035,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.97";
+var KKM_VERSION="1.8.98";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3606,19 +3606,12 @@ function fetchUpdates(){ return fetch("./updates.json",{cache:"no-store"}).then(
    auf beta staendig veraltete Versions-/Changelog-Infos an). Merkt sich
    beim Bestaetigen die aktuell laufende KKM_VERSION als "gesehen". */
 function UpdateOverlay(p){
-  function ack(){
-    var s=loadUpdStore();
-    s.installed=KKM_VERSION;
-    s.pendingReload=false;
-    saveUpdStore(s);
-    p.onClose();
-  }
-  return h("div",{className:"lp-modal-ov",onClick:ack},
+  return h("div",{className:"lp-modal-ov",onClick:p.onClose},
     h("div",{className:"lp-modal-box",onClick:function(e){e.stopPropagation();}},
       h("div",{style:{fontSize:17,fontWeight:700,color:"#fff"}},"App aktualisiert"),
       h("div",{style:{fontSize:13,color:"rgba(255,255,255,.65)",lineHeight:1.6}},"Lernpuls wurde im Hintergrund auf die neueste Version gebracht."),
       h("div",{className:"lp-modal-actions"},
-        h(DsButton,{variant:"primary",style:{width:"100%"},onClick:ack},h("span",{className:"lp-btn-glow-label"},"Okay")))));
+        h(DsButton,{variant:"primary",style:{width:"100%"},onClick:p.onClose},h("span",{className:"lp-btn-glow-label"},"Okay")))));
 }
 
 function UpdatesView(p){
@@ -7218,25 +7211,24 @@ function App(p){
   }
 
   /* Zeigt nur noch kurz "App aktualisiert" ohne Versionsnummer/Changelog
-     (siehe UpdateOverlay) - Vergleich laeuft direkt gegen KKM_VERSION statt
-     gegen updates.json, damit das nicht mehr von der Aktualitaet dieser
-     Datei abhaengt (die nur bei main-Merges gepflegt wird, waehrend beta
-     staendig neue Versionen bekommt). Erstbesuch (installed noch "0")
-     merkt sich die Version still, ohne den Hinweis zu zeigen. */
+     (siehe UpdateOverlay). Ausgeloest wird das NICHT mehr ueber einen
+     Versionsvergleich (KKM_VERSION vs. zuletzt gesehene Version) - das
+     hat sich als zu unzuverlaessig erwiesen, wenn genau in dem Moment,
+     in dem der Vergleich laufen wuerde, stattdessen schon ein harter
+     Reload wegen einer neuen Version passiert (siehe
+     checkForNewVersionIndependent/doSwReload ganz unten im Script):
+     der Reload reisst die Seite weg, bevor der Vergleich je zeigen
+     kann. Stattdessen setzen GENAU diese beiden Reload-Stellen jetzt
+     direkt vorher ein localStorage-Flag - der Hinweis haengt damit am
+     tatsaechlichen Reload-Ereignis selbst statt an einem Vergleich,
+     der dieses Ereignis erst noch ueberleben muesste. */
   useEffect(function(){
-    var us=loadUpdStore();
-    if(us.pendingReload){us.pendingReload=false;saveUpdStore(us);window.location.reload();return;}
-    /* Echter Erstbesuch = der localStorage-Key existiert ueberhaupt
-       noch nicht. installed==="0" reicht dafuer NICHT als Kriterium:
-       das alte UpdateOverlay hat "installed" nur beim Klick auf
-       "Jetzt aktualisieren" geschrieben - wer den nie geklickt hat
-       (praktisch alle Bestandsnutzer), stand also trotz laengst
-       laufender App weiterhin auf "0" und wurde faelschlich als
-       Erstbesuch erkannt (Bug, der den Hinweis stumm uebersprungen hat). */
-    var firstVisit=true;
-    try{firstVisit=localStorage.getItem(UPD_KEY)===null;}catch(e){}
-    if(firstVisit){us.installed=KKM_VERSION;saveUpdStore(us);return;}
-    if(us.installed!==KKM_VERSION){setShowUpdOverlay(true);}
+    var justUpdated=false;
+    try{justUpdated=localStorage.getItem("kkm-show-update-hint")==="1";}catch(e){}
+    if(justUpdated){
+      try{localStorage.removeItem("kkm-show-update-hint");}catch(e){}
+      setShowUpdOverlay(true);
+    }
   },[]);
   useEffect(function(){
     saveStore(data);
@@ -9063,6 +9055,7 @@ if("serviceWorker" in navigator){
   function doSwReload(){
     if(swReloaded)return; swReloaded=true;
     sessionStorage.setItem("kkm-just-hard-reloaded","1");
+    try{localStorage.setItem("kkm-show-update-hint","1");}catch(e){}
     location.reload();
   }
   navigator.serviceWorker.addEventListener("controllerchange",function(){
@@ -9119,6 +9112,7 @@ if("serviceWorker" in navigator){
       if(known===latest)return;
       if(justHardReloaded)return;
       swReloaded=true;
+      try{localStorage.setItem("kkm-show-update-hint","1");}catch(e){}
       Promise.all([
         navigator.serviceWorker.getRegistrations().then(function(regs){return Promise.all(regs.map(function(r){return r.unregister();}));}),
         (typeof caches!=="undefined")?caches.keys().then(function(keys){return Promise.all(keys.map(function(k){return caches.delete(k);}));}):Promise.resolve()
