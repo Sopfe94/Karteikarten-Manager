@@ -442,7 +442,12 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 }
 @media(max-width:767px){ .lp-sidebar{display:none} }
 
-.lp-bottom-nav{flex-shrink:0;display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;align-items:center;justify-items:center;padding:12px 8px;padding-bottom:max(12px,env(safe-area-inset-bottom));border-top:1px solid rgba(255,255,255,0.06);background:#09061A}
+/* clamp deckelt env(safe-area-inset-bottom) bei 34px (groesster
+   legitimer Wert auf echten Geraeten, z.B. iPhone-Home-Indicator).
+   Als App installiert (display:standalone im Manifest) melden manche
+   Android-Browser hier faelschlich einen viel zu grossen Wert - ohne
+   Deckel wird die Menueleiste dann unnoetig dick/leer nach unten. */
+.lp-bottom-nav{flex-shrink:0;display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;align-items:center;justify-items:center;padding:12px 8px;padding-bottom:clamp(12px,env(safe-area-inset-bottom),34px);border-top:1px solid rgba(255,255,255,0.06);background:#09061A}
 .lp-bnav-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border-radius:14px;border:none;cursor:pointer;background:transparent;color:rgba(255,255,255,0.5);font-size:11px;font-family:var(--font-sans);font-weight:500;width:100%;min-width:0;max-width:100%;overflow:hidden}
 .lp-bnav-btn.active{background:rgba(124,58,237,0.16);color:#A78BFA;font-weight:600}
 .lp-bnav-btn svg{flex-shrink:0}
@@ -1029,7 +1034,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.91";
+var KKM_VERSION="1.8.92";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
