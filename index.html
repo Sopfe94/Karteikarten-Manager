@@ -1035,7 +1035,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.100";
+var KKM_VERSION="1.8.101";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6883,7 +6883,16 @@ function App(p){
      Google-Login ab, damit anonyme Sessions nie als googleUser behandelt
      werden (sonst wuerde z.B. handleAuthUser mit user.email=undefined
      falsch laufen). */
-  function bindGuestAuthUid(uid){
+  /* deliberate=true nur von startGuestAuthIfNeeded() aus (siehe dort) -
+     nur DORT ist der Gast-Status wirklich eine bewusste Nutzer-Aktion
+     ("Als Gast fortfahren"-Klick bzw. dessen DSGVO-Folgeaufruf). Die
+     automatische Hintergrund-Anmeldung im Mount-Effect unten (jeder
+     Seitenaufruf, ganz ohne Klick) darf NIE einen gemerkten Einladungs-
+     code einloesen - sonst wuerde jeder, der irgendeinen Code kennt,
+     ihn allein durchs Oeffnen der Seite als anonymer Gast verbrauchen,
+     ohne sich je bewusst anzumelden. Das würde die ganze Testphasen-
+     Sperre aushebeln. */
+  function bindGuestAuthUid(uid,deliberate){
     /* Zweite Absicherung direkt hier (zusaetzlich zu den Aufrufstellen
        unten), damit wirklich JEDER Aufrufpfad ohne Datenschutz+AGB-
        Zustimmung ins Leere laeuft - unabhaengig davon, ob ein
@@ -6899,25 +6908,27 @@ function App(p){
        anderen Cross-Row-Writes (ls_invite_group_member etc.). */
     getSb().rpc('ls_claim_own_id',{p_ls_id:myId}).then(function(){
       refreshGateStatus();
-      tryRedeemPendingGateCode();
+      if(deliberate)tryRedeemPendingGateCode();
     },function(){refreshGateStatus();});
   }
   /* Wird direkt beim Zustimmen zu Datenschutz+AGB aufgerufen (siehe
      showDsgvo-Screen oben) - holt das signInAnonymously()/
      bindGuestAuthUid() nach, das der Mount-Effect unten mangels
      Zustimmung uebersprungen hat. Bricht harmlos ab, falls zwischen-
-     zeitlich schon eine (Google-)Session existiert. */
+     zeitlich schon eine (Google-)Session existiert.
+     Einziger Aufrufer ist der tatsaechliche "Als Gast fortfahren"-Klick
+     (onGuestDone) - deshalb hier, und NUR hier, deliberate=true. */
   function startGuestAuthIfNeeded(){
     if(!dsgvoAccepted())return;
     var sb=getSb();
     sb.auth.getSession().then(function(res){
       var session=res.data&&res.data.session;
       if(session&&session.user){
-        if(session.user.is_anonymous)bindGuestAuthUid(session.user.id);
+        if(session.user.is_anonymous)bindGuestAuthUid(session.user.id,true);
         return;
       }
       sb.auth.signInAnonymously().then(function(r){
-        if(r.data&&r.data.user)bindGuestAuthUid(r.data.user.id);
+        if(r.data&&r.data.user)bindGuestAuthUid(r.data.user.id,true);
       }).catch(function(){});
     }).catch(function(){});
   }
