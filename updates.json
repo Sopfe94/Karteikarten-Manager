@@ -1,11 +1,17 @@
 {
   "current": {
-    "version": "2.0.0",
-    "name": "Version 2.0.0 – Lernpuls",
+    "version": "2.1.0",
+    "name": "Version 2.1.0",
     "date": "September 2026",
-    "description": "• Kompletter Rebrand zu \"Lernpuls\" mit neuem Design\n• Neuer Karten-Editor: freie Platzierung von Text & Bildern, Zuschneiden, Formatierung\n• PDF-Viewer für Unterlagen direkt in der App, inkl. Scannen & Hochladen\n• Kalender für Arbeiten/Termine mit automatischer Lernempfehlung\n• Netzwerk: Freunde, Online-Status, geteilte Stapel\n• Datenschutz & Sicherheit deutlich verbessert\n• Zahlreiche Bugfixes und Design-Feinschliff auf allen Bildschirmen"
+    "description": "• Umdreh-Hinweis auf der Karteikarte liegt jetzt unter statt in der Karte\n• Rückseite der Karteikarte hat wieder dieselbe Farbe wie die Vorderseite"
   },
   "history": [
+    {
+      "version": "2.0.0",
+      "name": "Version 2.0.0 – Lernpuls",
+      "date": "September 2026",
+      "description": "• Kompletter Rebrand zu \"Lernpuls\" mit neuem Design\n• Neuer Karten-Editor: freie Platzierung von Text & Bildern, Zuschneiden, Formatierung\n• PDF-Viewer für Unterlagen direkt in der App, inkl. Scannen & Hochladen\n• Kalender für Arbeiten/Termine mit automatischer Lernempfehlung\n• Netzwerk: Freunde, Online-Status, geteilte Stapel\n• Datenschutz & Sicherheit deutlich verbessert\n• Zahlreiche Bugfixes und Design-Feinschliff auf allen Bildschirmen"
+    },
     {
       "version": "1.1.0",
       "name": "Version 1.1.0",
