@@ -691,9 +691,12 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
 .lp-study-inner{width:100%;aspect-ratio:3/2;position:relative;transform-style:preserve-3d;transition:transform .55s cubic-bezier(.25,.46,.45,.94)}
 .lp-study-inner.flipped{transform:rotateY(180deg)}
 .lp-study-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:#150C2B;border-radius:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;overflow:hidden}
-.lp-study-face-back{transform:rotateY(180deg);background:#1A0F3C}
+.lp-study-face-back{transform:rotateY(180deg)}
 .lp-study-txt{font-size:20px;font-weight:600;line-height:1.5;color:#fff;white-space:pre-wrap;overflow-y:auto;max-height:190px}
-.lp-study-hint{position:absolute;bottom:13px;font-size:11px;color:rgba(255,255,255,0.4)}
+/* Steht jetzt als eigenes Element UNTER der .lp-study-scene (siehe
+   LpFlipCard), nicht mehr als Overlay in der Karte - vorher ueberlagerte
+   der Text am unteren Kartenrand teils den eigentlichen Karteninhalt. */
+.lp-study-hint{display:block;text-align:center;margin-top:12px;font-size:11px;color:rgba(255,255,255,0.4)}
 .lp-study-progress-track{height:4px;border-radius:999px;background:rgba(255,255,255,0.08);overflow:hidden}
 .lp-study-progress-fill{height:100%;background:var(--grad-brand);border-radius:999px;transition:width .4s ease}
 
@@ -1035,7 +1038,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.101";
+var KKM_VERSION="1.8.102";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3186,21 +3189,25 @@ function LpCardFace(pp){
     return h("div",{className:pp.className},
       h("div",{style:{position:"absolute",inset:0}},
         h(LpCardScaledLayer,{containerRef:pp.containerRef},
-          pp.elements.map(function(el,i){return h(LpCardFaceElement,{key:el.id||i,el:el});}))),
-      pp.showHint&&h("span",{className:"lp-study-hint"},"Tippen zum Umdrehen"));
+          pp.elements.map(function(el,i){return h(LpCardFaceElement,{key:el.id||i,el:el});}))));
   }
   function faceSize(t){return t.length>200?"0.92rem":t.length>120?"1.05rem":t.length>60?"1.2rem":"1.4rem";}
   return h("div",{className:pp.className},
-    h("div",{className:"lp-study-txt",style:{fontSize:faceSize(pp.fallbackText||"")}},pp.fallbackText),
-    pp.showHint&&h("span",{className:"lp-study-hint"},"Tippen zum Umdrehen"));
+    h("div",{className:"lp-study-txt",style:{fontSize:faceSize(pp.fallbackText||"")}},pp.fallbackText));
 }
 function LpFlipCard(p){
   // p: flipped, onFlip, front, back, frontElements, backElements
   var sceneRef=useRef(null);
-  return h("div",{className:"lp-study-scene",onClick:p.onFlip,ref:sceneRef},
-    h("div",{className:"lp-study-inner"+(p.flipped?" flipped":"")},
-      h(LpCardFace,{className:"lp-study-face",elements:p.frontElements,fallbackText:p.front,showHint:true,containerRef:sceneRef}),
-      h(LpCardFace,{className:"lp-study-face lp-study-face-back",elements:p.backElements,fallbackText:p.back,showHint:false,containerRef:sceneRef})));
+  /* Hinweistext liegt bewusst AUSSERHALB von .lp-study-scene (statt wie
+     frueher als Overlay in der Karte) - sonst ueberlagert er den
+     Karteninhalt am unteren Rand. Sichtbarkeitslogik unveraendert: nur
+     solange die Karte noch nicht umgedreht ist. */
+  return h("div",{style:{width:"100%"}},
+    h("div",{className:"lp-study-scene",onClick:p.onFlip,ref:sceneRef},
+      h("div",{className:"lp-study-inner"+(p.flipped?" flipped":"")},
+        h(LpCardFace,{className:"lp-study-face",elements:p.frontElements,fallbackText:p.front,containerRef:sceneRef}),
+        h(LpCardFace,{className:"lp-study-face lp-study-face-back",elements:p.backElements,fallbackText:p.back,containerRef:sceneRef}))),
+    !p.flipped&&h("div",{className:"lp-study-hint"},"Tippen zum Umdrehen"));
 }
 function LpStudyDone(p){
   // p: title, sub, correct, wrong, onExit, exitLabel, onRestart
