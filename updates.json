@@ -1,11 +1,17 @@
 {
   "current": {
-    "version": "2.2.0",
-    "name": "Version 2.2.0",
+    "version": "2.3.0",
+    "name": "Version 2.3.0",
     "date": "September 2026",
-    "description": "• Test User sehen jetzt ihren zugeordneten Einladungscode direkt in den Einstellungen"
+    "description": "• Eigener Code auf neuem Gerät wird nicht mehr blockiert, sondern klar erklärt (mit Google-Login-Weiterleitung)\n• Neuer Hinweis-Button zum Gast-Modus inkl. Warnung vor Datenverlust bei gelöschten Browserdaten"
   },
   "history": [
+    {
+      "version": "2.2.0",
+      "name": "Version 2.2.0",
+      "date": "September 2026",
+      "description": "• Test User sehen jetzt ihren zugeordneten Einladungscode direkt in den Einstellungen"
+    },
     {
       "version": "2.1.0",
       "name": "Version 2.1.0",
