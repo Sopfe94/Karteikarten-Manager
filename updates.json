@@ -1,11 +1,17 @@
 {
   "current": {
-    "version": "2.1.0",
-    "name": "Version 2.1.0",
+    "version": "2.2.0",
+    "name": "Version 2.2.0",
     "date": "September 2026",
-    "description": "• Umdreh-Hinweis auf der Karteikarte liegt jetzt unter statt in der Karte\n• Rückseite der Karteikarte hat wieder dieselbe Farbe wie die Vorderseite"
+    "description": "• Test User sehen jetzt ihren zugeordneten Einladungscode direkt in den Einstellungen"
   },
   "history": [
+    {
+      "version": "2.1.0",
+      "name": "Version 2.1.0",
+      "date": "September 2026",
+      "description": "• Umdreh-Hinweis auf der Karteikarte liegt jetzt unter statt in der Karte\n• Rückseite der Karteikarte hat wieder dieselbe Farbe wie die Vorderseite"
+    },
     {
       "version": "2.0.0",
       "name": "Version 2.0.0 – Lernpuls",
