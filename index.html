@@ -1038,7 +1038,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.107";
+var KKM_VERSION="1.8.108";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -4002,14 +4002,14 @@ function ProfilView(p){
 
           p.isTestUser&&h('div',{className:'lp-settings-row',style:{flexDirection:'column',alignItems:'stretch',gap:8}},
             h('div',{style:{display:'inline-block',alignSelf:'flex-start',fontSize:22,fontWeight:600,letterSpacing:'-0.02em',background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}},'Test User'),
-            h('div',{style:{fontSize:13,color:'rgba(255,255,255,.5)',lineHeight:1.5,maxWidth:420}},'Danke, dass du Lernpuls in der Testphase mit ausprobierst! Als Dankeschön bekommst du nach dem Ende der Testphase automatisch 2 Monate Lernpuls Pro geschenkt.'),
-            /* Eigene, deutlich hervorgehobene Zeile statt im Fliesstext
-               versteckt - Nutzer-Report zeigte, dass der Code als Teil
-               des langen Absatzes leicht uebersehen wird, obwohl er dort
-               technisch korrekt drinstand. */
+            /* Eigene, deutlich hervorgehobene Zeile direkt unter der
+               Ueberschrift statt im Fliesstext versteckt - Nutzer-Report
+               zeigte, dass der Code als Teil eines langen Absatzes leicht
+               uebersehen wird, obwohl er dort technisch korrekt drinstand. */
             p.inviteCode&&h('div',{style:{display:'flex',alignItems:'center',gap:8,padding:'8px 12px',background:'rgba(124,58,237,0.12)',border:'1px solid rgba(124,58,237,0.35)',borderRadius:10}},
               h('span',{style:{fontSize:12,color:'rgba(255,255,255,.5)'}},'Dein Einladungscode:'),
               h('span',{style:{fontSize:16,fontWeight:700,letterSpacing:'0.06em',fontFamily:'var(--font-mono)',color:'#fff'}},p.inviteCode)),
+            h('div',{style:{fontSize:13,color:'rgba(255,255,255,.5)',lineHeight:1.5,maxWidth:420}},'Danke, dass du Lernpuls in der Testphase mit ausprobierst! Als Dankeschön bekommst du nach dem Ende der Testphase automatisch 2 Monate Lernpuls Pro geschenkt.'),
             h('div',{style:{fontSize:24,fontWeight:700,color:'#fff'}},testTimerDays,' ',h('span',{style:{fontSize:13,fontWeight:400,color:'rgba(255,255,255,.5)'}},testTimerRunning?'Tage Pro übrig':'Tage Pro-Geschenk (startet nach Ende der Testphase)'))),
 
           h('div',{className:'lp-settings-row'},
