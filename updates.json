@@ -1,11 +1,17 @@
 {
   "current": {
-    "version": "2.3.0",
-    "name": "Version 2.3.0",
+    "version": "2.4.0",
+    "name": "Version 2.4.0",
     "date": "September 2026",
-    "description": "• Eigener Code auf neuem Gerät wird nicht mehr blockiert, sondern klar erklärt (mit Google-Login-Weiterleitung)\n• Neuer Hinweis-Button zum Gast-Modus inkl. Warnung vor Datenverlust bei gelöschten Browserdaten"
+    "description": "• Einladungscode für Test User jetzt gut sichtbar in einer eigenen Box statt im Fließtext versteckt"
   },
   "history": [
+    {
+      "version": "2.3.0",
+      "name": "Version 2.3.0",
+      "date": "September 2026",
+      "description": "• Eigener Code auf neuem Gerät wird nicht mehr blockiert, sondern klar erklärt (mit Google-Login-Weiterleitung)\n• Neuer Hinweis-Button zum Gast-Modus inkl. Warnung vor Datenverlust bei gelöschten Browserdaten"
+    },
     {
       "version": "2.2.0",
       "name": "Version 2.2.0",
