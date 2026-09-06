@@ -1038,7 +1038,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.103";
+var KKM_VERSION="1.8.104";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -4279,7 +4279,14 @@ function GateCodeScreen(p){
       setLoading(false);
       var d=res&&res.data;
       if(!d||!d.exists){setErr('Diesen Code gibt es nicht. Bitte prüfe die Eingabe.');return;}
-      if(d.bound){setErr('Dieser Code wurde bereits eingelöst.');return;}
+      /* Bereits gebunden heisst nicht zwangslaeufig "fremder" Code -
+         koennte genausogut der/die Eigentuemer:in auf einem neuen
+         Geraet sein. Frueher hier ein Sackgassen-Fehler (return); jetzt
+         laesst GateCodeBoundModal ueber onCodeBound() entscheiden, ob es
+         weitergeht - die eigentliche Pruefung "eigenes vs. fremdes
+         Konto" macht ohnehin serverseitig ls_redeem_invite_code nach dem
+         Login (liefert wrong_account bei falschem Konto). */
+      if(d.bound){p.onCodeBound(v.toUpperCase());return;}
       try{sessionStorage.setItem('kkm-pending-gate-code',v.toUpperCase());}catch(e){}
       p.onCodeAccepted();
     }).catch(function(){setLoading(false);setErr('Etwas ist schiefgelaufen. Bitte nochmal versuchen.');});
@@ -4309,6 +4316,28 @@ function GateCodeScreen(p){
           h('span',{className:'lp-btn-glow-label'},loading?'Prüfe…':'Weiter')))));
 }
 
+/* Wird gezeigt, wenn ls_peek_invite_code den Code als bereits gebunden
+   meldet - kann der/die Eigentuemer:in auf einem neuen Geraet sein,
+   muss aber nicht. "Weiter" fuehrt zum normalen Login weiter (Gast wird
+   dort ausgeblendet, siehe App() - waere ohnehin immer wrong_account,
+   da jedes Geraet eine neue Gast-Identitaet erzeugt); "Zurueck" laesst
+   einen anderen Code eingeben. Die eigentliche Pruefung "eigenes vs.
+   fremdes Konto" passiert erst nach dem Login serverseitig. */
+function GateCodeBoundModal(p){
+  return h("div",{className:"lp-modal-ov"},
+    h("div",{className:"lp-modal-box",onClick:function(e){e.stopPropagation();}},
+      h("div",{className:"lp-modal-title"},"Code bereits vergeben"),
+      h("p",{style:{fontSize:14,color:"rgba(255,255,255,.65)",lineHeight:1.5}},
+        "Dieser Code ist bereits einem Konto zugeordnet und funktioniert nur mit dem verbundenen Konto. Falls das dein eigenes Konto auf einem neuen Gerät ist, kannst du dich damit anmelden."),
+      h("div",{className:"lp-modal-actions"},
+        h(DsButton,{variant:"ghost",style:{width:"auto",padding:"0 24px",height:40},onClick:p.onBack},'Zurück'),
+        h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:p.onContinue},h('span',{className:'lp-btn-glow-label'},'Weiter')))));
+}
+
+/* p.onRetry ("Noch mal probieren", anderes Google-Konto) ist optional -
+   fehlt er (Gast-Fall), gibt es nur den "Zurueck"-Weg, da ein Gast-
+   Retry mit derselben fest lokalen Identitaet ohnehin immer wieder
+   denselben Fehler braechte. */
 function GateWrongAccountModal(p){
   return h("div",{className:"lp-modal-ov"},
     h("div",{className:"lp-modal-box",onClick:function(e){e.stopPropagation();}},
@@ -4316,11 +4345,13 @@ function GateWrongAccountModal(p){
       h("p",{style:{fontSize:14,color:"rgba(255,255,255,.65)",lineHeight:1.5}},
         "Dieser Code ist bereits mit einem anderen Konto verknüpft. Melde dich mit dem richtigen Konto an – falls du denkst, das ist ein Fehler, melde dich gern über das Kontaktformular in den Einstellungen."),
       h("div",{className:"lp-modal-actions"},
-        h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:p.onRetry},h('span',{className:'lp-btn-glow-label'},'Erneut versuchen')))));
+        h(DsButton,{variant:p.onRetry?"ghost":"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:p.onBack},p.onRetry?'Zurück':h('span',{className:'lp-btn-glow-label'},'Zurück')),
+        p.onRetry&&h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:p.onRetry},h('span',{className:'lp-btn-glow-label'},'Noch mal probieren')))));
 }
 
 function LoginScreen(p){
   var ho=useState(false);var showHelp=ho[0];var setShowHelp=ho[1];
+  var gi=useState(false);var showGuestInfo=gi[0];var setShowGuestInfo=gi[1];
   function handleGuest(){localStorage.setItem('kkm-onboarded','1');(p.onGuestDone||p.onDone)();}
   return h('div',{id:"lp-onboarding",className:"screen active",style:{display:"flex"}},
     h('button',{onClick:function(){setShowHelp(true);},style:{position:'absolute',top:'calc(20px + env(safe-area-inset-top))',right:20,width:32,height:32,borderRadius:'50%',border:'1.5px solid rgba(255,255,255,.2)',background:'rgba(255,255,255,.07)',color:'rgba(255,255,255,.5)',fontSize:'17px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontFamily:'var(--font-sans)'}},'?'),
@@ -4346,10 +4377,20 @@ function LoginScreen(p){
             h('path',{fill:'#FBBC05',d:'M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z'}),
             h('path',{fill:'#34A853',d:'M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z'})),
           h('span',{className:"lp-btn-glow-label"},'Mit Google anmelden')),
-        h('button',{className:"lp-btn-dark",onClick:handleGuest},'Als Gast fortfahren')),
+        !p.hideGuest&&h('div',{style:{display:'flex',alignItems:'center',gap:8}},
+          h('button',{className:"lp-btn-dark",style:{flex:1},onClick:handleGuest},'Als Gast fortfahren'),
+          h('button',{onClick:function(){setShowGuestInfo(true);},style:{width:32,height:32,flexShrink:0,borderRadius:'50%',border:'1.5px solid rgba(255,255,255,.2)',background:'rgba(255,255,255,.07)',color:'rgba(255,255,255,.5)',fontSize:'15px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontFamily:'var(--font-sans)'}},'?'))),
       p.onGoogleLogin&&h('div',{style:{fontSize:12,color:'#fff',textAlign:'center',
           lineHeight:1.5,padding:'0 8px',marginTop:4}},
         'Google fragt beim Anmelden zusätzlich nach Zugriff auf dein Google Drive — den brauchst du nur für die Unterlagen-Funktion (PDFs scannen & verwalten).')),
+    showGuestInfo&&h('div',{onClick:function(){setShowGuestInfo(false);},style:{position:'fixed',inset:0,zIndex:10000,background:'rgba(0,0,0,.7)',display:'flex',alignItems:'flex-end',justifyContent:'center',padding:'0 0 24px'}},
+      h('div',{onClick:function(e){e.stopPropagation();},style:{background:'#1a1535',borderRadius:'20px 20px 14px 14px',padding:'32px 24px',maxWidth:360,width:'100%',color:'#fff',fontFamily:'var(--font-sans)'}},
+        h('div',{style:{fontWeight:700,fontSize:'17px',marginBottom:20,textAlign:'center'}},'Gast-Modus'),
+        h('div',{style:{fontSize:'13px',color:'rgba(255,255,255,.65)',lineHeight:1.6,marginBottom:16}},'Als Gast wird dein Konto nicht in der Cloud gespeichert und funktioniert nur auf diesem Gerät — keine geräteübergreifende Synchronisation. Einige Funktionen stehen im Gast-Modus außerdem nicht zur Verfügung.'),
+        h('div',{style:{fontSize:'13px',color:'#f44336',fontWeight:600,lineHeight:1.6,marginBottom:20}},'Wichtig: Löschst du die Browserdaten dieses Geräts, ist dein Gast-Konto unwiderruflich weg.'),
+        h(DsButton,{variant:'primary',size:'lg',fullWidth:true,onClick:function(){setShowGuestInfo(false);}},h('span',{className:'lp-btn-glow-label'},'Verstanden'))
+      )
+    ),
     showHelp&&h('div',{onClick:function(){setShowHelp(false);},style:{position:'fixed',inset:0,zIndex:10000,background:'rgba(0,0,0,.7)',display:'flex',alignItems:'flex-end',justifyContent:'center',padding:'0 0 24px'}},
       h('div',{onClick:function(e){e.stopPropagation();},style:{background:'#1a1535',borderRadius:'20px 20px 14px 14px',padding:'32px 24px',maxWidth:360,width:'100%',color:'#fff',fontFamily:'var(--font-sans)'}},
         h('div',{style:{fontWeight:700,fontSize:'17px',marginBottom:20,textAlign:'center'}},'Anmeldeoptionen'),
@@ -6582,6 +6623,22 @@ function App(p){
   var gces=useState(function(){try{return !!sessionStorage.getItem('kkm-pending-gate-code');}catch(e){return false;}});
   var gateCodeEntered=gces[0]; var setGateCodeEntered=gces[1];
   var gwas=useState(false); var gateWrongAccount=gwas[0]; var setGateWrongAccount=gwas[1];
+  /* Code bereits gebunden (peek-Check in GateCodeScreen) - kann die/der
+     Eigentuemer:in auf einem neuen Geraet sein, muss aber nicht. Haelt
+     hier den Code fest, waehrend GateCodeBoundModal entscheidet, ob es
+     weitergeht (siehe onCodeBound unten). gateHideGuest bleibt an, bis
+     wieder ein frischer Code eingegeben wird - ein Gast-Login kann einen
+     bereits gebundenen Code nie erfolgreich einloesen (neue Geraete
+     erzeugen immer eine neue, andere Gast-Identitaet). */
+  var gcb=useState(null); var gateCodeAlreadyBound=gcb[0]; var setGateCodeAlreadyBound=gcb[1];
+  var ghg=useState(false); var gateHideGuest=ghg[0]; var setGateHideGuest=ghg[1];
+  function backToGateCodeEntry(){
+    try{sessionStorage.removeItem('kkm-pending-gate-code');}catch(e){}
+    setGateCodeAlreadyBound(null);
+    setGateWrongAccount(false);
+    setGateHideGuest(false);
+    setGateCodeEntered(false);
+  }
   function refreshGateStatus(){
     getSb().rpc('ls_check_gate_status').then(function(res){
       var d=res&&res.data;
@@ -6614,21 +6671,19 @@ function App(p){
          vorkommen - bewusst kein Endlos-Retry-Modal dafuer. */
     }).catch(function(){});
   }
-  function retryGateWrongAccount(){
+  /* "Falsches Konto" bietet Google-Nutzer:innen zwei getrennte Wege:
+     "Noch mal probieren" (anderes Google-Konto, derselbe Code bleibt
+     gemerkt - deckt "aus Versehen falsches von mehreren eigenen Google-
+     Konten gewaehlt" ab) und "Zurueck" (verwirft den Code komplett,
+     zurueck zur Codeeingabe - deckt "das war gar nicht mein Code" ab).
+     Gast-Identitaet aendert sich zwischen Versuchen nie (feste lokale
+     ls_id) - ein Retry mit derselben Identitaet wuerde immer wieder
+     denselben Fehler bringen, dort bleibt es beim einzigen sinnvollen
+     Weg zurueck zur Codeeingabe. */
+  function retryGateWrongAccountGoogle(){
     setGateWrongAccount(false);
-    if(googleUser){
-      /* Anderes Google-Konto waehlen: der Code bleibt gemerkt, nur die
-         Identitaet wechselt. */
-      handleGoogleLogout();
-      setShowLogin(true);
-    } else {
-      /* Gast-Identitaet aendert sich zwischen Versuchen nicht (feste
-         lokale ls_id) - ein Retry mit derselben Identitaet wuerde immer
-         wieder denselben Fehler bringen. Sinnvoll ist hier nur ein
-         anderer Code. */
-      try{sessionStorage.removeItem('kkm-pending-gate-code');}catch(e){}
-      setGateCodeEntered(false);
-    }
+    handleGoogleLogout();
+    setShowLogin(true);
   }
   /* Google-Profilbild: erst aus dem Cache lesen (falls von einer
      frueheren Session schon geladen), damit wiederkehrende Nutzer es
@@ -8723,12 +8778,24 @@ function App(p){
      nicht als Direkt-Link) - ohne gueltigen Code kommt man ohnehin nicht
      rein, das Formular gehoert konsequent nur in die Einstellungen. */
   if(gateWrongAccount){
-    return h(GateWrongAccountModal,{onRetry:retryGateWrongAccount});
+    return h(GateWrongAccountModal,{onBack:backToGateCodeEntry,onRetry:googleUser?retryGateWrongAccountGoogle:null});
+  }
+  if(gateCodeAlreadyBound){
+    return h(GateCodeBoundModal,{
+      onBack:function(){setGateCodeAlreadyBound(null);},
+      onContinue:function(){
+        try{sessionStorage.setItem('kkm-pending-gate-code',gateCodeAlreadyBound);}catch(e){}
+        setGateHideGuest(true);
+        setGateCodeAlreadyBound(null);
+        setGateCodeEntered(true);
+        setShowLogin(true);
+      }
+    });
   }
   if(gateState.test_phase_active&&!gateState.gate_passed&&!gateCodeEntered){
-    return h(GateCodeScreen,{onCodeAccepted:function(){setGateCodeEntered(true);setShowLogin(true);}});
+    return h(GateCodeScreen,{onCodeAccepted:function(){setGateCodeEntered(true);setShowLogin(true);},onCodeBound:function(code){setGateCodeAlreadyBound(code);}});
   }
-  if(showLogin)return h(LoginScreen,{onDone:function(){setShowLogin(false);},onGuestDone:function(){
+  if(showLogin)return h(LoginScreen,{hideGuest:gateHideGuest,onDone:function(){setShowLogin(false);},onGuestDone:function(){
     setShowLogin(false);
     /* Fuer Gast gibt es keinen bestehenden Account, gegen den man die
        Zustimmung pruefen koennte - also wird sie genau hier, beim
