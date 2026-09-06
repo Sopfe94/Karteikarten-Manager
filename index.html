@@ -1038,7 +1038,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.105";
+var KKM_VERSION="1.8.106";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6658,6 +6658,16 @@ function App(p){
       if(d&&d.gate_passed)syncUsernameIfMissing();
     }).catch(function(){setGateState(function(s){return Object.assign({},s,{loading:false});});});
   }
+  /* Verlaesst sich nicht mehr nur auf den einmaligen Fetch beim App-Start
+     (finishAuthUser) - der Test-User-Block (inkl. Einladungscode) zeigt
+     sonst potenziell veraltete Werte, wenn zwischen App-Start und dem
+     tatsaechlichen Oeffnen der Einstellungen Zeit vergeht bzw. der
+     Start-Fetch aus irgendeinem Grund noch nicht durch war. Holt bei
+     jedem Aufruf der Einstellungen die aktuelle Wahrheit direkt vom
+     Server nach. */
+  useEffect(function(){
+    if(view==="einstellungen")refreshGateStatus();
+  },[view]);
   function tryRedeemPendingGateCode(){
     var code=null;
     try{code=sessionStorage.getItem('kkm-pending-gate-code');}catch(e){}
