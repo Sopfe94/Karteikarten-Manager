@@ -1038,7 +1038,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.104";
+var KKM_VERSION="1.8.105";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6642,6 +6642,11 @@ function App(p){
   function refreshGateStatus(){
     getSb().rpc('ls_check_gate_status').then(function(res){
       var d=res&&res.data;
+      /* Temporaeres Debug-Log zur Fehlersuche (invite_code wird laut
+         Nutzer-Report auf mehreren Geraeten nicht im Test-User-Block
+         angezeigt, obwohl die RPC serverseitig korrekt getestet wurde) -
+         zeigt den kompletten rohen RPC-Response im Debug-Overlay. */
+      dbg('ls_check_gate_status Response:',JSON.stringify(d),'Error:',res&&res.error?JSON.stringify(res.error):'keiner');
       if(d)setGateState(Object.assign({loading:false},d));
       else setGateState(function(s){return Object.assign({},s,{loading:false});});
       /* Falls der allererste Username-Sync-Versuch (Start-Timer) noch
