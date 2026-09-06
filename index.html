@@ -1038,7 +1038,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.102";
+var KKM_VERSION="1.8.103";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -4002,7 +4002,7 @@ function ProfilView(p){
 
           p.isTestUser&&h('div',{className:'lp-settings-row',style:{flexDirection:'column',alignItems:'stretch',gap:8}},
             h('div',{style:{display:'inline-block',alignSelf:'flex-start',fontSize:22,fontWeight:600,letterSpacing:'-0.02em',background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}},'Test User'),
-            h('div',{style:{fontSize:13,color:'rgba(255,255,255,.5)',lineHeight:1.5,maxWidth:420}},'Danke, dass du Lernpuls in der Testphase mit ausprobierst! Als Dankeschön bekommst du nach dem Ende der Testphase automatisch 2 Monate Lernpuls Pro geschenkt.'),
+            h('div',{style:{fontSize:13,color:'rgba(255,255,255,.5)',lineHeight:1.5,maxWidth:420}},'Danke, dass du Lernpuls in der Testphase mit ausprobierst! Als Dankeschön bekommst du nach dem Ende der Testphase automatisch 2 Monate Lernpuls Pro geschenkt.'+(p.inviteCode?' Dein Einladungscode: '+p.inviteCode+'.':'')),
             h('div',{style:{fontSize:24,fontWeight:700,color:'#fff'}},testTimerDays,' ',h('span',{style:{fontSize:13,fontWeight:400,color:'rgba(255,255,255,.5)'}},testTimerRunning?'Tage Pro übrig':'Tage Pro-Geschenk (startet nach Ende der Testphase)'))),
 
           h('div',{className:'lp-settings-row'},
@@ -6577,7 +6577,7 @@ function App(p){
      gate_passed:true, damit die eine erste Renderzeile vor Abschluss
      des Checks nicht faelschlich den Gate-Screen aufblitzen laesst -
      das passiert ohnehin komplett unsichtbar hinter dem Splash. */
-  var gts=useState({loading:true,test_phase_active:false,gate_passed:true,is_admin:false,is_test_user:false,pro_expires_at:null});
+  var gts=useState({loading:true,test_phase_active:false,gate_passed:true,is_admin:false,is_test_user:false,pro_expires_at:null,invite_code:null});
   var gateState=gts[0]; var setGateState=gts[1];
   var gces=useState(function(){try{return !!sessionStorage.getItem('kkm-pending-gate-code');}catch(e){return false;}});
   var gateCodeEntered=gces[0]; var setGateCodeEntered=gces[1];
@@ -8820,7 +8820,7 @@ function App(p){
           view==="decks"&&activeDeck&&!qsStep&&h(DeckDetail,{deck:activeDeck,isPro:proUser,onBack:function(){setDeckId(null);setDeckListMode("manage");},onUpdate:updateDeck,onStudyingChange:setIsStudying,onEdit:function(){setEditDeck(activeDeck);},onDelete:function(){delDeck(activeDeck.id);},onRequestPdfLink:requestPdfLink,onOpenPdfLink:openPdfLinkForStudy,suggestPdfReread:data.settings&&data.settings.suggestPdfReread!==false,onPrefetchPdf:prefetchCardPdfLink}),
           qsStep==="study"&&h(MultiStudyView,{decks:qsDecks,config:qsConfig,onFinish:finishQs,onProgress:saveQsProgress,onOpenPdfLink:openPdfLinkForStudy,suggestPdfReread:data.settings&&data.settings.suggestPdfReread!==false,onPrefetchPdf:prefetchCardPdfLink}),
           view==="editor"&&!qsStep&&h(LpCardEditor,{key:"editor-"+editorResetKey,initialFrontElements:[],initialBackElements:[],deckPicker:decks,showToast:showToast,isPro:proUser,onCancel:function(){switchNav('explorer');},onSave:saveCardFromEditorEntry,onRequestPdfLink:requestPdfLink}),
-          view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,presenceVisible:lsConsent&&presenceOn,presenceOn:presenceOn,onTogglePresence:togglePresence,docPrefetchEnabled:docPrefetchEnabled,onToggleDocPrefetch:toggleDocPrefetch,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onForceRestore:handleForceRestore,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast,isTestUser:gateState.is_test_user,proExpiresAt:gateState.pro_expires_at,isAdmin:gateState.is_admin,testPhaseActive:gateState.test_phase_active,onGateChanged:refreshGateStatus})),
+          view==="einstellungen"&&!qsStep&&h("div",null,h(ProfilView,{settings:data.settings,onChange:function(s){patch({settings:s});},onBack:function(){setView("decks");setDeckListMode("home");},googleUser:googleUser,photo:googlePhoto,presenceVisible:lsConsent&&presenceOn,presenceOn:presenceOn,onTogglePresence:togglePresence,docPrefetchEnabled:docPrefetchEnabled,onToggleDocPrefetch:toggleDocPrefetch,onGoogleLogin:handleGoogleLogin,onGoogleLogout:handleGoogleLogout,onDeleteAccount:handleDeleteAccount,onForceRestore:handleForceRestore,onShowDat:function(){setShowDat(true);},onShowImp:function(){setShowImp(true);},onShowFaq:function(){setShowHelp(true);},onShowReport:function(){setShowReport(true);},showToast:showToast,isTestUser:gateState.is_test_user,proExpiresAt:gateState.pro_expires_at,inviteCode:gateState.invite_code,isAdmin:gateState.is_admin,testPhaseActive:gateState.test_phase_active,onGateChanged:refreshGateStatus})),
           view==="lernspace"&&!qsStep&&h("div",{className:"ls-view-wrap"+(lsContentVis?" visible":"")},h(LernSpaceView,{userName:loadStore().userName||"Sophie",socialUsername:socialUsername,decks:decks,folders:folders,googleUser:googleUser,presence:presence,presenceVisible:lsConsent&&presenceOn,onAddDeck:function(dk){patch({decks:[].concat(decks,[dk])});},onShowDat:function(){setShowDat(true);},onBack:function(){setView("decks");setDeckListMode("home");},onPickUsername:function(){setShowUsernameModal(true);},onGroupDecksForHome:onGroupDecksForHome})),
           view==="kalender"&&!qsStep&&h("div",null,h(KalenderView,{arbeiten:data.arbeiten||[],folders:folders,onAdd:function(a){patch({arbeiten:[].concat(data.arbeiten||[],[a])});},onUpdate:function(a){patch({arbeiten:(data.arbeiten||[]).map(function(x){return x.id===a.id?a:x;})});},onDelete:function(id){patch({arbeiten:(data.arbeiten||[]).filter(function(a){return a.id!==id;})});}})),
           view==="updates"&&!qsStep&&h(UpdatesView,{onBack:function(){setView("decks");setDeckListMode("home");},onShowImp:function(){setShowImp(true);},onShowDat:function(){setShowDat(true);}}))),
