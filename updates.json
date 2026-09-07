@@ -1,11 +1,17 @@
 {
   "current": {
-    "version": "2.5.0",
-    "name": "Version 2.5.0",
+    "version": "2.6.0",
+    "name": "Version 2.6.0",
     "date": "September 2026",
-    "description": "• Bug-Fix: \"Alle Stapel lernen\" zeigt jetzt nur noch fällige Karten an statt immer alle"
+    "description": "• Bug-Fix: Die Stapel-Auswahl vor \"Alle Stapel lernen\" zeigt jetzt ebenfalls die fällige statt der Gesamtkartenzahl an"
   },
   "history": [
+    {
+      "version": "2.5.0",
+      "name": "Version 2.5.0",
+      "date": "September 2026",
+      "description": "• Bug-Fix: \"Alle Stapel lernen\" zeigt jetzt nur noch fällige Karten an statt immer alle"
+    },
     {
       "version": "2.4.0",
       "name": "Version 2.4.0",

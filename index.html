@@ -1038,7 +1038,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.106";
+var KKM_VERSION="1.8.107";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3558,7 +3558,15 @@ function DeckSelectModal(p){
   var ss=useState(function(){ var due=withCards.filter(function(d){return getDue(d).length>0;}); return (due.length>0?due:withCards.slice(0,1)).map(function(d){return d.id;}); });
   var sel=ss[0]; var setSel=ss[1];
   function toggle(id){ if(sel.indexOf(id)>=0)setSel(sel.filter(function(s){return s!==id;})); else setSel(sel.concat([id])); }
-  var total=withCards.filter(function(d){return sel.indexOf(d.id)>=0;}).reduce(function(s,d){return s+d.cards.length;},0);
+  var selDecks=withCards.filter(function(d){return sel.indexOf(d.id)>=0;});
+  var total=selDecks.reduce(function(s,d){return s+d.cards.length;},0);
+  /* Bug-Fix: zeigte bisher nur die Gesamtkartenzahl aller ausgewaehlten
+     Stapel an ("91 Karten") - unabhaengig davon, wie viele davon
+     tatsaechlich faellig sind. Das fuehrte dazu, dass die Zahl hier
+     nicht zu dem passte, was man beim Lernen danach wirklich zu sehen
+     bekommt (siehe MultiStudyView, die inzwischen korrekt nur faellige
+     Karten in die Warteschlange nimmt). */
+  var totalDue=selDecks.reduce(function(s,d){return s+getDue(d).length;},0);
   var foldersWithDecks=folders.filter(function(f){return withCards.some(function(d){return d.folderId===f.id;});});
   var fs=useState(""); var selFach=fs[0]; var setSelFach=fs[1];
   var initedFachRef=useRef(false);
@@ -3602,7 +3610,7 @@ function DeckSelectModal(p){
               h("div",{className:"lp-row-title",style:{background:"var(--grad-brand)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",display:"inline-block"}},deck.name),
               h("div",{className:"lp-row-sub"},deck.cards.length+" Karten",due>0?h("span",{style:{color:"#fb923c",marginLeft:"8px"}}," "+due+" f\u00e4llig"):null)));
         })),
-      sel.length>0&&h("div",{style:{background:"rgba(124,58,237,.1)",border:"1px solid rgba(124,58,237,.3)",borderRadius:"10px",padding:"8px 12px",fontSize:"13px",color:"rgba(255,255,255,.7)"}},sel.length+" Stapel, "+total+" Karten"),
+      sel.length>0&&h("div",{style:{background:"rgba(124,58,237,.1)",border:"1px solid rgba(124,58,237,.3)",borderRadius:"10px",padding:"8px 12px",fontSize:"13px",color:"rgba(255,255,255,.7)"}},sel.length+" Stapel, "+total+" Karten",totalDue>0?h("span",{style:{color:"#fb923c",marginLeft:"8px"}}," "+totalDue+" fällig"):null),
       h("div",{className:"lp-modal-actions"},
         h(DsButton,{variant:"danger",onClick:p.onClose},"Abbrechen"),
         h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40,opacity:sel.length?1:.4},disabled:!sel.length,onClick:function(){if(sel.length)p.onNext(p.decks.filter(function(d){return sel.indexOf(d.id)>=0;}));}},h("span",{className:"lp-btn-glow-label"},"Lernen starten")))));
