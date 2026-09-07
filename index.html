@@ -1038,7 +1038,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.111";
+var KKM_VERSION="1.8.112";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3462,15 +3462,24 @@ function DeckDetail(p){
          Rundenende) blieb nextReview unveraendert - bei neuen Karten war
          das null, bei bereits ueberfaelligen ein Datum in der
          Vergangenheit. Das Badge zeigte dann "null" bzw. ein
-         verwirrendes altes Datum statt klar "gelernt" anzuzeigen. */
-      var badgeLabel=isDue?"fällig":(c.roundPending?"gelernt":c.nextReview);
+         verwirrendes altes Datum statt klar "gelernt" anzuzeigen.
+         Fuer regulaer verschobene Karten wird statt des rohen Datums
+         jetzt die Anzahl Tage bis zur Faelligkeit angezeigt. */
+      var badgeVariant=isDue?"dark":(c.roundPending?"learned":"live");
+      var badgeLabel;
+      if(isDue){ badgeLabel="fällig"; }
+      else if(c.roundPending){ badgeLabel="gelernt"; }
+      else{
+        var daysLeft=Math.max(1,Math.round((new Date(c.nextReview)-new Date(todayStr()))/86400000));
+        badgeLabel=daysLeft+(daysLeft===1?" Tag":" Tage");
+      }
       return h("div",{className:"lp-row clickable lp-hover-glow",key:c.id,onClick:function(){setViewCard(c);}},
         h("div",{style:{flex:1,minWidth:0}},
           h("div",{className:"lp-row-title",style:{whiteSpace:"nowrap",overflow:"hidden",
             textOverflow:"ellipsis"}},c.front),
           folder&&h("div",{style:{fontSize:11,color:"#A78BFA",marginTop:4,
             fontFamily:"var(--font-mono)"}},folder.emoji+" "+folder.name)),
-        h(DsBadge,{variant:isDue?"dark":"live"},badgeLabel),
+        h(DsBadge,{variant:badgeVariant},badgeLabel),
         h("div",{onClick:function(e){e.stopPropagation();}},
           h(ThreeDotMenu,{onEdit:function(){setEditC(c);},onDelete:function(){delCard(c.id);}})));
     }));
@@ -6025,7 +6034,8 @@ function DsBadge(p){
     'live':{background:'#CFFAFE',color:'#0891B2'},
     'done':{background:'#D1FAE5',color:'#059669'},
     'tipp':{background:'#FEF3C7',color:'#92400E'},
-    'dark':{background:'rgba(124,58,237,0.2)',color:'#A78BFA',border:'1px solid rgba(124,58,237,0.3)'}
+    'dark':{background:'rgba(124,58,237,0.2)',color:'#A78BFA',border:'1px solid rgba(124,58,237,0.3)'},
+    'learned':{background:'rgba(16,185,129,0.15)',color:'#10B981',border:'1px solid rgba(16,185,129,0.4)'}
   };
   var st=Object.assign({
     display:'inline-flex',alignItems:'center',height:24,padding:'0 10px',
