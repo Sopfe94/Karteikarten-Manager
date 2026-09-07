@@ -1038,7 +1038,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.110";
+var KKM_VERSION="1.8.111";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3458,13 +3458,19 @@ function DeckDetail(p){
     return h("div",{style:{display:"flex",flexDirection:"column",gap:8}},cards.map(function(c){
       var folder=deckFolders.find(function(f){return f.id===c.folderId;});
       var isDue=!c.roundPending&&(!c.nextReview||c.nextReview<=todayStr());
+      /* Bug-Fix: fuer roundPending-Karten (falsch beantwortet, warten auf
+         Rundenende) blieb nextReview unveraendert - bei neuen Karten war
+         das null, bei bereits ueberfaelligen ein Datum in der
+         Vergangenheit. Das Badge zeigte dann "null" bzw. ein
+         verwirrendes altes Datum statt klar "gelernt" anzuzeigen. */
+      var badgeLabel=isDue?"fällig":(c.roundPending?"gelernt":c.nextReview);
       return h("div",{className:"lp-row clickable lp-hover-glow",key:c.id,onClick:function(){setViewCard(c);}},
         h("div",{style:{flex:1,minWidth:0}},
           h("div",{className:"lp-row-title",style:{whiteSpace:"nowrap",overflow:"hidden",
             textOverflow:"ellipsis"}},c.front),
           folder&&h("div",{style:{fontSize:11,color:"#A78BFA",marginTop:4,
             fontFamily:"var(--font-mono)"}},folder.emoji+" "+folder.name)),
-        h(DsBadge,{variant:isDue?"dark":"live"},isDue?"fällig":c.nextReview),
+        h(DsBadge,{variant:isDue?"dark":"live"},badgeLabel),
         h("div",{onClick:function(e){e.stopPropagation();}},
           h(ThreeDotMenu,{onEdit:function(){setEditC(c);},onDelete:function(){delCard(c.id);}})));
     }));
