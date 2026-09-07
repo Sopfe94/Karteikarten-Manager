@@ -1038,7 +1038,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.112";
+var KKM_VERSION="1.8.113";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3464,8 +3464,9 @@ function DeckDetail(p){
          Vergangenheit. Das Badge zeigte dann "null" bzw. ein
          verwirrendes altes Datum statt klar "gelernt" anzuzeigen.
          Fuer regulaer verschobene Karten wird statt des rohen Datums
-         jetzt die Anzahl Tage bis zur Faelligkeit angezeigt. */
-      var badgeVariant=isDue?"dark":(c.roundPending?"learned":"live");
+         jetzt die Anzahl Tage bis zur Faelligkeit angezeigt. Faellig
+         rot, alles Nicht-Faellige (gelernt + Tage-Countdown) gruen. */
+      var badgeVariant=isDue?"due":"learned";
       var badgeLabel;
       if(isDue){ badgeLabel="fällig"; }
       else if(c.roundPending){ badgeLabel="gelernt"; }
@@ -6035,7 +6036,8 @@ function DsBadge(p){
     'done':{background:'#D1FAE5',color:'#059669'},
     'tipp':{background:'#FEF3C7',color:'#92400E'},
     'dark':{background:'rgba(124,58,237,0.2)',color:'#A78BFA',border:'1px solid rgba(124,58,237,0.3)'},
-    'learned':{background:'rgba(16,185,129,0.15)',color:'#10B981',border:'1px solid rgba(16,185,129,0.4)'}
+    'learned':{background:'rgba(16,185,129,0.15)',color:'#10B981',border:'1px solid rgba(16,185,129,0.4)'},
+    'due':{background:'rgba(239,68,68,0.15)',color:'#EF4444',border:'1px solid rgba(239,68,68,0.4)'}
   };
   var st=Object.assign({
     display:'inline-flex',alignItems:'center',height:24,padding:'0 10px',
