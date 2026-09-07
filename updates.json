@@ -1,11 +1,17 @@
 {
   "current": {
-    "version": "2.4.0",
-    "name": "Version 2.4.0",
+    "version": "2.5.0",
+    "name": "Version 2.5.0",
     "date": "September 2026",
-    "description": "• Einladungscode für Test User jetzt gut sichtbar in einer eigenen Box statt im Fließtext versteckt"
+    "description": "• Bug-Fix: \"Alle Stapel lernen\" zeigt jetzt nur noch fällige Karten an statt immer alle"
   },
   "history": [
+    {
+      "version": "2.4.0",
+      "name": "Version 2.4.0",
+      "date": "September 2026",
+      "description": "• Einladungscode für Test User jetzt gut sichtbar in einer eigenen Box statt im Fließtext versteckt"
+    },
     {
       "version": "2.3.0",
       "name": "Version 2.3.0",

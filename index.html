@@ -1038,7 +1038,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.105";
+var KKM_VERSION="1.8.106";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3280,9 +3280,14 @@ function StudyView(p){
    die Karte gehoert. */
 function MultiStudyView(p){
   var qs=useState(function(){
-    if(p.config.mode==="mixed"){ var all=[]; p.decks.forEach(function(d){d.cards.forEach(function(c){all.push(Object.assign({},c,{_dn:d.name,_did:d.id}));});}); return all.sort(function(){return Math.random()-.5;}); }
+    /* Bug-Fix: fruehere Version baute die Warteschlange direkt aus
+       d.cards statt aus getDue(d) (wie die Einzelstapel-Ansicht
+       StudyView) - dadurch zeigte "Alle Stapel lernen" von der
+       Startseite IMMER alle Karten aller ausgewaehlten Stapel an,
+       unabhaengig vom Faelligkeitsdatum. */
+    if(p.config.mode==="mixed"){ var all=[]; p.decks.forEach(function(d){getDue(d).forEach(function(c){all.push(Object.assign({},c,{_dn:d.name,_did:d.id}));});}); return all.sort(function(){return Math.random()-.5;}); }
     var ord=p.config.random?p.decks.slice().sort(function(){return Math.random()-.5;}):p.decks.slice();
-    var all=[]; ord.forEach(function(d){d.cards.slice().sort(function(){return Math.random()-.5;}).forEach(function(c){all.push(Object.assign({},c,{_dn:d.name,_did:d.id}));});}); return all;
+    var all=[]; ord.forEach(function(d){getDue(d).slice().sort(function(){return Math.random()-.5;}).forEach(function(c){all.push(Object.assign({},c,{_dn:d.name,_did:d.id}));});}); return all;
   }); var queue=qs[0];
   var is=useState(0); var idx=is[0]; var setIdx=is[1];
   var fs=useState(false); var flip=fs[0]; var setFlip=fs[1];
@@ -3293,7 +3298,7 @@ function MultiStudyView(p){
   useEffect(function(){
     if(card&&card.pdfLink&&p.onPrefetchPdf)p.onPrefetchPdf(card.pdfLink);
   },[card&&card.id]);
-  if(!queue.length) return h(LpStudyDone,{title:"Keine Karten",onExit:function(){p.onFinish();},exitLabel:"Zur\u00fcck"});
+  if(!queue.length) return h(LpStudyDone,{title:"Alles erledigt!",sub:"Keine f\u00e4lligen Karten.",onExit:function(){p.onFinish();},exitLabel:"Zur\u00fcck"});
   if(done) return h(LpStudyDone,{title:"Fertig!",sub:queue.length+" Karten aus "+p.decks.length+" Stapeln",correct:res.k,wrong:res.m,onExit:function(){p.onFinish();},exitLabel:"Fertig"});
   function advanceAfterAnswer(knew){
     recordReview(card._did||"unknown"); var updatedCard=advance(card,knew); if(p.onProgress&&card._did)p.onProgress(card._did,updatedCard); setRes({k:res.k+(knew?1:0),m:res.m+(knew?0:1)}); if(idx+1>=queue.length)setDone(true); else{setIdx(idx+1);setFlip(false);}
