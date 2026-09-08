@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.116";
+var KKM_VERSION="1.8.117";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -7382,6 +7382,19 @@ function App(p){
     }
     var sb=getSb();
     sb.from('ls_users').select('ls_id,app_data,username,netzwerk_data,dsgvo_accepted_at').eq('authUid',user.id).maybeSingle().then(function(res){
+      if(res.error){
+        /* Bug-Fix: supabase-js wirft bei einem Netzwerkfehler (offline)
+           KEINE Exception, sondern liefert {data:null, error:{...}}
+           zurueck - das .catch() unten greift hier also nicht. Wurde
+           bisher genauso behandelt wie "ls_users-Zeile nicht gefunden"
+           und zeigte faelschlich den Datenschutz-Dialog erneut an,
+           obwohl laengst zugestimmt wurde. Bei einem echten
+           Netzwerkfehler stattdessen mit dem lokalen Stand
+           weiterarbeiten (die lokale DSGVO-Zustimmung bleibt gueltig) -
+           der naechste erfolgreiche Check holt alles Weitere nach. */
+        if(hasLocalDataRef.current)reportDataBootReady();else reportDataBootError();
+        return;
+      }
       if(res.data&&res.data.dsgvo_accepted_at){
         try{localStorage.setItem(DSGVO_KEY,DSGVO_VERSION);}catch(e){}
         finishAuthUser(user,res.data);
