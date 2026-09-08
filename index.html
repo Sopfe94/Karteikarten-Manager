@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.115";
+var KKM_VERSION="1.8.116";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -7113,6 +7113,9 @@ function App(p){
   }
   useEffect(function(){
     var sb=getSb();
+    /* Als benannte Funktion statt anonym direkt im Effekt, damit sie auch
+       beim 'online'-Event unten erneut aufgerufen werden kann. */
+    function checkInitialAuth(){
     sb.auth.getSession().then(function(res){
       var session=res.data&&res.data.session;
       if(session&&session.user&&!session.user.is_anonymous){
@@ -7130,11 +7133,21 @@ function App(p){
            weil die als App installierte Seite die Anmeldung nach einem
            kompletten Neustart nicht behalten hat. Klarer Hinweis statt
            stillschweigend in den Gastmodus zu rutschen, damit es nicht
-           wie verlorene Karteikarten aussieht. */
+           wie verlorene Karteikarten aussieht.
+           Bug-Fix: bisher wurde das auch offline gezeigt - supabase-js
+           versucht bei einem abgelaufenen Access-Token automatisch einen
+           Token-Refresh, der ohne Internet fehlschlaegt, wodurch
+           getSession() faelschlich "keine Sitzung" meldet, obwohl der
+           Nutzer eigentlich noch ganz normal angemeldet ist. Offline wird
+           die Meldung deshalb unterdrueckt (mit lokalem Stand normal
+           weiterarbeiten) und der Check per 'online'-Listener automatisch
+           wiederholt, sobald wieder Internet da ist. */
         var prevId=localStorage.getItem('kkm-ls-id');
-        if(prevId&&prevId.indexOf('@')>-1){
+        if(prevId&&prevId.indexOf('@')>-1&&navigator.onLine!==false){
           setShowSessionExpired(true);
           reportDataBootReady(); // wartet auf erneutes Login des Nutzers, nicht auf Netzwerk
+        } else if(prevId&&prevId.indexOf('@')>-1){
+          reportDataBootReady(); // offline - mit lokalem Stand weiterarbeiten, Check kommt per 'online' erneut
         } else if(dsgvoAccepted()){
           /* Ohne Zustimmung wird hier bewusst gar nichts getan - kein
              signInAnonymously(), kein Supabase-Kontakt ueberhaupt. Der
@@ -7158,6 +7171,14 @@ function App(p){
     }).catch(function(){
       if(hasLocalDataRef.current)reportDataBootReady();else reportDataBootError();
     });
+    }
+    checkInitialAuth();
+    /* Kommt die Verbindung zurueck, waehrend wegen Offline-Erkennung oben
+       weder ein Login-Fehler noch eine Session-abgelaufen-Meldung gezeigt
+       wurde: Check automatisch wiederholen, statt dass der Nutzer selbst
+       neu laden muss. */
+    function onBackOnline(){ checkInitialAuth(); }
+    window.addEventListener('online',onBackOnline);
     var sub=sb.auth.onAuthStateChange(function(event,session){
       if(session&&session.user&&!session.user.is_anonymous){
         setGoogleUser(session.user);
@@ -7176,7 +7197,7 @@ function App(p){
         if(_realtimeChannel){getSb().removeChannel(_realtimeChannel);_realtimeChannel=null;}
       }
     });
-    return function(){ if(sub&&sub.data&&sub.data.subscription)sub.data.subscription.unsubscribe(); };
+    return function(){ window.removeEventListener('online',onBackOnline); if(sub&&sub.data&&sub.data.subscription)sub.data.subscription.unsubscribe(); };
   },[]);
 
   function setupRealtimeSync(){
