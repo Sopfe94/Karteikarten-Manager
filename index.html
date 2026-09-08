@@ -15,8 +15,36 @@
 <meta name="apple-mobile-web-app-title" content="Lernpuls">
 <link rel="apple-touch-icon" href="icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&family=Space+Mono:wght@300;400;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script>
+/* Bug-Fix: React/ReactDOM wurden bisher als reine blockierende
+   <script src> ohne jede Fehlerbehandlung geladen - schlug das Laden
+   offline fehl (z.B. weil das Vor-Cachen im Service Worker beim
+   Installieren einmal lautlos misslang, siehe sw.js), blieb #root
+   für immer leer: die Splash-Anzeige selbst ist eine React-
+   Komponente und kann ohne React gar nicht erst rendern. Ergebnis war
+   ein komplett weisser Bildschirm ohne jede Rueckmeldung. kkmBootFail()
+   ist bewusst voellig unabhaengig von React/JS-Frameworks gehalten und
+   ersetzt die statische Lade-Anzeige unten durch eine klare Fehler-
+   meldung mit Neu-laden-Button, sobald eines der beiden kritischen
+   Skripte nicht laedt. */
+function kkmBootFail(){
+  /* onerror feuert hier noch waehrend <head> geparst wird - #kkm-boot-
+     fallback existiert als Teil von <body> zu diesem Zeitpunkt noch gar
+     nicht im DOM. Flag setzen, damit der Check direkt nach der Div-
+     Erzeugung (siehe unten in <body>) den bereits aufgetretenen Fehler
+     nachtraeglich anwenden kann - funktioniert so unabhaengig davon, ob
+     der Fehler vor oder nach dem body-Parsing eintritt. */
+  window.__kkmBootFailed=true;
+  var el=document.getElementById('kkm-boot-fallback');
+  if(!el||el.getAttribute('data-failed'))return;
+  el.setAttribute('data-failed','1');
+  el.innerHTML='<div style="font-size:15px;font-weight:600;margin-bottom:10px">Keine Internetverbindung</div>'
+    +'<div style="font-size:13px;color:rgba(255,255,255,.5);max-width:280px;line-height:1.5;margin-bottom:20px">Lernpuls konnte nicht geladen werden. Bitte pruefe deine Verbindung und versuche es erneut.</div>'
+    +'<button onclick="location.reload()" style="height:44px;padding:0 24px;border-radius:999px;border:1px solid rgba(124,58,237,.55);background:transparent;color:#fff;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Erneut versuchen</button>';
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" onerror="kkmBootFail()"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" onerror="kkmBootFail()"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.4.13/purify.min.js"></script>
@@ -1028,7 +1056,18 @@ select.lp-dark-input option{background:#150C2B;color:#fff}
 </style>
 </head>
 <body><!-- KKM-v1.2.45-AKTUELL -->
-<div id="root"></div>
+<div id="root"><div id="kkm-boot-fallback" style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0F0A1E;color:#fff;font-family:'Space Grotesk','Helvetica Neue',Arial,sans-serif">
+  <div style="width:36px;height:36px;border-radius:50%;border:3px solid rgba(124,58,237,.25);border-top-color:#7C3AED;animation:kkmSpin 0.8s linear infinite"></div>
+  <style>@keyframes kkmSpin{to{transform:rotate(360deg)}}</style>
+</div></div>
+<script>
+/* Faengt einen bereits waehrend <head> aufgetretenen Ladefehler
+   (window.__kkmBootFailed, siehe kkmBootFail() oben) hier nach, sobald
+   #kkm-boot-fallback tatsaechlich existiert - noch VOR dem grossen
+   Haupt-Script unten, das bei fehlendem React sofort mit einem
+   ReferenceError abbricht und diesen Check sonst nie erreichen wuerde. */
+if(window.__kkmBootFailed)kkmBootFail();
+</script>
 <script>
 "use strict";
 var R = React;
@@ -1038,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.113";
+var KKM_VERSION="1.8.114";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
