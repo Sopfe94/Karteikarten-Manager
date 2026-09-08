@@ -1038,7 +1038,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.109";
+var KKM_VERSION="1.8.110";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -9058,10 +9058,21 @@ function App(p){
     log.textContent=(window.__KKM_LOG||[]).join('\n');
     log.scrollTop=log.scrollHeight;
   }
-  /* Auf main komplett deaktiviert - Live-Nutzerinnen sollen den
-     Kaefer-Button und das Log-Overlay nie sehen, auch nicht ueber
-     einen ?debug=1 URL-Parameter. Bleibt exklusiv der Beta
-     vorbehalten (dort weiterhin standardmaessig an). */
+  /* Auf main standardmaessig AUS (Live-Nutzerinnen sollen den Kaefer-
+     Button und das Log-Overlay nicht sehen), aber gezielt fuer ein
+     einzelnes Geraet einschaltbar: ?debug=1 in der URL merkt sich die
+     Entscheidung dauerhaft (localStorage), ?debug=0 schaltet es auf
+     diesem Geraet wieder aus. Umgekehrte Voreinstellung zur Beta (dort
+     standardmaessig an, hier standardmaessig aus). */
+  function debugEnabled(){
+    try{
+      if(location.search.indexOf('debug=1')>-1){localStorage.setItem('kkm-debug-on','1');return true;}
+      if(location.search.indexOf('debug=0')>-1){localStorage.removeItem('kkm-debug-on');return false;}
+      return localStorage.getItem('kkm-debug-on')==='1';
+    }catch(e){ return false; }
+  }
+  if(!debugEnabled())return;
+  if(document.body)build(); else window.addEventListener('DOMContentLoaded',build);
 })();
 /* ---- /DEBUG OVERLAY ---- */
 

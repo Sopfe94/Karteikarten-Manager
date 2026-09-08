@@ -1,11 +1,17 @@
 {
   "current": {
-    "version": "2.8.0",
-    "name": "Version 2.8.0",
+    "version": "2.8.1",
+    "name": "Version 2.8.1",
     "date": "September 2026",
-    "description": "• Bug-Fix: Neuer Google-Login konnte während der Testphase komplett fehlschlagen (kein Account wurde angelegt, Einladungscode blieb uneingelöst)\n• Bug-Fix: Fehlendes Sicherheitsnetz im Hintergrund-Update konnte in seltenen Fällen zu einem weißen Bildschirm ohne Internet führen"
+    "description": "• Kleinere interne Verbesserung für die Fehlersuche bei Testern"
   },
   "history": [
+    {
+      "version": "2.8.0",
+      "name": "Version 2.8.0",
+      "date": "September 2026",
+      "description": "• Bug-Fix: Neuer Google-Login konnte während der Testphase komplett fehlschlagen (kein Account wurde angelegt, Einladungscode blieb uneingelöst)\n• Bug-Fix: Fehlendes Sicherheitsnetz im Hintergrund-Update konnte in seltenen Fällen zu einem weißen Bildschirm ohne Internet führen"
+    },
     {
       "version": "2.7.0",
       "name": "Version 2.7.0",
