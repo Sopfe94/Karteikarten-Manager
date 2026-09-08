@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.114";
+var KKM_VERSION="1.8.115";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6561,6 +6561,30 @@ function App(p){
   var _kkOC=parseInt(localStorage.getItem('kkm-open-count')||'0')+1;localStorage.setItem('kkm-open-count',String(_kkOC));
   var slo=useState(!localStorage.getItem('kkm-onboarded'));var showLogin=slo[0];var setShowLogin=slo[1];
   var ds=useState(function(){return loadStore();}); var data=ds[0]; var setData=ds[1];
+  /* Bug-Fix: Der Splash wartete bisher nur auf eine feste Mindestlaufzeit
+     und die Freunde-Daten - nicht auf die eigentlichen Karteikarten. Bei
+     einem neuen Geraet (noch kein lokaler Stand) konnte der Splash so
+     verschwinden, bevor der erste Cloud-Sync ueberhaupt fertig war -
+     kurz "Noch keine Stapel" zu sehen, obwohl laengst welche existieren.
+     hasLocalDataRef haelt fest, ob DIESES Geraet schon einen lokalen
+     Stand hat (dann ist nichts abzuwarten, quasi sofort fertig) oder ob
+     der allererste Cloud-Sync abgewartet werden muss, bevor der Splash
+     sich schliessen darf (siehe Boot() unten). */
+  var hasLocalDataRef=useRef(!!localStorage.getItem(STORE_KEY));
+  var dataBootReportedRef=useRef(false);
+  function reportDataBootReady(){
+    if(dataBootReportedRef.current)return;
+    dataBootReportedRef.current=true;
+    if(p.onDataReady)p.onDataReady();
+  }
+  function reportDataBootError(){
+    if(dataBootReportedRef.current)return; // ein Fehler zaehlt auch als "entschieden" - kein doppeltes Melden
+    dataBootReportedRef.current=true;
+    if(p.onDataError)p.onDataError();
+  }
+  useEffect(function(){
+    if(hasLocalDataRef.current)reportDataBootReady();
+  },[]);
   var vs=useState("decks"); var view=vs[0]; var setView=vs[1];
   var dis=useState(null); var deckId=dis[0]; var setDeckId=dis[1];
   var sns=useState(false); var showNew=sns[0]; var setShowNew=sns[1];
@@ -7051,9 +7075,9 @@ function App(p){
        unten), damit wirklich JEDER Aufrufpfad ohne Datenschutz+AGB-
        Zustimmung ins Leere laeuft - unabhaengig davon, ob ein
        zukuenftiger neuer Aufrufer diese Pruefung vergisst. */
-    if(!dsgvoAccepted())return;
+    if(!dsgvoAccepted()){reportDataBootReady();return;}
     var myId=getLsId();
-    if(!myId||!uid)return;
+    if(!myId||!uid){reportDataBootReady();return;}
     /* RPC statt Direkt-Upsert: Ein noch nicht gebundenes ls_users-Row
        (authUid IS NULL) ist unter RLS für UPDATE unsichtbar, weil Postgres
        fuer UPDATE zusaetzlich die SELECT-Policy prueft - die (bewusst,
@@ -7063,7 +7087,8 @@ function App(p){
     getSb().rpc('ls_claim_own_id',{p_ls_id:myId}).then(function(){
       refreshGateStatus();
       if(deliberate)tryRedeemPendingGateCode();
-    },function(){refreshGateStatus();});
+      reportDataBootReady();
+    },function(){refreshGateStatus();reportDataBootReady();});
   }
   /* Wird direkt beim Zustimmen zu Datenschutz+AGB aufgerufen (siehe
      showDsgvo-Screen oben) - holt das signInAnonymously()/
@@ -7109,6 +7134,7 @@ function App(p){
         var prevId=localStorage.getItem('kkm-ls-id');
         if(prevId&&prevId.indexOf('@')>-1){
           setShowSessionExpired(true);
+          reportDataBootReady(); // wartet auf erneutes Login des Nutzers, nicht auf Netzwerk
         } else if(dsgvoAccepted()){
           /* Ohne Zustimmung wird hier bewusst gar nichts getan - kein
              signInAnonymously(), kein Supabase-Kontakt ueberhaupt. Der
@@ -7117,9 +7143,20 @@ function App(p){
              startGuestAuthIfNeeded() das hier nach. */
           sb.auth.signInAnonymously().then(function(r){
             if(r.data&&r.data.user)bindGuestAuthUid(r.data.user.id);
-          }).catch(function(){});
+            else reportDataBootReady();
+          }).catch(function(){
+            /* Anonyme Erst-Anmeldung schlaegt typischerweise nur offline
+               fehl. Mit lokalem Stand (wiederkehrendes Geraet) einfach
+               weiter - ohne kann hier ohnehin nichts geladen werden, das
+               loest den Fehlerzustand in Boot() aus (siehe onDataError). */
+            if(hasLocalDataRef.current)reportDataBootReady();else reportDataBootError();
+          });
+        } else {
+          reportDataBootReady(); // blockiert auf den DSGVO-Screen, nicht auf Netzwerk
         }
       }
+    }).catch(function(){
+      if(hasLocalDataRef.current)reportDataBootReady();else reportDataBootError();
     });
     var sub=sb.auth.onAuthStateChange(function(event,session){
       if(session&&session.user&&!session.user.is_anonymous){
@@ -7236,6 +7273,7 @@ function App(p){
           localStorage.setItem('kkm-ls-id',foundId);
           showToast('Willkommen zurück! Dein Account wird wiederhergestellt…');
           setTimeout(function(){window.location.reload();},1000);
+          reportDataBootReady(); // Reload steht ohnehin unmittelbar bevor
           return;
         }
         // Social-Daten vorausladen (für sofortige Anzeige beim LernSpace-Öffnen)
@@ -7249,7 +7287,7 @@ function App(p){
             var restored=applyRemoteExtras(known.app_data);
             saveStore(restored);
             setData(restored);
-            showToast('Karteikarten wiederhergestellt!');
+            showToast('Karteikarten aktualisiert!');
             dbg('✅ App-Daten aus Supabase wiederhergestellt');
             setTimeout(function(){_applyingRemote=false;},200);
           }
@@ -7264,6 +7302,7 @@ function App(p){
         setupRealtimeSync();
         refreshGateStatus();
         tryRedeemPendingGateCode();
+        reportDataBootReady();
       } else {
         // Neuer Google-User → E-Mail als ls_id
         var emailId=user.email;
@@ -7272,6 +7311,7 @@ function App(p){
         var currentData=Object.assign({},loadStore(),{_syncedAt:Date.now()});
         getSb().from('ls_users').upsert({ls_id:emailId,authUid:user.id,app_data:currentData,updated_at:new Date().toISOString()},{onConflict:'ls_id',ignoreDuplicates:false})
         .then(function(r){
+          reportDataBootReady();
           if(!r.error){
             dbg('✅ Google-Login: Neuer User erstellt, E-Mail als ID');
             if(oldId&&oldId!==emailId){
@@ -7286,7 +7326,7 @@ function App(p){
           } else {
             dbg('❌ Upsert Fehler:',r.error.message);
           }
-        });
+        }).catch(function(){reportDataBootReady();});
       }
   }
   /* Wird bei jedem Login (Gast-Session-Restore ausgenommen) aufgerufen -
@@ -7327,7 +7367,13 @@ function App(p){
       } else {
         setPendingGoogleConsent({user:user,known:res.data});
         setShowDsgvo(true);
+        reportDataBootReady(); // blockiert auf den DSGVO-Screen, nicht auf Netzwerk
       }
+    }).catch(function(){
+      /* Bug-Fix: dieser Request hatte bisher gar kein .catch() - schlug
+         er offline fehl, blieb finishAuthUser() fuer immer ungenutzt und
+         die Splash-Freigabe (siehe Boot()) haette ewig gewartet. */
+      if(hasLocalDataRef.current)reportDataBootReady();else reportDataBootError();
     });
   }
 
@@ -9123,6 +9169,21 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     var hs=useState(false); var hiding=hs[0]; var setHiding=hs[1];
     var ss=useState(true); var shown=ss[0]; var setShown=ss[1];
     var mts=useState(false); var minTimeDone=mts[0]; var setMinTimeDone=mts[1];
+    /* Bug-Fix: der Splash schloss sich bisher rein nach einer festen
+       Mindestlaufzeit + Freunde-Daten - unabhaengig davon, ob die
+       eigentlichen Karteikarten (lokal oder per Erst-Sync) schon
+       bereitstanden. dataReady kommt jetzt direkt aus App() (siehe
+       onDataReady/onDataError dort): bei einem Geraet mit lokalem
+       Stand quasi sofort true, bei einem brandneuen Geraet erst wenn
+       der allererste Cloud-Sync durch ist. dataError faengt den Fall
+       ab, dass genau dieser Erst-Sync mangels Internet fehlschlaegt -
+       dann zeigt Boot() statt eines leeren "Noch keine Stapel" eine
+       klare Fehlermeldung mit Neu-laden-Button. */
+    var drs=useState(false); var dataReady=drs[0]; var setDataReady=drs[1];
+    var des=useState(false); var dataError=des[0]; var setDataError=des[1];
+    var dataReadyRef=useRef(false);
+    function onDataReady(){ dataReadyRef.current=true; setDataReady(true); }
+    function onDataError(){ setDataError(true); }
 
     /* Freunde-Daten der Startseite bereits hier laden (parallel zum
        Splash) statt erst wenn das Dashboard gerendert wird. Der Splash
@@ -9171,7 +9232,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       });
     }
     /* Antippen des Splash ueberspringt nur die Mindestlaufzeit der
-       Animation - das Warten auf die Freunde-Daten wird NICHT
+       Animation - das Warten auf die Karteikarten-Daten wird NICHT
        umgangen. Sonst hebt ein ungeduldiges Antippen genau das
        Verhalten auf, das hier eingebaut wurde. */
     function skip(){setMinTimeDone(true);}
@@ -9179,18 +9240,29 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       setShown(true);setHiding(false);setMinTimeDone(false);
       /* Mindestlaufzeit, damit die Splash-Animation (Buchstaben,
          Sweep, Ladebalken) immer ganz durchlaeuft, auch wenn die
-         Freunde-Daten viel schneller da sind. */
+         Daten viel schneller da sind. */
       var t1=setTimeout(function(){setMinTimeDone(true);},8400);
-      /* Sicherheitsnetz: falls das Laden haengt, den Splash trotzdem
-         irgendwann beenden statt den Nutzer auszusperren. */
-      var tMax=setTimeout(finishSplash,15000);
+      /* Sicherheitsnetz: haengt der allererste Sync auf einem neuen
+         Geraet laenger als 15s (z.B. sehr langsames Netz statt gar
+         keines - ein echtes "kein Internet" meldet sich ja schon
+         vorher ueber onDataError), Fehlermeldung statt endlosem
+         Warten oder eines potenziell leeren/falschen Zustands. */
+      var tMax=setTimeout(function(){
+        if(dataReadyRef.current)finishSplash();else setDataError(true);
+      },15000);
       return function(){clearTimeout(t1);clearTimeout(tMax);};
     },[]);
     useEffect(function(){
-      if(minTimeDone&&!dashFriends.loading)finishSplash();
-    },[minTimeDone,dashFriends.loading]);
+      if(minTimeDone&&dataReady)finishSplash();
+    },[minTimeDone,dataReady]);
 
-    return h("div",null,shown&&h(Splash,{out:hiding,onSkip:skip}),h(App,{dashFriends:dashFriends,splashHiding:hiding,onRefreshDashFriends:loadDashFriends}));
+    if(dataError){
+      return h("div",{style:{minHeight:"100dvh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:24,background:"#0F0A1E",color:"#fff",fontFamily:"var(--font-sans)"}},
+        h("div",{style:{fontSize:15,fontWeight:600,marginBottom:10}},"Keine Internetverbindung"),
+        h("div",{style:{fontSize:13,color:"rgba(255,255,255,.5)",maxWidth:280,lineHeight:1.5,marginBottom:20}},"Lernpuls konnte deine Karteikarten nicht laden. Bitte prüfe deine Verbindung und versuche es erneut."),
+        h("button",{onClick:function(){window.location.reload();},style:{height:44,padding:"0 24px",borderRadius:999,border:"1px solid rgba(124,58,237,.55)",background:"transparent",color:"#fff",fontFamily:"inherit",fontSize:14,fontWeight:600,cursor:"pointer"}},"Erneut versuchen"));
+    }
+    return h("div",null,shown&&h(Splash,{out:hiding,onSkip:skip}),h(App,{dashFriends:dashFriends,splashHiding:hiding,onRefreshDashFriends:loadDashFriends,onDataReady:onDataReady,onDataError:onDataError}));
   },null));
 
 if("serviceWorker" in navigator){
