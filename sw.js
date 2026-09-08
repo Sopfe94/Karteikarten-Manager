@@ -1,5 +1,5 @@
 // Service Worker v16 - CDN-Scripts (React, Supabase) offline cachen
-const CACHE = 'kkm-v322';
+const CACHE = 'kkm-v323';
 const BASE = self.location.hostname === 'www.gross-apps.de' ? '/lernpuls' : '';
 const STATIC = [BASE+'/index.html', BASE+'/manifest.json', BASE+'/icon.png'];
 const CDN = [
@@ -17,24 +17,60 @@ const CDN = [
    Handler ganz unten erreichbar: werden beim ersten Scan bzw. beim
    ersten Oeffnen einer PDF angefordert und danach automatisch gecacht. */
 
+/* Bug-Fix: c.add(url).catch(()=>{}) schluckte einen fehlgeschlagenen
+   Cache-Versuch bisher komplett lautlos und endgueltig - eine kurze
+   Netzwerkschwankung genau bei der Installation reichte, damit z.B.
+   React nie gecacht wurde. Ging man dann offline, bevor die Seite
+   ueber den generischen Fetch-Handler nochmal online geladen wurde
+   (der es nachtraeglich gecacht haette), blieb #root fuer immer leer -
+   kompletter weisser Bildschirm ohne jede Rueckmeldung. Jetzt bis zu
+   3 Versuche mit kurzer Pause, bevor endgueltig aufgegeben wird. */
+function sleep(ms){ return new Promise(function(res){ setTimeout(res,ms); }); }
+function cacheWithRetry(c,url,retries){
+  return c.add(url).catch(function(err){
+    if(retries<=0) return;
+    return sleep(800).then(function(){ return cacheWithRetry(c,url,retries-1); });
+  });
+}
 self.addEventListener('install', function(e){
 self.skipWaiting();
 e.waitUntil(
 caches.open(CACHE).then(function(c){
 return Promise.all(
-  STATIC.concat(CDN).map(function(url){ return c.add(url).catch(function(){}); })
+  STATIC.concat(CDN).map(function(url){ return cacheWithRetry(c,url,2); })
 );
 })
 );
 });
 
+/* Bug-Fix: activate() loeschte bisher IMMER sofort alle alten Caches,
+   sobald ein neuer Service Worker aktiv wurde - auch wenn install()
+   das Vor-Cachen (z.B. wegen einer Netzwerkflaute genau in dem
+   Moment) nur teilweise geschafft hat (cacheWithRetry gibt nach 2
+   Versuchen still auf, install() "gelingt" also trotzdem, siehe
+   cacheWithRetry oben). Ergebnis: die neue, unvollstaendige Cache-
+   Version wurde aktiv, die alte vollstaendige gleichzeitig geloescht -
+   ohne Internet blieb dann nichts Brauchbares mehr uebrig, kompletter
+   weisser Bildschirm beim naechsten Offline-Start. Jetzt: alte Caches
+   nur loeschen, wenn die neue Version die kritischen Dateien (App-
+   Shell + React/ReactDOM) nachweislich enthaelt - sonst bleiben die
+   alten als Sicherheitsnetz erhalten (caches.match() in den fetch-
+   Handlern oben durchsucht ohnehin automatisch alle Caches), bis ein
+   spaeterer Online-Besuch das Nachladen erfolgreich abschliesst. */
+var CRITICAL = STATIC.concat(CDN.slice(0,2));
 self.addEventListener('activate', function(e){
 e.waitUntil(
-caches.keys().then(function(keys){
+caches.open(CACHE).then(function(c){
+return Promise.all(CRITICAL.map(function(u){ return c.match(u); }));
+}).then(function(results){
+var complete = results.every(function(r){ return !!r; });
+if(!complete) return;
+return caches.keys().then(function(keys){
 return Promise.all(
 keys.filter(function(k){ return k !== CACHE; })
 .map(function(k){ return caches.delete(k); })
 );
+});
 }).then(function(){ return self.clients.claim(); })
 );
 });

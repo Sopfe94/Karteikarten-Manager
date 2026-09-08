@@ -1,11 +1,17 @@
 {
   "current": {
-    "version": "2.7.0",
-    "name": "Version 2.7.0",
+    "version": "2.8.0",
+    "name": "Version 2.8.0",
     "date": "September 2026",
-    "description": "• Bug-Fix: Falsch gelernte Karten zeigten in der Stapel-Kartenliste ein verwirrendes Datum bzw. \"null\" statt \"gelernt\"\n• Fällig-Badge jetzt rot, gelernte Karten & Tage-bis-fällig-Anzeige grün\n• Tage bis zur Fälligkeit statt Rohdatum in der Kartenliste"
+    "description": "• Bug-Fix: Neuer Google-Login konnte während der Testphase komplett fehlschlagen (kein Account wurde angelegt, Einladungscode blieb uneingelöst)\n• Bug-Fix: Fehlendes Sicherheitsnetz im Hintergrund-Update konnte in seltenen Fällen zu einem weißen Bildschirm ohne Internet führen"
   },
   "history": [
+    {
+      "version": "2.7.0",
+      "name": "Version 2.7.0",
+      "date": "September 2026",
+      "description": "• Bug-Fix: Falsch gelernte Karten zeigten in der Stapel-Kartenliste ein verwirrendes Datum bzw. \"null\" statt \"gelernt\"\n• Fällig-Badge jetzt rot, gelernte Karten & Tage-bis-fällig-Anzeige grün\n• Tage bis zur Fälligkeit statt Rohdatum in der Kartenliste"
+    },
     {
       "version": "2.6.0",
       "name": "Version 2.6.0",
