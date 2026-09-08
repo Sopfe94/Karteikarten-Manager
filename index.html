@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.117";
+var KKM_VERSION="1.8.118";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1782,7 +1782,13 @@ function syncAppData(d){
     getSb().from('ls_users').select('app_data').eq('ls_id',myId).maybeSingle().then(function(res){
       var remote=res.data&&res.data.app_data;
       var remoteTs=(remote&&remote._syncedAt)||0;
+      dbg('🔍 Restore-Check (Push-Vergleich):','remoteTs='+remoteTs,'knownTs='+knownTs,'wird uebernommen='+(remoteTs>knownTs));
       if(remoteTs>knownTs){
+        try{
+          dbg('📥 Remote-Daten (Push-Vergleich):',(remote.decks||[]).map(function(dk){
+            return dk.name+'='+deckPct(dk)+'%('+((dk.cards||[]).length)+'K,upd:'+String(dk.updatedAt||'').slice(0,16)+')';
+          }).join(' | '));
+        }catch(e){}
         /* Ein anderes Geraet hat seit dem letzten bekannten Stand bereits
            neuere Daten hochgeladen - NICHT blind ueberschreiben (das war
            der Bug: eine veraltete lokale Kopie konnte so die Karte eines
@@ -6560,7 +6566,15 @@ function App(p){
 
   var _kkOC=parseInt(localStorage.getItem('kkm-open-count')||'0')+1;localStorage.setItem('kkm-open-count',String(_kkOC));
   var slo=useState(!localStorage.getItem('kkm-onboarded'));var showLogin=slo[0];var setShowLogin=slo[1];
-  var ds=useState(function(){return loadStore();}); var data=ds[0]; var setData=ds[1];
+  var ds=useState(function(){
+    var s=loadStore();
+    try{
+      dbg('📦 Boot-Daten:',(s.decks||[]).map(function(d){
+        return d.name+'='+deckPct(d)+'%('+((d.cards||[]).length)+'K,upd:'+String(d.updatedAt||'').slice(0,16)+')';
+      }).join(' | '),'| _syncedAt:',s._syncedAt||0);
+    }catch(e){}
+    return s;
+  }); var data=ds[0]; var setData=ds[1];
   /* Bug-Fix: Der Splash wartete bisher nur auf eine feste Mindestlaufzeit
      und die Freunde-Daten - nicht auf die eigentlichen Karteikarten. Bei
      einem neuen Geraet (noch kein lokaler Stand) konnte der Splash so
@@ -7209,9 +7223,15 @@ function App(p){
       if(!payload.new||!payload.new.app_data)return;
       var remoteTs=payload.new.app_data._syncedAt||0;
       var localTs=loadStore()._syncedAt||0;
+      dbg('🔍 Restore-Check (Realtime):','remoteTs='+remoteTs,'localTs='+localTs,'wird angewendet='+(remoteTs>localTs));
       if(remoteTs>localTs){
         _applyingRemote=true;
         var restored=applyRemoteExtras(payload.new.app_data);
+        try{
+          dbg('📥 Remote-Daten (Realtime):',(restored.decks||[]).map(function(d){
+            return d.name+'='+deckPct(d)+'%('+((d.cards||[]).length)+'K,upd:'+String(d.updatedAt||'').slice(0,16)+')';
+          }).join(' | '));
+        }catch(e){}
         saveStore(restored);
         setData(restored);
         dbg('🔄 Realtime update angewendet');
@@ -7303,9 +7323,15 @@ function App(p){
         if(known.app_data){
           var remoteTs=known.app_data._syncedAt||0;
           var localTs=loadStore()._syncedAt||0;
+          dbg('🔍 Restore-Check (Login):','remoteTs='+remoteTs,'localTs='+localTs,'wird angewendet='+(remoteTs>localTs));
           if(remoteTs>localTs){
             _applyingRemote=true;
             var restored=applyRemoteExtras(known.app_data);
+            try{
+              dbg('📥 Remote-Daten:',(restored.decks||[]).map(function(d){
+                return d.name+'='+deckPct(d)+'%('+((d.cards||[]).length)+'K,upd:'+String(d.updatedAt||'').slice(0,16)+')';
+              }).join(' | '));
+            }catch(e){}
             saveStore(restored);
             setData(restored);
             showToast('Karteikarten aktualisiert!');
