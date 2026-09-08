@@ -1,11 +1,17 @@
 {
   "current": {
-    "version": "2.6.0",
-    "name": "Version 2.6.0",
+    "version": "2.7.0",
+    "name": "Version 2.7.0",
     "date": "September 2026",
-    "description": "• Bug-Fix: Die Stapel-Auswahl vor \"Alle Stapel lernen\" zeigt jetzt ebenfalls die fällige statt der Gesamtkartenzahl an"
+    "description": "• Bug-Fix: Falsch gelernte Karten zeigten in der Stapel-Kartenliste ein verwirrendes Datum bzw. \"null\" statt \"gelernt\"\n• Fällig-Badge jetzt rot, gelernte Karten & Tage-bis-fällig-Anzeige grün\n• Tage bis zur Fälligkeit statt Rohdatum in der Kartenliste"
   },
   "history": [
+    {
+      "version": "2.6.0",
+      "name": "Version 2.6.0",
+      "date": "September 2026",
+      "description": "• Bug-Fix: Die Stapel-Auswahl vor \"Alle Stapel lernen\" zeigt jetzt ebenfalls die fällige statt der Gesamtkartenzahl an"
+    },
     {
       "version": "2.5.0",
       "name": "Version 2.5.0",
