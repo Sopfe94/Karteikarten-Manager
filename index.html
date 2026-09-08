@@ -1038,7 +1038,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.108";
+var KKM_VERSION="1.8.109";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -7215,7 +7215,17 @@ function App(p){
         var oldId=localStorage.getItem('kkm-ls-id');
         localStorage.setItem('kkm-ls-id',emailId);
         var currentData=Object.assign({},loadStore(),{_syncedAt:Date.now()});
-        getSb().from('ls_users').upsert({ls_id:emailId,authUid:user.id,app_data:currentData,updated_at:new Date().toISOString()},{onConflict:'ls_id',ignoreDuplicates:false})
+        /* Bug-Fix: ein direktes .upsert() lief ueber die normalen RLS-
+           Policies - waehrend der geschlossenen Testphase blockierte
+           ls_gate_ok() das aber IMMER fuer einen brandneuen User (es gibt
+           ja noch gar keine ls_users-Zeile, an der die Pruefung einen
+           bereits eingeloesten Code erkennen koennte). Jeder frische
+           Google-Login schlug so fehl, ganz gleich ob direkt oder nach
+           einem Gast-Wechsel. ls_claim_own_id() ist SECURITY DEFINER (wie
+           schon fuer Gaeste) und umgeht die RLS-Pruefung gezielt nur fuer
+           diese initiale Konto-Anlage - der Code muss trotzdem hinterher
+           ganz normal ueber tryRedeemPendingGateCode() eingeloest werden. */
+        getSb().rpc('ls_claim_own_id',{p_ls_id:emailId,p_app_data:currentData})
         .then(function(r){
           if(!r.error){
             dbg('✅ Google-Login: Neuer User erstellt, E-Mail als ID');
@@ -7229,7 +7239,7 @@ function App(p){
               tryRedeemPendingGateCode();
             }
           } else {
-            dbg('❌ Upsert Fehler:',r.error.message);
+            dbg('❌ Claim Fehler:',r.error.message);
           }
         });
       }
