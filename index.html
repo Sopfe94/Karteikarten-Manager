@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.120";
+var KKM_VERSION="1.8.121";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3959,6 +3959,40 @@ function ProfilView(p){
     }).catch(function(){setAdminLoading(false);p.showToast&&p.showToast('Testphase-Schalter konnte nicht geändert werden.');});
   }
 
+  /* Debug-Tool pro Konto: Suche ueber ls_id ODER Benutzername (Teil-
+     Suche), plus eine kurze Uebersicht aller aktuell aktiven Konten,
+     damit ein Einschalten nicht vergessen/uebersehen wird. Wirkung
+     greift beim naechsten App-Start/Oeffnen der Einstellungen des
+     jeweiligen Kontos (ls_check_gate_status, siehe refreshGateStatus)
+     - kein Realtime-Kanal noetig. */
+  var dqs=useState('');var debugQuery=dqs[0];var setDebugQuery=dqs[1];
+  var drs=useState([]);var debugResults=drs[0];var setDebugResults=drs[1];
+  var dls=useState(false);var debugSearchLoading=dls[0];var setDebugSearchLoading=dls[1];
+  var das=useState([]);var debugActiveUsers=das[0];var setDebugActiveUsers=das[1];
+  function loadDebugActiveUsers(){
+    getSb().rpc('ls_admin_list_debug_users').then(function(res){
+      if(res&&res.error){adminRpcError(res,'Aktive Debug-Konten konnten nicht geladen werden.');return;}
+      if(res&&res.data)setDebugActiveUsers(res.data);
+    }).catch(function(){p.showToast&&p.showToast('Aktive Debug-Konten konnten nicht geladen werden.');});
+  }
+  useEffect(function(){ if(showAdmin)loadDebugActiveUsers(); },[showAdmin]);
+  function debugSearch(){
+    if(!debugQuery.trim()){setDebugResults([]);return;}
+    setDebugSearchLoading(true);
+    getSb().rpc('ls_admin_search_users',{p_query:debugQuery.trim()}).then(function(res){
+      setDebugSearchLoading(false);
+      if(res&&res.error){adminRpcError(res,'Suche fehlgeschlagen.');return;}
+      setDebugResults(res&&res.data||[]);
+    }).catch(function(){setDebugSearchLoading(false);p.showToast&&p.showToast('Suche fehlgeschlagen.');});
+  }
+  function adminSetDebug(lsId,enabled){
+    getSb().rpc('ls_admin_set_debug',{p_ls_id:lsId,p_enabled:enabled}).then(function(res){
+      if(res&&res.error){adminRpcError(res,'Debug-Tool konnte nicht umgeschaltet werden.');return;}
+      setDebugResults(function(list){return list.map(function(u){return u.ls_id===lsId?Object.assign({},u,{debug_enabled:enabled}):u;});});
+      loadDebugActiveUsers();
+    }).catch(function(){p.showToast&&p.showToast('Debug-Tool konnte nicht umgeschaltet werden.');});
+  }
+
   if(showAdmin){
     return h('div',null,
       h("button",{className:"back-btn",style:{marginBottom:8,marginTop:4},onClick:function(){setShowAdmin(false);}},"← Zurück"),
@@ -3993,6 +4027,38 @@ function ProfilView(p){
               h('div',{style:{display:'flex',gap:6}},
                 c.bound_ls_id&&h('button',{className:'settings-q-btn',title:'Bindung zurücksetzen',onClick:function(){adminResetBinding(c.code);}},'⟲'),
                 h('button',{className:'settings-q-btn',title:'Löschen',onClick:function(){adminDeleteCode(c.code);}},'×')));
+          })),
+
+        h('div',{style:{display:'inline-block',fontSize:18,fontWeight:600,letterSpacing:'-0.02em',background:'var(--grad-brand)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text',margin:'28px 0 12px'}},'Debug-Tool pro Konto'),
+        h('div',{style:{fontSize:13,color:'rgba(255,255,255,.35)',marginBottom:12,maxWidth:400}},'Suche nach ls_id oder Benutzername, um das Debug-Overlay (🐞-Button) gezielt für ein einzelnes Konto ein- oder auszuschalten. Wirkt beim nächsten App-Start bzw. Öffnen der Einstellungen des Kontos.'),
+        h('div',{style:{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',marginBottom:12}},
+          h('input',{type:'text',className:'lp-dark-input',placeholder:'ls_id oder Benutzername…',style:{flex:1,minWidth:180},value:debugQuery,
+            onInput:function(e){setDebugQuery(e.target.value);},
+            onKeyDown:function(e){if(e.key==='Enter')debugSearch();}}),
+          h(DsButton,{variant:'primary',disabled:debugSearchLoading,onClick:debugSearch},h('span',{className:'lp-btn-glow-label'},'Suchen'))),
+        debugResults.length>0&&h('div',{style:{display:'flex',flexDirection:'column',gap:8,marginBottom:24}},
+          debugResults.map(function(u){
+            return h('div',{key:u.ls_id,style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,padding:'10px 14px',borderRadius:12,background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)'}},
+              h('div',null,
+                h('div',{style:{fontWeight:600,color:'#fff'}},u.username||u.ls_id),
+                h('div',{style:{fontSize:12,color:'rgba(255,255,255,.4)',marginTop:2}},u.ls_id)),
+              h('button',{className:'lp-switch',style:{background:u.debug_enabled?'var(--grad-brand)':'rgba(255,255,255,.14)'},
+                onClick:function(){adminSetDebug(u.ls_id,!u.debug_enabled);}},
+                h('span',{className:'lp-switch-knob',style:{left:u.debug_enabled?21:3}})));
+          })),
+        debugQuery&&debugResults.length===0&&!debugSearchLoading&&h('div',{style:{fontSize:13,color:'rgba(255,255,255,.35)',marginBottom:24}},'Keine Treffer.'),
+
+        h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',margin:'8px 0 12px'}},
+          h('div',{style:{fontSize:14,fontWeight:600,color:'rgba(255,255,255,.6)'}},'Aktuell aktive Debug-Konten'),
+          h('button',{className:'settings-q-btn',onClick:loadDebugActiveUsers},'↻')),
+        debugActiveUsers.length===0&&h('div',{style:{fontSize:13,color:'rgba(255,255,255,.35)'}},'Keine.'),
+        h('div',{style:{display:'flex',flexDirection:'column',gap:8}},
+          debugActiveUsers.map(function(u){
+            return h('div',{key:u.ls_id,style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,padding:'10px 14px',borderRadius:12,background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)'}},
+              h('div',null,
+                h('div',{style:{fontWeight:600,color:'#fff'}},u.username||u.ls_id),
+                h('div',{style:{fontSize:12,color:'rgba(255,255,255,.4)',marginTop:2}},u.ls_id)),
+              h('button',{className:'settings-q-btn',title:'Ausschalten',onClick:function(){adminSetDebug(u.ls_id,false);}},'×'));
           }))));
   }
 
@@ -6764,6 +6830,10 @@ function App(p){
       dbg('ls_check_gate_status Response:',JSON.stringify(d),'Error:',res&&res.error?JSON.stringify(res.error):'keiner');
       if(d)setGateState(Object.assign({loading:false},d));
       else setGateState(function(s){return Object.assign({},s,{loading:false});});
+      /* Server-gesteuertes Debug-Overlay (siehe Admin-Bereich): greift
+         zusaetzlich zum lokalen ?debug=1-Geraete-Flag, damit ein
+         einzelnes Konto gezielt aus der Ferne eingeschaltet werden kann. */
+      if(d&&d.debug_enabled&&window.__kkmDbgForceOn)window.__kkmDbgForceOn();
       /* Falls der allererste Username-Sync-Versuch (Start-Timer) noch
          vor der Code-Einloesung lief und deshalb an der RLS-Sperre
          scheiterte, bleibt der Username in Supabase sonst dauerhaft
@@ -9230,6 +9300,12 @@ function App(p){
       return localStorage.getItem('kkm-debug-off')!=='1';
     }catch(e){ return true; }
   }
+  /* Zusaetzlicher, server-gesteuerter Weg (siehe Admin-Bereich, Feld
+     debug_enabled auf ls_users): unabhaengig vom lokalen Geraete-Flag
+     kann das Overlay gezielt fuer einzelne Konten eingeschaltet werden.
+     App() ruft das nach ls_check_gate_status() auf, wenn debug_enabled
+     dort true liefert - build() ist idempotent (siehe Guard oben). */
+  window.__kkmDbgForceOn=function(){ if(document.body)build(); else window.addEventListener('DOMContentLoaded',build); };
   if(!debugEnabled())return;
   if(document.body)build(); else window.addEventListener('DOMContentLoaded',build);
 })();
