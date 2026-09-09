@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.123";
+var KKM_VERSION="1.8.124";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -9336,7 +9336,13 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     var drs=useState(false); var dataReady=drs[0]; var setDataReady=drs[1];
     var des=useState(false); var dataError=des[0]; var setDataError=des[1];
     var dataReadyRef=useRef(false);
-    function onDataReady(){ dataReadyRef.current=true; setDataReady(true); }
+    /* Bug-Fix: onDataReady setzte dataError bisher nicht zurueck - kam
+       die Wiederherstellung z.B. wegen einer langsamen statt fehlenden
+       Verbindung erst nach dem 15s-Sicherheitsnetz (siehe tMax unten)
+       doch noch erfolgreich durch, blieb die App trotz vorhandener
+       Daten fuer immer auf der "Keine Internetverbindung"-Meldung
+       haengen - nur ein manueller Reload half. */
+    function onDataReady(){ dataReadyRef.current=true; setDataReady(true); setDataError(false); }
     function onDataError(){ setDataError(true); }
 
     /* Freunde-Daten der Startseite bereits hier laden (parallel zum
