@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.125";
+var KKM_VERSION="1.8.126";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -9434,8 +9434,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
 
     if(dataError){
       return h("div",{style:{minHeight:"100dvh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:24,background:"#0F0A1E",color:"#fff",fontFamily:"var(--font-sans)"}},
-        h("div",{style:{fontSize:15,fontWeight:600,marginBottom:10}},"Keine Internetverbindung"),
-        h("div",{style:{fontSize:13,color:"rgba(255,255,255,.5)",maxWidth:280,lineHeight:1.5,marginBottom:20}},"Lernpuls konnte deine Karteikarten nicht laden. Bitte prüfe deine Verbindung und versuche es erneut."),
+        h("div",{style:{fontSize:15,fontWeight:600,marginBottom:10}},"Noch keine Daten gespeichert"),
+        h("div",{style:{fontSize:13,color:"rgba(255,255,255,.5)",maxWidth:280,lineHeight:1.5,marginBottom:20}},"Auf diesem Gerät sind noch keine Karteikarten zwischengespeichert. Bitte einmal mit Internet öffnen, danach funktioniert auch der Zugriff ohne Verbindung."),
         h("button",{onClick:function(){window.location.reload();},style:{height:44,padding:"0 24px",borderRadius:999,border:"1px solid rgba(124,58,237,.55)",background:"transparent",color:"#fff",fontFamily:"inherit",fontSize:14,fontWeight:600,cursor:"pointer"}},"Erneut versuchen"));
     }
     return h("div",null,shown&&h(Splash,{out:hiding,onSkip:skip}),h(App,{dashFriends:dashFriends,splashHiding:hiding,onRefreshDashFriends:loadDashFriends,onDataReady:onDataReady,onDataError:onDataError}));
