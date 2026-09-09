@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.124";
+var KKM_VERSION="1.8.125";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -6650,7 +6650,21 @@ function App(p){
      Stand hat (dann ist nichts abzuwarten, quasi sofort fertig) oder ob
      der allererste Cloud-Sync abgewartet werden muss, bevor der Splash
      sich schliessen darf (siehe Boot() unten). */
-  var hasLocalDataRef=useRef(!!localStorage.getItem(STORE_KEY));
+  /* Bug-Fix: pruefte bisher nur, ob UEBERHAUPT ein String unter dem
+     Storage-Key liegt - nicht, ob er tatsaechlich Stapel enthaelt. War
+     der gespeicherte Wert ausnahmsweise ein gueltiges, aber leeres
+     Objekt (z.B. {"decks":[],...}, wie es beim Debuggen tatsaechlich
+     beobachtet wurde), galt das faelschlich schon als "echter lokaler
+     Stand vorhanden" - die App zeigte dann offline das normale (aber
+     inhaltlich falsche) "Noch keine Stapel"-Dashboard statt der Keine-
+     Internetverbindung-Meldung, obwohl in Wahrheit gar nichts Echtes
+     lokal vorlag. */
+  var hasLocalDataRef=useRef((function(){
+    try{
+      var st=loadStore();
+      return !!((st.decks&&st.decks.length>0)||(st.folders&&st.folders.length>0)||(st.arbeiten&&st.arbeiten.length>0));
+    }catch(e){ return false; }
+  })());
   var dataBootReportedRef=useRef(false);
   function reportDataBootReady(){
     if(dataBootReportedRef.current)return;
@@ -7506,6 +7520,7 @@ function App(p){
            Netzwerkfehler stattdessen mit dem lokalen Stand
            weiterarbeiten (die lokale DSGVO-Zustimmung bleibt gueltig) -
            der naechste erfolgreiche Check holt alles Weitere nach. */
+        dbg('❌ handleAuthUser select Fehler:',res.error.message,'hasLocalData='+hasLocalDataRef.current);
         if(hasLocalDataRef.current)reportDataBootReady();else reportDataBootError();
         return;
       }
@@ -7517,10 +7532,11 @@ function App(p){
         setShowDsgvo(true);
         reportDataBootReady(); // blockiert auf den DSGVO-Screen, nicht auf Netzwerk
       }
-    }).catch(function(){
+    }).catch(function(e){
       /* Bug-Fix: dieser Request hatte bisher gar kein .catch() - schlug
          er offline fehl, blieb finishAuthUser() fuer immer ungenutzt und
          die Splash-Freigabe (siehe Boot()) haette ewig gewartet. */
+      dbg('❌ handleAuthUser select Exception:',e&&e.message,'hasLocalData='+hasLocalDataRef.current);
       if(hasLocalDataRef.current)reportDataBootReady();else reportDataBootError();
     });
   }
