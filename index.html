@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.129";
+var KKM_VERSION="1.8.130";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1881,23 +1881,49 @@ function rolloverPendingCards(cards){
   if(anyStillDue||!anyPending) return cards;
   return cards.map(function(c){ return c.roundPending?Object.assign({},c,{roundPending:false,nextReview:t}):c; });
 }
+function normalizeStore(s){
+  if(!s.arbeiten)s.arbeiten=[];
+  if(!s.settings)s.settings={lernTage:7,lernArten:['Klausur','Test']};
+  if(s.settings.lernArten===undefined)s.settings.lernArten=['Klausur','Test'];
+  if(s.settings.lernSpaceEnabled===undefined)s.settings.lernSpaceEnabled=true;
+  if(s.settings.dailyGoal===undefined)s.settings.dailyGoal=30;
+  if(!s.folders) s.folders=[];
+  /* War bisher ein eigener, rein geraete-lokaler localStorage-Key
+     (kkm-recent-docs) - dadurch weder zwischen Geraeten synchron noch
+     zuverlaessig aktuell (eine Loeschung auf Geraet A erreichte
+     Geraet B nie). Jetzt Teil von data, laeuft also automatisch ueber
+     den bestehenden Cloud-Sync (syncAppData/handleAuthUser) wie
+     decks/folders/settings auch - pro Account statt pro Geraet. */
+  if(!s.recentDocs) s.recentDocs=[];
+  return s;
+}
+function storeHasContent(s){
+  return !!(s&&((s.decks&&s.decks.length>0)||(s.folders&&s.folders.length>0)||(s.arbeiten&&s.arbeiten.length>0)));
+}
+var STORE_BACKUP_KEY=STORE_KEY+'-backup';
 function loadStore(){
   try{
     var r=localStorage.getItem(STORE_KEY);
-    var s=r?JSON.parse(r):{decks:[],folders:[],reminder:null,arbeiten:[],settings:{lernTage:7,lernArten:['Klausur','Test']}};
-    if(!s.arbeiten)s.arbeiten=[];
-    if(!s.settings)s.settings={lernTage:7,lernArten:['Klausur','Test']};
-    if(s.settings.lernArten===undefined)s.settings.lernArten=['Klausur','Test'];
-    if(s.settings.lernSpaceEnabled===undefined)s.settings.lernSpaceEnabled=true;
-    if(s.settings.dailyGoal===undefined)s.settings.dailyGoal=30;
-    if(!s.folders) s.folders=[];
-    /* War bisher ein eigener, rein geraete-lokaler localStorage-Key
-       (kkm-recent-docs) - dadurch weder zwischen Geraeten synchron noch
-       zuverlaessig aktuell (eine Loeschung auf Geraet A erreichte
-       Geraet B nie). Jetzt Teil von data, laeuft also automatisch ueber
-       den bestehenden Cloud-Sync (syncAppData/handleAuthUser) wie
-       decks/folders/settings auch - pro Account statt pro Geraet. */
-    if(!s.recentDocs) s.recentDocs=[];
+    var s=normalizeStore(r?JSON.parse(r):{decks:[],folders:[],reminder:null,arbeiten:[],settings:{lernTage:7,lernArten:['Klausur','Test']}});
+    /* Bug-Fix: sah der primaere Cache leer/kaputt aus (z.B. durch einen
+       vom Betriebssystem beim Force-Quit abgebrochenen Schreibvorgang),
+       gab es bisher nichts - Anzeige blieb leer bzw. zeigte den
+       Fehlerbildschirm, obwohl auf dem Geraet eigentlich noch Daten
+       vorhanden waren. Jetzt: faellt in diesem Fall lautlos auf die
+       letzte bekannt-gute, garantiert nicht-leere Sicherungskopie
+       zurueck (siehe saveStore). Offline gemachter Fortschritt bleibt
+       dabei erhalten, da jede lokale Aenderung _syncedAt neu stempelt
+       und beim naechsten Online-Sync ohnehin gegen die Cloud gewinnt. */
+    if(!storeHasContent(s)){
+      try{
+        var br=localStorage.getItem(STORE_BACKUP_KEY);
+        var b=br?normalizeStore(JSON.parse(br)):null;
+        if(storeHasContent(b)){
+          dbg('♻️ loadStore: primaerer Cache leer, nutze Backup ('+(b.decks||[]).length+' Stapel).');
+          return b;
+        }
+      }catch(e){}
+    }
     return s;
   }catch(e){ return {decks:[],folders:[],reminder:null}; }
 }
@@ -1918,6 +1944,13 @@ function saveStore(d){
     }).join(' | '),'| _syncedAt:',d._syncedAt||0);
   }catch(e){}
   try{ localStorage.setItem(STORE_KEY,JSON.stringify(d)); }catch(e){}
+  /* Sicherungskopie: wird NUR geschrieben, wenn d tatsaechlich Inhalt
+     hat - damit dieser Zweit-Key nie versehentlich selbst mit einem
+     leeren/kaputten Stand ueberschrieben wird und garantiert die
+     letzte bekannt-gute Version haelt (siehe loadStore-Fallback oben). */
+  try{
+    if(storeHasContent(d)) localStorage.setItem(STORE_BACKUP_KEY,JSON.stringify(d));
+  }catch(e){}
 }
 function swMsg(m){ if(navigator.serviceWorker&&navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage(m); }
 
