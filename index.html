@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.131";
+var KKM_VERSION="1.8.132";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1719,6 +1719,7 @@ function plainBoundingCrop(imgEl,corners){
 }
 
 var _syncUser=null; var _syncTimeout=null; var _realtimeChannel=null; var _applyingRemote=false; var _preloadedLsData=null; var _unCache={};
+var _authUserInFlight=false;
 var _syncSetData=null; var _syncShowToast=null;
 /* Gate fuer die Hochzaehl-Animationen auf der Startseite: die
    Dashboard-Komponente steht schon waehrend des Splashs im DOM (nur
@@ -7282,7 +7283,7 @@ function App(p){
     var sb=getSb();
     /* Als benannte Funktion statt anonym direkt im Effekt, damit sie auch
        beim 'online'-Event unten erneut aufgerufen werden kann. */
-    function checkInitialAuth(){
+    function checkInitialAuth(reason){
     sb.auth.getSession().then(function(res){
       var session=res.data&&res.data.session;
       if(session&&session.user&&!session.user.is_anonymous){
@@ -7291,6 +7292,7 @@ function App(p){
         if(session.provider_refresh_token)driveStoreRefreshToken(session.provider_refresh_token);
         localStorage.setItem('kkm-onboarded','1');
         setShowLogin(false);
+        dbg('👤 checkInitialAuth('+(reason||'mount')+') -> handleAuthUser');
         handleAuthUser(session.user);
       } else if(session&&session.user&&session.user.is_anonymous){
         bindGuestAuthUid(session.user.id);
@@ -7351,7 +7353,7 @@ function App(p){
        weder ein Login-Fehler noch eine Session-abgelaufen-Meldung gezeigt
        wurde: Check automatisch wiederholen, statt dass der Nutzer selbst
        neu laden muss. */
-    function onBackOnline(){ checkInitialAuth(); }
+    function onBackOnline(){ dbg('🌐 online-Event ausgeloest'); checkInitialAuth('online-event'); }
     window.addEventListener('online',onBackOnline);
     var sub=sb.auth.onAuthStateChange(function(event,session){
       if(session&&session.user&&!session.user.is_anonymous){
@@ -7361,6 +7363,7 @@ function App(p){
         if(event==='SIGNED_IN'){
           localStorage.setItem('kkm-onboarded','1');
           setShowLogin(false);
+          dbg('👤 onAuthStateChange('+event+') -> handleAuthUser');
           handleAuthUser(session.user);
         }
       } else if(session&&session.user&&session.user.is_anonymous){
@@ -7482,8 +7485,14 @@ function App(p){
         // App-Daten wiederherstellen wenn remote neuer
         if(known.app_data){
           var remoteTs=known.app_data._syncedAt||0;
+          /* Diagnose-Log: liest den primaeren Key roh direkt von der
+             Festplatte (ohne loadStore()s Backup-Fallback dazwischen),
+             damit im Debug-Log sichtbar ist, ob wirklich NICHTS mehr
+             auf dem Geraet steht oder ob nur der Vergleich unten aus
+             einem anderen Grund localTs=0 sieht. */
+          var _rawPrimary=null; try{ _rawPrimary=localStorage.getItem(STORE_KEY); }catch(e){}
           var localTs=loadStore()._syncedAt||0;
-          dbg('🔍 Restore-Check (Login):','remoteTs='+remoteTs,'localTs='+localTs,'wird angewendet='+(remoteTs>localTs));
+          dbg('🔍 Restore-Check (Login):','remoteTs='+remoteTs,'localTs='+localTs,'wird angewendet='+(remoteTs>localTs),'| primaer roh vorhanden='+(!!_rawPrimary)+' Laenge='+(_rawPrimary?_rawPrimary.length:0));
           if(remoteTs>localTs){
             _applyingRemote=true;
             var restored=applyRemoteExtras(known.app_data);
@@ -7558,6 +7567,24 @@ function App(p){
      showDsgvo-Screen, bevor irgendetwas in ls_users geschrieben wird -
      erst nach Zustimmung laeuft finishAuthUser() weiter. */
   function handleAuthUser(user){
+    /* Bug-Fix: handleAuthUser() wird aus mehreren, voneinander
+       unabhaengigen Stellen angestossen (initialer Mount-Check,
+       onAuthStateChange-Listener, 'online'-Event nach Verbindungs-
+       flackern - beobachtet z.B. bei gesperrtem Handy) und konnte so
+       mehrfach ueberlappend laufen. Der Restore-Vergleich weiter unten
+       (remoteTs vs. localTs=loadStore()._syncedAt) ist zwar
+       synchron, aber JEDER ueberlappende Aufruf macht seine EIGENE
+       ls_users-Abfrage - lief einer davon durch eine langsame/
+       instabile Verbindung ungewoehnlich lang und loeste seinen
+       Vergleich erst Minuten spaeter aus, konnte er faelschlich einen
+       laengst veralteten Cloud-Stand erneut ueber frischeren lokalen
+       Fortschritt schreiben. Jetzt: laeuft bereits ein Aufruf, wird
+       ein weiterer ignoriert statt parallel zu starten. */
+    if(_authUserInFlight){
+      dbg('⏭️ handleAuthUser: laeuft bereits, ueberspringe ueberlappenden Aufruf.');
+      return;
+    }
+    _authUserInFlight=true;
     _syncUser=user;
     var avatarUrl=user.user_metadata&&(user.user_metadata.avatar_url||user.user_metadata.picture);
     if(avatarUrl){
@@ -7607,7 +7634,7 @@ function App(p){
          die Splash-Freigabe (siehe Boot()) haette ewig gewartet. */
       dbg('❌ handleAuthUser select Exception:',e&&e.message,'hasLocalData='+hasLocalDataRef.current);
       if(hasLocalDataRef.current)reportDataBootReady();else reportDataBootError();
-    });
+    }).finally(function(){ _authUserInFlight=false; });
   }
 
   function handleGoogleLogin(){
