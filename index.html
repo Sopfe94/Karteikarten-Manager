@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.126";
+var KKM_VERSION="1.8.127";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1901,7 +1901,24 @@ function loadStore(){
     return s;
   }catch(e){ return {decks:[],folders:[],reminder:null}; }
 }
-function saveStore(d){ try{ localStorage.setItem(STORE_KEY,JSON.stringify(d)); }catch(e){} }
+/* Merkt sich, ob der letzte saveStore()-Aufruf Stapel enthielt - damit
+   ein Uebergang "vorher welche da, jetzt leer" beim naechsten Auftreten
+   des Cache-Bugs auffaellig geloggt wird, statt im normalen Rauschen
+   unterzugehen. */
+var _lastSaveHadDecks=null;
+function saveStore(d){
+  try{
+    var deckCount=(d.decks||[]).length;
+    if(_lastSaveHadDecks===true&&deckCount===0){
+      dbg('⚠️⚠️ saveStore: Stapel verschwinden gerade! Vorher waren welche da, jetzt wird leer geschrieben.');
+    }
+    _lastSaveHadDecks=deckCount>0;
+    dbg('💾 saveStore:',deckCount===0?'(leer)':(d.decks||[]).map(function(dk){
+      return dk.name+'='+deckPct(dk)+'%('+((dk.cards||[]).length)+'K)';
+    }).join(' | '),'| _syncedAt:',d._syncedAt||0);
+  }catch(e){}
+  try{ localStorage.setItem(STORE_KEY,JSON.stringify(d)); }catch(e){}
+}
 function swMsg(m){ if(navigator.serviceWorker&&navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage(m); }
 
 function useToast(){ var s=useState(""); var msg=s[0]; var set=s[1]; function show(m){set(m);setTimeout(function(){set("");},3000);} return [msg,show]; }
