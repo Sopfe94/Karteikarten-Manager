@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.127";
+var KKM_VERSION="1.8.128";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -7621,7 +7621,22 @@ function App(p){
       setShowUpdOverlay(true);
     }
   },[]);
+  /* Bug-Fix: schrieb bisher auch beim allerersten Mount sofort wieder
+     zurueck - mit exakt dem Wert, der gerade erst aus loadStore()
+     kam. Per Log beobachtet: war dieser erste Lesevorgang aus
+     unbekanntem Grund leer (0 Stapel), wurde diese Leere SOFORT
+     wieder auf die Platte geschrieben, noch bevor die zeitgleich
+     laufende Cloud-Wiederherstellung eine Chance hatte, sie zu
+     korrigieren - wurde die App in der Zwischenzeit (Wiederherstellung
+     dauert teils >10s) geschlossen, blieb dieser leere Zwischenstand
+     dauerhaft der zuletzt gespeicherte. Der allererste Durchlauf
+     schreibt jetzt nichts zurueck (schliesslich kommt der Wert
+     ohnehin 1:1 aus dem Speicher, den er gerade erst gelesen hat) -
+     erst eine echte Aenderung (z.B. durch die Wiederherstellung oder
+     eine Nutzeraktion) loest wieder einen Schreibvorgang aus. */
+  var firstPersistRef=useRef(true);
   useEffect(function(){
+    if(firstPersistRef.current){ firstPersistRef.current=false; return; }
     saveStore(data);
     syncAppData(Object.assign({},data,{learnLog:getLogDb(),streakResetDate:localStorage.getItem(STREAK_RESET_KEY)||null}));
     var due=(data.decks||[]).reduce(function(s,d){return s+getDue(d).length;},0);
