@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.122";
+var KKM_VERSION="1.8.123";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -7231,7 +7231,14 @@ function App(p){
           setShowSessionExpired(true);
           reportDataBootReady(); // wartet auf erneutes Login des Nutzers, nicht auf Netzwerk
         } else if(prevId&&prevId.indexOf('@')>-1){
-          reportDataBootReady(); // offline - mit lokalem Stand weiterarbeiten, Check kommt per 'online' erneut
+          /* Bug-Fix: hier fehlte bisher die hasLocalDataRef-Pruefung, die
+             alle anderen Zweige schon haben - lief der lokale Speicher
+             ausnahmsweise leer (z.B. weil Safari-Websitedaten geloescht
+             wurden), zeigte die App offline faelschlich das normale
+             "Noch keine Stapel"-Dashboard statt einer klaren Fehler-
+             meldung. Sah aus wie kompletter Datenverlust, obwohl online
+             alles wiederhergestellt wird. */
+          if(hasLocalDataRef.current)reportDataBootReady();else reportDataBootError(); // offline - mit lokalem Stand weiterarbeiten, Check kommt per 'online' erneut
         } else if(dsgvoAccepted()){
           /* Ohne Zustimmung wird hier bewusst gar nichts getan - kein
              signInAnonymously(), kein Supabase-Kontakt ueberhaupt. Der
