@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.130";
+var KKM_VERSION="1.8.131";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1932,6 +1932,7 @@ function loadStore(){
    des Cache-Bugs auffaellig geloggt wird, statt im normalen Rauschen
    unterzugehen. */
 var _lastSaveHadDecks=null;
+var _lastBackupWriteAt=0;
 function saveStore(d){
   try{
     var deckCount=(d.decks||[]).length;
@@ -1947,9 +1948,27 @@ function saveStore(d){
   /* Sicherungskopie: wird NUR geschrieben, wenn d tatsaechlich Inhalt
      hat - damit dieser Zweit-Key nie versehentlich selbst mit einem
      leeren/kaputten Stand ueberschrieben wird und garantiert die
-     letzte bekannt-gute Version haelt (siehe loadStore-Fallback oben). */
+     letzte bekannt-gute Version haelt (siehe loadStore-Fallback oben).
+     Bug-Fix: urspruenglich wurde die Sicherungskopie bei JEDEM Aufruf
+     zusammen mit dem primaeren Key geschrieben - das brachte in der
+     Praxis nichts, da localStorage-Schreibvorgaenge vom Betriebssystem
+     gebuendelt/verzoegert auf die Festplatte durchgeschrieben werden:
+     killt iOS die App genau in diesem Fenster, gehen primaerer Key UND
+     Sicherungskopie gemeinsam verloren, weil beide gleich "frisch" und
+     ungesichert waren (siehe Lernstreak, der als eigener, haeufiger
+     und daher laengst durchgeschriebener Key den Absturz ueberlebte,
+     waehrend Stapel+Backup zusammen weg waren). Jetzt bewusst zeitlich
+     entkoppelt: die Sicherungskopie wird hoechstens alle 30s neu
+     geschrieben (aber sofort beim allerersten Mal), damit sie im
+     Ernstfall bereits eine Weile sicher auf der Festplatte liegt,
+     waehrend der primaere Key weiter bei jeder Aenderung aktuell
+     bleibt. */
   try{
-    if(storeHasContent(d)) localStorage.setItem(STORE_BACKUP_KEY,JSON.stringify(d));
+    var nowTs=Date.now();
+    if(storeHasContent(d)&&(_lastBackupWriteAt===0||(nowTs-_lastBackupWriteAt)>=30000)){
+      localStorage.setItem(STORE_BACKUP_KEY,JSON.stringify(d));
+      _lastBackupWriteAt=nowTs;
+    }
   }catch(e){}
 }
 function swMsg(m){ if(navigator.serviceWorker&&navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage(m); }
