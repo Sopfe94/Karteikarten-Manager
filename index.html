@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.132";
+var KKM_VERSION="1.8.133";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -7605,7 +7605,16 @@ function App(p){
       }).catch(function(){});
     }
     var sb=getSb();
-    sb.from('ls_users').select('ls_id,app_data,username,netzwerk_data,dsgvo_accepted_at').eq('authUid',user.id).maybeSingle().then(function(res){
+    /* Bug-Fix: diese Abfrage hatte - anders als lsGet() & Co - noch
+       keinen withTimeout()-Schutz. Blieb sie (z.B. bei einer
+       haengenden Mobilfunkverbindung) fuer immer unentschieden,
+       feuerte weder .then() noch .catch() noch .finally() - der neue
+       _authUserInFlight-Schutz oben bliebe dann fuer den Rest der
+       Sitzung dauerhaft blockiert und wuerde JEDEN weiteren Versuch
+       (auch nach spaeterer Netzwerk-Rueckkehr) stumm verwerfen. Mit
+       Timeout laeuft spaetestens nach 12s der Fehlerpfad (und damit
+       .finally()), die Sperre wird also garantiert wieder frei. */
+    withTimeout(sb.from('ls_users').select('ls_id,app_data,username,netzwerk_data,dsgvo_accepted_at').eq('authUid',user.id).maybeSingle(),12000).then(function(res){
       if(res.error){
         /* Bug-Fix: supabase-js wirft bei einem Netzwerkfehler (offline)
            KEINE Exception, sondern liefert {data:null, error:{...}}
