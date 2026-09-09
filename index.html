@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.121";
+var KKM_VERSION="1.8.122";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -3997,7 +3997,7 @@ function ProfilView(p){
     return h('div',null,
       h("button",{className:"back-btn",style:{marginBottom:8,marginTop:4},onClick:function(){setShowAdmin(false);}},"← Zurück"),
       h('div',{style:{padding:'12px 4px 40px',maxWidth:640}},
-        h('div',{style:{fontSize:24,fontWeight:700,letterSpacing:'-0.03em',background:'var(--grad-brand)',WebkitBackgroundClip:'text',backgroundClip:'text',WebkitTextFillColor:'transparent',display:'inline-block',marginBottom:20}},'Testphase-Admin'),
+        h('div',{style:{fontSize:24,fontWeight:700,letterSpacing:'-0.03em',background:'var(--grad-brand)',WebkitBackgroundClip:'text',backgroundClip:'text',WebkitTextFillColor:'transparent',display:'inline-block',marginBottom:20}},'Admin Panel'),
 
         h('div',{className:'lp-settings-row'},
           h('div',null,
@@ -4210,7 +4210,7 @@ function ProfilView(p){
         h('button',{className:'lp-profil-link',onClick:p.onShowImp},h('span',null,'Impressum'),h('span',null,'→')),
         h('button',{className:'lp-profil-link',onClick:p.onShowFaq},h('span',null,'FAQ'),h('span',null,'→')),
         h('button',{className:'lp-profil-link',onClick:p.onShowReport},h('span',null,'Kontakt / Problem melden'),h('span',null,'→')),
-        p.isAdmin&&h('button',{className:'lp-profil-link',onClick:function(){setShowAdmin(true);}},h('span',null,'Testphase-Admin'),h('span',null,'→')))),
+        p.isAdmin&&h('button',{className:'lp-profil-link',onClick:function(){setShowAdmin(true);}},h('span',null,'Admin Panel'),h('span',null,'→')))),
 
     showQ&&h('div',{className:'settings-overlay',onClick:function(){setShowQ(false);}},
       h('div',{className:'settings-overlay-box',onClick:function(e){e.stopPropagation();}},
