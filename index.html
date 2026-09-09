@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.128";
+var KKM_VERSION="1.8.129";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -7642,6 +7642,29 @@ function App(p){
     var due=(data.decks||[]).reduce(function(s,d){return s+getDue(d).length;},0);
     swMsg({type:"UPDATE_DUE",dueCount:due});
   },[data]);
+  /* Zusaetzliches Sicherheitsnetz gegen den vermuteten iOS-Fall: wird
+     die Web-App im App-Umschalter aktiv weggewischt, beendet iOS den
+     Prozess sehr abrupt - unklar, ob der letzte (synchrone)
+     localStorage-Schreibvorgang zu dem Zeitpunkt schon wirklich auf
+     der Festplatte gelandet ist. visibilitychange (state=hidden) und
+     pagehide feuern nach allem, was bekannt ist, auch beim Wegwischen
+     noch VOR dem harten Prozessende - genau dort wird hier nochmal
+     explizit (redundant zum Persist-Effect oben) gespeichert, als
+     letzte Chance kurz vorher. dataRef haelt den aktuellen Stand fest,
+     damit der Event-Handler (nur einmal beim Mount registriert) nicht
+     auf einer veralteten Kopie von data sitzen bleibt. */
+  var dataRef=useRef(data);
+  useEffect(function(){ dataRef.current=data; },[data]);
+  useEffect(function(){
+    function flushSave(){ saveStore(dataRef.current); }
+    function onVisibility(){ if(document.visibilityState==="hidden")flushSave(); }
+    document.addEventListener("visibilitychange",onVisibility);
+    window.addEventListener("pagehide",flushSave);
+    return function(){
+      document.removeEventListener("visibilitychange",onVisibility);
+      window.removeEventListener("pagehide",flushSave);
+    };
+  },[]);
 
   useEffect(function(){
     var now=new Date();
