@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "sophie-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "Sopfe94/superpowers-plugin"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "superpowers@sophie-plugins": true
+  }
+}
