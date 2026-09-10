@@ -1,4 +1,7 @@
 {
+  "enabledPlugins": {
+    "superpowers@sophie-plugins": true
+  },
   "extraKnownMarketplaces": {
     "sophie-plugins": {
       "source": {
@@ -6,8 +9,5 @@
         "repo": "Sopfe94/superpowers-plugin"
       }
     }
-  },
-  "enabledPlugins": {
-    "superpowers@sophie-plugins": true
   }
 }
