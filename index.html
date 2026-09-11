@@ -2023,6 +2023,58 @@ function pdfCachePut(fileId,arrayBuffer){
     dbg('❌ pdfCachePut fehlgeschlagen:',e&&e.name,e&&e.message);
   });
 }
+/* Scan-Upload-Warteschlange: ein Scan (Bild-Erfassung + Zuschnitt +
+   PDF-Zusammenbau) laeuft komplett lokal ab - nur der letzte Schritt
+   (driveUploadPdf) braucht Netzwerk. Schlaegt der Upload wegen
+   fehlender Verbindung fehl, landet der fertige PDF-Blob hier in
+   IndexedDB (als Base64-String, da Blobs nicht direkt strukturiert
+   klonbar in aelteren IndexedDB-Implementierungen sind - matcht das
+   bestehende Bild-Speicherformat der Karten) statt verloren zu gehen,
+   und wird automatisch nachgeholt, sobald 'online' feuert. */
+function queueScanForUpload(blob,filename,parentId,pageCount){
+  return blobToDataURL(blob).then(function(dataUrl){
+    return kkmIdbGet('scanUploadQueue').then(function(queue){
+      queue=queue||[];
+      queue.push({id:'scan-'+Date.now()+'-'+Math.random().toString(36).slice(2),dataUrl:dataUrl,filename:filename,parentId:parentId,pageCount:pageCount,queuedAt:Date.now()});
+      return kkmIdbSet('scanUploadQueue',queue);
+    });
+  });
+}
+function blobToDataURL(blob){
+  return new Promise(function(resolve,reject){
+    var fr=new FileReader();
+    fr.onload=function(){resolve(fr.result);};
+    fr.onerror=function(){reject(fr.error);};
+    fr.readAsDataURL(blob);
+  });
+}
+function dataURLToBlob(dataUrl){
+  var parts=dataUrl.split(',');
+  var mime=parts[0].match(/:(.*?);/)[1];
+  var bin=atob(parts[1]);
+  var arr=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+  return new Blob([arr],{type:mime});
+}
+function flushScanQueue(){
+  return kkmIdbGet('scanUploadQueue').then(function(queue){
+    if(!queue||!queue.length)return;
+    var chain=Promise.resolve();
+    var remaining=queue.slice();
+    queue.forEach(function(entry){
+      chain=chain.then(function(){
+        var blob=dataURLToBlob(entry.dataUrl);
+        return driveUploadPdf(blob,entry.filename,entry.parentId,entry.pageCount).then(function(){
+          remaining=remaining.filter(function(e){return e.id!==entry.id;});
+          return kkmIdbSet('scanUploadQueue',remaining);
+        }).catch(function(e){
+          dbg('❌ Warteschlangen-Upload fehlgeschlagen, bleibt in der Warteschlange:',entry.filename,e&&e.message);
+        });
+      });
+    });
+    return chain;
+  }).catch(function(){});
+}
 var _storeCache=null; // synchrone Quelle der Wahrheit, sobald befuellt
 function loadStore(){
   if(_storeCache) return _storeCache;
@@ -7549,6 +7601,13 @@ function App(p){
     return function(){ window.removeEventListener('online',onBackOnline); if(sub&&sub.data&&sub.data.subscription)sub.data.subscription.unsubscribe(); };
   },[]);
 
+  useEffect(function(){
+    function onBackOnlineFlushScans(){ flushScanQueue(); }
+    window.addEventListener('online',onBackOnlineFlushScans);
+    flushScanQueue(); // auch direkt beim Boot versuchen, falls schon online
+    return function(){ window.removeEventListener('online',onBackOnlineFlushScans); };
+  },[]);
+
   function setupRealtimeSync(){
     var myId=localStorage.getItem('kkm-ls-id');
     if(!myId)return;
@@ -8505,11 +8564,16 @@ function App(p){
     setScanNameModalOpen(false);setScanNamePending(null);
     setScanBusy(true);
     buildPdfBlobFromImages(pages).then(function(blob){
-      return driveUploadPdf(blob,name,docsFolderId,pages.length);
-    }).then(function(){
-      setScanBusy(false);setScanModalOpen(false);setScanMode(null);setScanPages([]);
-      loadDocsFolder(docsFolderId);
-      showToast("Dokument gespeichert.");
+      return driveUploadPdf(blob,name,docsFolderId,pages.length).then(function(){
+        setScanBusy(false);setScanModalOpen(false);setScanMode(null);setScanPages([]);
+        loadDocsFolder(docsFolderId);
+        showToast("Dokument gespeichert.");
+      }).catch(function(e){
+        return queueScanForUpload(blob,name,docsFolderId,pages.length).then(function(){
+          setScanBusy(false);setScanModalOpen(false);setScanMode(null);setScanPages([]);
+          showToast("Kein Internet - Scan wird automatisch hochgeladen, sobald du wieder online bist.");
+        });
+      });
     }).catch(function(e){
       setScanBusy(false);
       showToast("Scan konnte nicht gespeichert werden.");
