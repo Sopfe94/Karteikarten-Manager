@@ -1987,17 +1987,31 @@ function loadStoreInitial(){
         _storeCache=normalizedBackup;
         return _storeCache;
       }
-      try{
-        var raw=localStorage.getItem(STORE_KEY);
-        if(raw){
-          var migrated=normalizeStore(JSON.parse(raw));
-          if(storeHasContent(migrated)){
-            dbg('📦➡️🗄️ Migration: uebernehme alten localStorage-Stand nach IndexedDB ('+(migrated.decks||[]).length+' Stapel).');
-            _storeCache=migrated;
-            return kkmIdbSet('data',migrated).then(function(){ return _storeCache; }).catch(function(){ return _storeCache; });
+      if(localStorage.getItem('kkm-idb-migrated')!=='1'){
+        try{
+          var raw=localStorage.getItem(STORE_KEY);
+          if(raw){
+            var migrated=normalizeStore(JSON.parse(raw));
+            if(storeHasContent(migrated)){
+              dbg('📦➡️🗄️ Migration: uebernehme alten localStorage-Stand nach IndexedDB ('+(migrated.decks||[]).length+' Stapel).');
+              _storeCache=migrated;
+              try{ localStorage.setItem('kkm-idb-migrated','1'); }catch(e){}
+              return kkmIdbSet('data',migrated).then(function(){ return _storeCache; }).catch(function(){ return _storeCache; });
+            }
           }
-        }
-      }catch(e){}
+          var rawBackup=localStorage.getItem(STORE_BACKUP_KEY);
+          if(rawBackup){
+            var migratedBackup=normalizeStore(JSON.parse(rawBackup));
+            if(storeHasContent(migratedBackup)){
+              dbg('📦➡️🗄️ Migration: primaerer localStorage-Stand leer, uebernehme Backup-Stand nach IndexedDB ('+(migratedBackup.decks||[]).length+' Stapel).');
+              _storeCache=migratedBackup;
+              try{ localStorage.setItem('kkm-idb-migrated','1'); }catch(e){}
+              return kkmIdbSet('data',migratedBackup).then(function(){ return _storeCache; }).catch(function(){ return _storeCache; });
+            }
+          }
+        }catch(e){}
+        try{ localStorage.setItem('kkm-idb-migrated','1'); }catch(e){}
+      }
       _storeCache=normalizeStore({decks:[],folders:[],reminder:null,arbeiten:[],settings:{lernTage:7,lernArten:['Klausur','Test']}});
       return _storeCache;
     });
@@ -7946,6 +7960,9 @@ function App(p){
         localStorage.removeItem(DSGVO_KEY);
         localStorage.removeItem('kkm-gphoto');
       }catch(e){}
+      _storeCache={decks:[],folders:[],reminder:null,arbeiten:[],settings:{lernTage:7,lernArten:['Klausur','Test']}};
+      kkmIdbSet('data',{decks:[],folders:[],reminder:null,arbeiten:[],settings:{lernTage:7,lernArten:['Klausur','Test']}}).catch(function(){});
+      kkmIdbSet('dataBackup',{decks:[],folders:[],reminder:null,arbeiten:[],settings:{lernTage:7,lernArten:['Klausur','Test']}}).catch(function(){});
       if(googleUser){ getSb().auth.signOut().then(function(){window.location.reload();}).catch(function(){window.location.reload();}); }
       else window.location.reload();
     }
