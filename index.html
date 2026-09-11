@@ -1941,19 +1941,23 @@ var KKM_IDB_STORE='kv';
    Verbindung von aussen geschlossen wird (z.B. anderer Tab mit neuerer
    DB-Version), damit der naechste Aufruf sauber neu oeffnet. */
 var _kkmIdbInstance=null;
+var _kkmIdbOpenPromise=null;
 function kkmIdbOpen(){
   if(_kkmIdbInstance) return Promise.resolve(_kkmIdbInstance);
-  return new Promise(function(resolve,reject){
+  if(_kkmIdbOpenPromise) return _kkmIdbOpenPromise;
+  _kkmIdbOpenPromise=new Promise(function(resolve,reject){
     var req=indexedDB.open(KKM_IDB_NAME,1);
     req.onupgradeneeded=function(){ req.result.createObjectStore(KKM_IDB_STORE); };
     req.onsuccess=function(){
       _kkmIdbInstance=req.result;
+      _kkmIdbOpenPromise=null;
       _kkmIdbInstance.onclose=function(){ _kkmIdbInstance=null; };
       _kkmIdbInstance.onversionchange=function(){ _kkmIdbInstance.close(); _kkmIdbInstance=null; };
       resolve(req.result);
     };
-    req.onerror=function(){ reject(req.error); };
+    req.onerror=function(){ _kkmIdbOpenPromise=null; reject(req.error); };
   });
+  return _kkmIdbOpenPromise;
 }
 function kkmIdbGet(key){
   return kkmIdbOpen().then(function(db){

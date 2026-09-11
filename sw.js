@@ -97,12 +97,12 @@ keys.filter(function(k){ return k !== CACHE; })
    bereit") nicht durch 30MB Hintergrund-Download verzoegert wird -
    laeuft parallel dazu, sobald ein neuer SW aktiv wird. Retry-Logik
    identisch zu cacheWithRetry oben (2 Versuche, kurze Pause). */
-self.addEventListener('activate', function(){
+self.addEventListener('activate', function(e){
 caches.open(CACHE).then(function(c){
 Promise.all(HEAVY.map(function(url){ return cacheWithRetry(c,url,2); })).catch(function(){});
 });
 // zusaetzliches Sicherheitsnetz fuer die Tages-Erinnerung, siehe fetch-Handler oben
-maybeNotify();
+e.waitUntil(maybeNotify());
 });
 
 /* Bug-Fix: setTimeout/setInterval ueberleben keine Terminierung des
@@ -115,7 +115,7 @@ maybeNotify();
    die Erinnerung faellig ist. */
 var _lastNotifyCheck=0;
 self.addEventListener('fetch', function(e){
-if(Date.now()-_lastNotifyCheck>60000){_lastNotifyCheck=Date.now();maybeNotify();}
+if(Date.now()-_lastNotifyCheck>60000){_lastNotifyCheck=Date.now();e.waitUntil(maybeNotify());}
 if(e.request.method !== 'GET') return;
 var url = new URL(e.request.url);
 
