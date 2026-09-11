@@ -5511,6 +5511,7 @@ function LernSpaceView(p){
   }
 
   function cancelRequest(toId){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     getSb().rpc('ls_cancel_friend_request',{p_target_ls_id:toId}).then(function(){},function(){});
     var newSent=(lsData.sentRequests||[]).filter(function(r){return r.toId!==toId;});
     saveData({sentRequests:newSent});
@@ -5518,6 +5519,7 @@ function LernSpaceView(p){
   }
 
   function acceptRequest(req){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var newFriends=(lsData.friends||[]).find(function(f){return f.id===req.fromId;})?lsData.friends:[].concat(lsData.friends||[],[{id:req.fromId,since:Date.now()}]);
     var newReqs=(lsData.requests||[]).filter(function(r){return r.fromId!==req.fromId;});
     var newActs=[{type:'friend',text:(_unCache[req.fromId]||req.fromId)+' ist jetzt dein Freund',ts:Date.now()}].concat(lsData.activities||[]).slice(0,20);
@@ -5531,6 +5533,7 @@ function LernSpaceView(p){
   }
 
   function removeFriend(fid){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var newFriends=(lsData.friends||[]).filter(function(f){return f.id!==fid;});
     saveDataRemove({friends:newFriends});
     getSb().rpc('ls_remove_friend',{p_target_ls_id:fid}).then(function(){},function(){});
@@ -5538,6 +5541,7 @@ function LernSpaceView(p){
   }
 
   function createGroup(){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     if(!groupName.trim()){showToast('Name eingeben');return;}
     var gid=uid();
     var g={id:gid,name:groupName.trim(),emoji:groupEmoji,members:[{id:MY_ID,role:'admin'}],deckIds:[],created:Date.now()};
@@ -5577,6 +5581,7 @@ function LernSpaceView(p){
   }
 
   function inviteMember(){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var raw=inviteMemberId.trim();
     var g=selectedGroup;
     if(!g)return;
@@ -5646,6 +5651,7 @@ function LernSpaceView(p){
   }
 
   function changeMemberRole(targetId,newRole){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var g=selectedGroup;
     if(!g)return;
     if(!isGroupAdmin(g,MY_ID)){showToast('Nur Admins');return;}
@@ -5671,6 +5677,7 @@ function LernSpaceView(p){
     setGroupActionConfirm({type:'removeMember',targetId:targetId});
   }
   function runRemoveMember(targetId){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var g=selectedGroup;
     if(!g)return;
     getSb().rpc('ls_group_remove_member',{p_group_id:g.id,p_target_ls_id:targetId}).then(function(res){
@@ -5725,6 +5732,7 @@ function LernSpaceView(p){
     }).catch(function(e){dbg('transferGroup: \u274c catch',e&&e.message);showToast('Fehler');});
   }
   function runDeleteGroup(){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var g=selectedGroup;
     if(!g)return;
     dbg('deleteGroup: starte '+g.id);
@@ -5742,6 +5750,7 @@ function LernSpaceView(p){
     }).catch(function(e){dbg('deleteGroup: \u274c catch',e&&e.message);showToast('Fehler beim L\u00f6schen');});
   }
   function runLeaveGroup(){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var g=selectedGroup;
     if(!g)return;
     dbg('leaveGroup: starte '+g.id);
@@ -5779,6 +5788,7 @@ function LernSpaceView(p){
   }
 
   function shareStackWith(deck,friendId){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var copy=copyDeckNewIds(deck);
     getSb().rpc('ls_share_deck',{p_target_ls_id:friendId,p_deck:copy}).then(function(res){
       if(res.error)throw res.error;
@@ -6222,6 +6232,7 @@ function LernSpaceView(p){
     }
 
     function sendMsg(){
+      if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
       var txt=chatInput.trim();
       if(!txt)return;
       var ts=Date.now();
@@ -6417,7 +6428,8 @@ function LernSpaceView(p){
       onAccept:function(){localStorage.setItem(LS_CONSENT_KEY,'1');window.dispatchEvent(new Event('lp-ls-consent-given'));setShowConsent(false);},
       onDecline:function(){localStorage.setItem(LS_CONSENT_KEY,'0');setShowConsent(false);if(p.onBack)p.onBack();},
       onShowDat:p.onShowDat||function(){}
-    })
+    }),
+    h(Toast,{msg:toast})
   );
 }
 
