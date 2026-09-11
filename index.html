@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.136";
+var KKM_VERSION="1.8.137";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1930,31 +1930,96 @@ function storeHasContent(s){
   return !!(s&&((s.decks&&s.decks.length>0)||(s.folders&&s.folders.length>0)||(s.arbeiten&&s.arbeiten.length>0)));
 }
 var STORE_BACKUP_KEY=STORE_KEY+'-backup';
+var KKM_IDB_NAME='kkm-store-db';
+var KKM_IDB_STORE='kv';
+function kkmIdbOpen(){
+  return new Promise(function(resolve,reject){
+    var req=indexedDB.open(KKM_IDB_NAME,1);
+    req.onupgradeneeded=function(){ req.result.createObjectStore(KKM_IDB_STORE); };
+    req.onsuccess=function(){ resolve(req.result); };
+    req.onerror=function(){ reject(req.error); };
+  });
+}
+function kkmIdbGet(key){
+  return kkmIdbOpen().then(function(db){
+    return new Promise(function(resolve,reject){
+      var tx=db.transaction(KKM_IDB_STORE,'readonly');
+      var req=tx.objectStore(KKM_IDB_STORE).get(key);
+      req.onsuccess=function(){ resolve(req.result); };
+      req.onerror=function(){ reject(req.error); };
+    });
+  });
+}
+function kkmIdbSet(key,value){
+  return kkmIdbOpen().then(function(db){
+    return new Promise(function(resolve,reject){
+      var tx=db.transaction(KKM_IDB_STORE,'readwrite');
+      tx.objectStore(KKM_IDB_STORE).put(value,key);
+      tx.oncomplete=function(){ resolve(); };
+      tx.onerror=function(){ reject(tx.error); };
+    });
+  });
+}
+var _storeCache=null; // synchrone Quelle der Wahrheit, sobald befuellt
 function loadStore(){
-  try{
-    var r=localStorage.getItem(STORE_KEY);
-    var s=normalizeStore(r?JSON.parse(r):{decks:[],folders:[],reminder:null,arbeiten:[],settings:{lernTage:7,lernArten:['Klausur','Test']}});
-    /* Bug-Fix: sah der primaere Cache leer/kaputt aus (z.B. durch einen
-       vom Betriebssystem beim Force-Quit abgebrochenen Schreibvorgang),
-       gab es bisher nichts - Anzeige blieb leer bzw. zeigte den
-       Fehlerbildschirm, obwohl auf dem Geraet eigentlich noch Daten
-       vorhanden waren. Jetzt: faellt in diesem Fall lautlos auf die
-       letzte bekannt-gute, garantiert nicht-leere Sicherungskopie
-       zurueck (siehe saveStore). Offline gemachter Fortschritt bleibt
-       dabei erhalten, da jede lokale Aenderung _syncedAt neu stempelt
-       und beim naechsten Online-Sync ohnehin gegen die Cloud gewinnt. */
-    if(!storeHasContent(s)){
-      try{
-        var br=localStorage.getItem(STORE_BACKUP_KEY);
-        var b=br?normalizeStore(JSON.parse(br)):null;
-        if(storeHasContent(b)){
-          dbg('♻️ loadStore: primaerer Cache leer, nutze Backup ('+(b.decks||[]).length+' Stapel).');
-          return b;
-        }
-      }catch(e){}
+  if(_storeCache) return _storeCache;
+  return normalizeStore({decks:[],folders:[],reminder:null,arbeiten:[],settings:{lernTage:7,lernArten:['Klausur','Test']}});
+}
+/* Ersetzt die alte, rein synchrone loadStore()-Implementierung: IndexedDB
+   ist von Natur aus asynchron, daher wird der eigentliche Lesevorgang nur
+   EINMAL beim Boot ausgefuehrt (siehe App() in Task 4) und fuellt
+   _storeCache - danach bleibt loadStore() ueberall im Code unveraendert
+   synchron nutzbar. Prueft IndexedDB (primaer, dann Backup), und
+   migriert als letzten Ausweg einmalig den alten localStorage-Stand
+   (fuer Nutzer, die von einer Version vor diesem Umbau aktualisieren -
+   deren Daten duerfen nicht verloren wirken). */
+function loadStoreInitial(){
+  return kkmIdbGet('data').then(function(idbData){
+    var normalized=idbData?normalizeStore(idbData):null;
+    if(storeHasContent(normalized)){
+      _storeCache=normalized;
+      return _storeCache;
     }
-    return s;
-  }catch(e){ return {decks:[],folders:[],reminder:null}; }
+    return kkmIdbGet('dataBackup').then(function(idbBackup){
+      var normalizedBackup=idbBackup?normalizeStore(idbBackup):null;
+      if(storeHasContent(normalizedBackup)){
+        dbg('♻️ loadStoreInitial: IndexedDB primaer leer, nutze IndexedDB-Backup ('+(normalizedBackup.decks||[]).length+' Stapel).');
+        _storeCache=normalizedBackup;
+        return _storeCache;
+      }
+      if(localStorage.getItem('kkm-idb-migrated')!=='1'){
+        try{
+          var raw=localStorage.getItem(STORE_KEY);
+          if(raw){
+            var migrated=normalizeStore(JSON.parse(raw));
+            if(storeHasContent(migrated)){
+              dbg('📦➡️🗄️ Migration: uebernehme alten localStorage-Stand nach IndexedDB ('+(migrated.decks||[]).length+' Stapel).');
+              _storeCache=migrated;
+              try{ localStorage.setItem('kkm-idb-migrated','1'); }catch(e){}
+              return kkmIdbSet('data',migrated).then(function(){ return _storeCache; }).catch(function(){ return _storeCache; });
+            }
+          }
+          var rawBackup=localStorage.getItem(STORE_BACKUP_KEY);
+          if(rawBackup){
+            var migratedBackup=normalizeStore(JSON.parse(rawBackup));
+            if(storeHasContent(migratedBackup)){
+              dbg('📦➡️🗄️ Migration: primaerer localStorage-Stand leer, uebernehme Backup-Stand nach IndexedDB ('+(migratedBackup.decks||[]).length+' Stapel).');
+              _storeCache=migratedBackup;
+              try{ localStorage.setItem('kkm-idb-migrated','1'); }catch(e){}
+              return kkmIdbSet('data',migratedBackup).then(function(){ return _storeCache; }).catch(function(){ return _storeCache; });
+            }
+          }
+        }catch(e){}
+        try{ localStorage.setItem('kkm-idb-migrated','1'); }catch(e){}
+      }
+      _storeCache=normalizeStore({decks:[],folders:[],reminder:null,arbeiten:[],settings:{lernTage:7,lernArten:['Klausur','Test']}});
+      return _storeCache;
+    });
+  }).catch(function(e){
+    dbg('❌❌ loadStoreInitial: IndexedDB-Fehler:',e&&e.name,e&&e.message);
+    _storeCache=normalizeStore({decks:[],folders:[],reminder:null,arbeiten:[],settings:{lernTage:7,lernArten:['Klausur','Test']}});
+    return _storeCache;
+  });
 }
 /* Merkt sich, ob der letzte saveStore()-Aufruf Stapel enthielt - damit
    ein Uebergang "vorher welche da, jetzt leer" beim naechsten Auftreten
@@ -1973,46 +2038,38 @@ function saveStore(d){
       return dk.name+'='+deckPct(dk)+'%('+((dk.cards||[]).length)+'K)';
     }).join(' | '),'| _syncedAt:',d._syncedAt||0);
   }catch(e){}
-  /* Bug-Fix: dieser Schreibvorgang war seit jeher komplett lautlos -
-     schlug localStorage.setItem() fehl (z.B. QuotaExceededError, wenn
-     Kartenbilder das Speicherlimit sprengen), gab es dafuer NIRGENDS
-     einen Hinweis: kein dbg()-Log, keine Fehlermeldung, einfach
-     stiller Datenverlust. Der Shutdown-Canary bewies bereits, dass
-     flushSave() bis zum Ende durchlaeuft, OBWOHL der primaere Cache
-     danach trotzdem leer war - das deutet stark genau auf diesen
-     bisher unsichtbaren Fehlerfall hin. Jetzt wird ein Fehlschlag
-     explizit geloggt, inkl. Groesse der Daten (fuer Quota-Verdacht). */
-  var _payload=null;
-  try{ _payload=JSON.stringify(d); }catch(e){ dbg('❌❌ saveStore: JSON.stringify fehlgeschlagen:',e&&e.message); }
-  if(_payload!==null){
-    try{ localStorage.setItem(STORE_KEY,_payload); }
-    catch(e){ dbg('❌❌ saveStore: localStorage.setItem FEHLGESCHLAGEN:',e&&e.name,e&&e.message,'| Groesse:',_payload.length,'Zeichen'); }
-  }
-  /* Sicherungskopie: wird NUR geschrieben, wenn d tatsaechlich Inhalt
-     hat - damit dieser Zweit-Key nie versehentlich selbst mit einem
-     leeren/kaputten Stand ueberschrieben wird und garantiert die
-     letzte bekannt-gute Version haelt (siehe loadStore-Fallback oben).
-     Bug-Fix: urspruenglich wurde die Sicherungskopie bei JEDEM Aufruf
-     zusammen mit dem primaeren Key geschrieben - das brachte in der
-     Praxis nichts, da localStorage-Schreibvorgaenge vom Betriebssystem
-     gebuendelt/verzoegert auf die Festplatte durchgeschrieben werden:
-     killt iOS die App genau in diesem Fenster, gehen primaerer Key UND
-     Sicherungskopie gemeinsam verloren, weil beide gleich "frisch" und
-     ungesichert waren (siehe Lernstreak, der als eigener, haeufiger
-     und daher laengst durchgeschriebener Key den Absturz ueberlebte,
-     waehrend Stapel+Backup zusammen weg waren). Jetzt bewusst zeitlich
-     entkoppelt: die Sicherungskopie wird hoechstens alle 30s neu
-     geschrieben (aber sofort beim allerersten Mal), damit sie im
-     Ernstfall bereits eine Weile sicher auf der Festplatte liegt,
-     waehrend der primaere Key weiter bei jeder Aenderung aktuell
-     bleibt. */
+  /* Persistiert jetzt nach IndexedDB statt localStorage - der urspruengliche
+     Grund fuer diesen ganzen Umbau: localStorage.setItem() warf bei
+     Kartenbildern oberhalb von ca. 3.3MB ein stillschweigend verschlucktes
+     QuotaExceededError (siehe Plan-Header, per Log am 2026-09-11 direkt
+     beim Nutzer bestaetigt). IndexedDB erlaubt um Groessenordnungen mehr
+     Speicherplatz. _storeCache wird SOFORT synchron aktualisiert, damit
+     jeder loadStore()-Aufruf direkt danach den neuen Stand sieht - der
+     eigentliche Schreibvorgang auf die Festplatte laeuft im Hintergrund
+     und wird bei einem Fehlschlag (jetzt: sollte praktisch nie mehr
+     vorkommen) weiterhin explizit geloggt statt lautlos zu verschwinden. */
+  _storeCache=d;
+  kkmIdbSet('data',d).catch(function(e){
+    dbg('❌❌ saveStore: IndexedDB setItem FEHLGESCHLAGEN:',e&&e.name,e&&e.message);
+  });
+  /* Sicherungskopie: wird NUR geschrieben, wenn d tatsaechlich Inhalt hat
+     - damit dieser Zweit-Key nie versehentlich selbst mit einem leeren/
+     kaputten Stand ueberschrieben wird und garantiert die letzte
+     bekannt-gute Version haelt (siehe loadStoreInitial()-Fallback).
+     Bewusst zeitlich entkoppelt vom primaeren Schreibvorgang: wird
+     hoechstens alle 30s neu geschrieben (aber sofort beim allerersten
+     Mal), damit sie im Ernstfall (z.B. der weiterhin ungeklaerte iOS-
+     Force-Quit-Timing-Fall) bereits eine Weile sicher persistiert ist,
+     waehrend der primaere Key weiter bei jeder Aenderung aktuell bleibt. */
   try{
     var nowTs=Date.now();
-    if(storeHasContent(d)&&_payload!==null&&(_lastBackupWriteAt===0||(nowTs-_lastBackupWriteAt)>=30000)){
-      localStorage.setItem(STORE_BACKUP_KEY,_payload);
+    if(storeHasContent(d)&&(_lastBackupWriteAt===0||(nowTs-_lastBackupWriteAt)>=30000)){
       _lastBackupWriteAt=nowTs;
+      kkmIdbSet('dataBackup',d).catch(function(e){
+        dbg('❌❌ saveStore: IndexedDB Backup-setItem FEHLGESCHLAGEN:',e&&e.name,e&&e.message);
+      });
     }
-  }catch(e){ dbg('❌❌ saveStore: Backup-setItem FEHLGESCHLAGEN:',e&&e.name,e&&e.message); }
+  }catch(e){}
 }
 function swMsg(m){ if(navigator.serviceWorker&&navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage(m); }
 
@@ -6744,15 +6801,9 @@ function App(p){
 
   var _kkOC=parseInt(localStorage.getItem('kkm-open-count')||'0')+1;localStorage.setItem('kkm-open-count',String(_kkOC));
   var slo=useState(!localStorage.getItem('kkm-onboarded'));var showLogin=slo[0];var setShowLogin=slo[1];
-  var ds=useState(function(){
-    var s=loadStore();
-    try{
-      dbg('📦 Boot-Daten:',(s.decks||[]).map(function(d){
-        return d.name+'='+deckPct(d)+'%('+((d.cards||[]).length)+'K,upd:'+String(d.updatedAt||'').slice(0,16)+')';
-      }).join(' | '),'| _syncedAt:',s._syncedAt||0);
-    }catch(e){}
-    return s;
-  }); var data=ds[0]; var setData=ds[1];
+  var storeReadyRef=useRef(null);
+  if(storeReadyRef.current===null) storeReadyRef.current=loadStoreInitial();
+  var ds=useState(function(){ return loadStore(); }); var data=ds[0]; var setData=ds[1];
   /* Bug-Fix: Der Splash wartete bisher nur auf eine feste Mindestlaufzeit
      und die Freunde-Daten - nicht auf die eigentlichen Karteikarten. Bei
      einem neuen Geraet (noch kein lokaler Stand) konnte der Splash so
@@ -6771,12 +6822,18 @@ function App(p){
      inhaltlich falsche) "Noch keine Stapel"-Dashboard statt der Keine-
      Internetverbindung-Meldung, obwohl in Wahrheit gar nichts Echtes
      lokal vorlag. */
-  var hasLocalDataRef=useRef((function(){
-    try{
-      var st=loadStore();
-      return !!((st.decks&&st.decks.length>0)||(st.folders&&st.folders.length>0)||(st.arbeiten&&st.arbeiten.length>0));
-    }catch(e){ return false; }
-  })());
+  var hasLocalDataRef=useRef(false); // sicherer Default - wird unten befuellt, sobald storeReadyRef aufgeloest ist
+  useEffect(function(){
+    storeReadyRef.current.then(function(s){
+      hasLocalDataRef.current=!!((s.decks&&s.decks.length>0)||(s.folders&&s.folders.length>0)||(s.arbeiten&&s.arbeiten.length>0));
+      try{
+        dbg('📦 Boot-Daten:',(s.decks||[]).map(function(d){
+          return d.name+'='+deckPct(d)+'%('+((d.cards||[]).length)+'K,upd:'+String(d.updatedAt||'').slice(0,16)+')';
+        }).join(' | '),'| _syncedAt:',s._syncedAt||0);
+      }catch(e){}
+      setData(s);
+    });
+  },[]);
   var dataBootReportedRef=useRef(false);
   function reportDataBootReady(){
     if(dataBootReportedRef.current)return;
@@ -6788,8 +6845,15 @@ function App(p){
     dataBootReportedRef.current=true;
     if(p.onDataError)p.onDataError();
   }
+  function reportDataBootReadyOrError(){
+    storeReadyRef.current.then(function(){
+      if(hasLocalDataRef.current)reportDataBootReady();else reportDataBootError();
+    });
+  }
   useEffect(function(){
-    if(hasLocalDataRef.current)reportDataBootReady();
+    storeReadyRef.current.then(function(){
+      if(hasLocalDataRef.current)reportDataBootReady();
+    });
   },[]);
   var vs=useState("decks"); var view=vs[0]; var setView=vs[1];
   var dis=useState(null); var deckId=dis[0]; var setDeckId=dis[1];
@@ -7365,7 +7429,7 @@ function App(p){
              "Noch keine Stapel"-Dashboard statt einer klaren Fehler-
              meldung. Sah aus wie kompletter Datenverlust, obwohl online
              alles wiederhergestellt wird. */
-          if(hasLocalDataRef.current)reportDataBootReady();else reportDataBootError(); // offline - mit lokalem Stand weiterarbeiten, Check kommt per 'online' erneut
+          reportDataBootReadyOrError(); // offline - mit lokalem Stand weiterarbeiten, Check kommt per 'online' erneut
         } else if(dsgvoAccepted()){
           /* Ohne Zustimmung wird hier bewusst gar nichts getan - kein
              signInAnonymously(), kein Supabase-Kontakt ueberhaupt. Der
@@ -7380,14 +7444,14 @@ function App(p){
                fehl. Mit lokalem Stand (wiederkehrendes Geraet) einfach
                weiter - ohne kann hier ohnehin nichts geladen werden, das
                loest den Fehlerzustand in Boot() aus (siehe onDataError). */
-            if(hasLocalDataRef.current)reportDataBootReady();else reportDataBootError();
+            reportDataBootReadyOrError();
           });
         } else {
           reportDataBootReady(); // blockiert auf den DSGVO-Screen, nicht auf Netzwerk
         }
       }
     }).catch(function(){
-      if(hasLocalDataRef.current)reportDataBootReady();else reportDataBootError();
+      reportDataBootReadyOrError();
     });
     }
     checkInitialAuth();
@@ -7527,14 +7591,13 @@ function App(p){
         // App-Daten wiederherstellen wenn remote neuer
         if(known.app_data){
           var remoteTs=known.app_data._syncedAt||0;
-          /* Diagnose-Log: liest den primaeren Key roh direkt von der
-             Festplatte (ohne loadStore()s Backup-Fallback dazwischen),
-             damit im Debug-Log sichtbar ist, ob wirklich NICHTS mehr
-             auf dem Geraet steht oder ob nur der Vergleich unten aus
-             einem anderen Grund localTs=0 sieht. */
-          var _rawPrimary=null; try{ _rawPrimary=localStorage.getItem(STORE_KEY); }catch(e){}
+          /* Diagnose-Log: zeigt, ob der In-Memory-Cache (die neue
+             synchrone Quelle der Wahrheit seit der IndexedDB-Umstellung)
+             tatsaechlich Inhalt hat, damit im Debug-Log weiterhin
+             sichtbar ist, ob wirklich nichts lokal vorliegt oder der
+             Vergleich unten aus einem anderen Grund localTs=0 sieht. */
           var localTs=loadStore()._syncedAt||0;
-          dbg('🔍 Restore-Check (Login):','remoteTs='+remoteTs,'localTs='+localTs,'wird angewendet='+(remoteTs>localTs),'| primaer roh vorhanden='+(!!_rawPrimary)+' Laenge='+(_rawPrimary?_rawPrimary.length:0));
+          dbg('🔍 Restore-Check (Login):','remoteTs='+remoteTs,'localTs='+localTs,'wird angewendet='+(remoteTs>localTs),'| lokaler Cache Inhalt='+storeHasContent(_storeCache));
           if(remoteTs>localTs){
             _applyingRemote=true;
             var restored=applyRemoteExtras(known.app_data);
@@ -7623,15 +7686,17 @@ function App(p){
      wird. */
   var _authRetryCount=0;
   function handleAuthUserFailure(user){
-    if(hasLocalDataRef.current){ reportDataBootReady(); return; }
-    if(_authRetryCount<2){
-      _authRetryCount++;
-      var delay=_authRetryCount===1?4000:8000;
-      dbg('🔁 Automatischer Wiederholungsversuch '+_authRetryCount+'/2 in '+delay+'ms...');
-      setTimeout(function(){ handleAuthUser(user,true); },delay);
-    } else {
-      reportDataBootError();
-    }
+    storeReadyRef.current.then(function(){
+      if(hasLocalDataRef.current){ reportDataBootReady(); return; }
+      if(_authRetryCount<2){
+        _authRetryCount++;
+        var delay=_authRetryCount===1?4000:8000;
+        dbg('🔁 Automatischer Wiederholungsversuch '+_authRetryCount+'/2 in '+delay+'ms...');
+        setTimeout(function(){ handleAuthUser(user,true); },delay);
+      } else {
+        reportDataBootError();
+      }
+    });
   }
   function handleAuthUser(user,isRetry){
     /* Bug-Fix: handleAuthUser() wird aus mehreren, voneinander
@@ -7895,6 +7960,9 @@ function App(p){
         localStorage.removeItem(DSGVO_KEY);
         localStorage.removeItem('kkm-gphoto');
       }catch(e){}
+      _storeCache={decks:[],folders:[],reminder:null,arbeiten:[],settings:{lernTage:7,lernArten:['Klausur','Test']}};
+      kkmIdbSet('data',{decks:[],folders:[],reminder:null,arbeiten:[],settings:{lernTage:7,lernArten:['Klausur','Test']}}).catch(function(){});
+      kkmIdbSet('dataBackup',{decks:[],folders:[],reminder:null,arbeiten:[],settings:{lernTage:7,lernArten:['Klausur','Test']}}).catch(function(){});
       if(googleUser){ getSb().auth.signOut().then(function(){window.location.reload();}).catch(function(){window.location.reload();}); }
       else window.location.reload();
     }
