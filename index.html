@@ -6348,6 +6348,7 @@ function LernSpaceView(p){
     showGroupAvPicker&&selectedGroup&&h(GroupAvatarPickerModal,{
       currentPhoto:selectedGroup.avatarPhoto||null,
       onSavePhoto:function(photo){
+        if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
         var gid=selectedGroup.id;
         var upd=Object.assign({},selectedGroup,{avatar:'photo',avatarPhoto:photo});
         setSelectedGroup(upd);
