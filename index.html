@@ -1932,11 +1932,26 @@ function storeHasContent(s){
 var STORE_BACKUP_KEY=STORE_KEY+'-backup';
 var KKM_IDB_NAME='kkm-store-db';
 var KKM_IDB_STORE='kv';
+/* Bug-Fix: jeder kkmIdbOpen()-Aufruf oeffnete bisher eine neue
+   indexedDB.open()-Verbindung, die nie mit db.close() geschlossen wurde -
+   bei intensiver Nutzung (viele PDF-Cache-/Scan-Queue-Zugriffe)
+   akkumulierten sich offene Verbindungen. Jetzt wird die offene
+   Verbindung in einer Modul-Variable gemerkt und wiederverwendet.
+   onclose/onversionchange setzt die Merk-Variable zurueck, falls die
+   Verbindung von aussen geschlossen wird (z.B. anderer Tab mit neuerer
+   DB-Version), damit der naechste Aufruf sauber neu oeffnet. */
+var _kkmIdbInstance=null;
 function kkmIdbOpen(){
+  if(_kkmIdbInstance) return Promise.resolve(_kkmIdbInstance);
   return new Promise(function(resolve,reject){
     var req=indexedDB.open(KKM_IDB_NAME,1);
     req.onupgradeneeded=function(){ req.result.createObjectStore(KKM_IDB_STORE); };
-    req.onsuccess=function(){ resolve(req.result); };
+    req.onsuccess=function(){
+      _kkmIdbInstance=req.result;
+      _kkmIdbInstance.onclose=function(){ _kkmIdbInstance=null; };
+      _kkmIdbInstance.onversionchange=function(){ _kkmIdbInstance.close(); _kkmIdbInstance=null; };
+      resolve(req.result);
+    };
     req.onerror=function(){ reject(req.error); };
   });
 }
@@ -2146,6 +2161,7 @@ function loadStoreInitial(){
    unterzugehen. */
 var _lastSaveHadDecks=null;
 var _lastBackupWriteAt=0;
+var _lastStorageErrorToastAt=0;
 function saveStore(d){
   try{
     var deckCount=(d.decks||[]).length;
@@ -2170,6 +2186,20 @@ function saveStore(d){
   _storeCache=d;
   kkmIdbSet('data',d).catch(function(e){
     dbg('❌❌ saveStore: IndexedDB setItem FEHLGESCHLAGEN:',e&&e.name,e&&e.message);
+    /* Bug-Fix: bisher landete ein fehlgeschlagener Schreibversuch nur im
+       RAM-Log (window.__KKM_LOG) - bei Force-Quit/Reload verloren, der
+       Nutzer sah nie, dass sein letzter Speicherversuch fehlschlug.
+       Nutzt das bestehende globale Toast-Muster (_syncShowToast, siehe
+       syncAppData weiter oben), gedrosselt wie _lastBackupWriteAt (max.
+       1x pro 30s), damit bei anhaltendem Problem nicht bei jeder
+       einzelnen Aenderung ein Toast aufploppt. */
+    try{
+      var nowTs2=Date.now();
+      if(_syncShowToast&&(nowTs2-_lastStorageErrorToastAt)>=30000){
+        _lastStorageErrorToastAt=nowTs2;
+        _syncShowToast('Speichern fehlgeschlagen – bitte Browser/App neu starten.');
+      }
+    }catch(e2){}
   });
   /* Sicherungskopie: wird NUR geschrieben, wenn d tatsaechlich Inhalt hat
      - damit dieser Zweit-Key nie versehentlich selbst mit einem leeren/

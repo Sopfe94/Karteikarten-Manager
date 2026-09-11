@@ -68,7 +68,13 @@ return Promise.all(
    alten als Sicherheitsnetz erhalten (caches.match() in den fetch-
    Handlern oben durchsucht ohnehin automatisch alle Caches), bis ein
    spaeterer Online-Besuch das Nachladen erfolgreich abschliesst. */
-var CRITICAL = STATIC.concat(CDN.slice(0,2));
+/* Bug-Fix: CDN.slice(0,2) enthielt nur React+ReactDOM, nicht Supabase
+   (CDN[2]) - die Vollstaendigkeitspruefung unten liess also alte Caches
+   loeschen, auch wenn Supabase nie erfolgreich gecacht wurde. getSb()
+   in index.html wirft eine echte Exception, wenn window.supabase fehlt -
+   ein spaeterer komplett-offline-Start konnte dadurch an jeder Stelle,
+   die getSb() aufruft, hart crashen. Jetzt zaehlt Supabase mit dazu. */
+var CRITICAL = STATIC.concat(CDN.slice(0,3));
 self.addEventListener('activate', function(e){
 e.waitUntil(
 caches.open(CACHE).then(function(c){
@@ -95,9 +101,21 @@ self.addEventListener('activate', function(){
 caches.open(CACHE).then(function(c){
 Promise.all(HEAVY.map(function(url){ return cacheWithRetry(c,url,2); })).catch(function(){});
 });
+// zusaetzliches Sicherheitsnetz fuer die Tages-Erinnerung, siehe fetch-Handler oben
+maybeNotify();
 });
 
+/* Bug-Fix: setTimeout/setInterval ueberleben keine Terminierung des
+   Service Workers (Browser terminieren SWs typischerweise nach ~30s
+   Inaktivitaet) - eine fuer einen bestimmten Zeitpunkt geplante
+   Tages-Erinnerung feuert dann oft gar nicht. Zusaetzliches
+   Sicherheitsnetz (ERSETZT den bestehenden Timer-Mechanismus NICHT):
+   bei jedem fetch-Event (die App loest laufend Netzwerk-Anfragen aus,
+   das weckt den SW ohnehin regelmaessig auf) gedrosselt pruefen, ob
+   die Erinnerung faellig ist. */
+var _lastNotifyCheck=0;
 self.addEventListener('fetch', function(e){
+if(Date.now()-_lastNotifyCheck>60000){_lastNotifyCheck=Date.now();maybeNotify();}
 if(e.request.method !== 'GET') return;
 var url = new URL(e.request.url);
 
