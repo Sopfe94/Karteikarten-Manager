@@ -5767,6 +5767,7 @@ function LernSpaceView(p){
     }).catch(function(e){dbg('leaveGroup: \u274c catch',e&&e.message);showToast('Fehler');});
   }
   function runDeleteGroupCard(cardId){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var g=selectedGroup,deck=selectedGroupDeck;
     if(!g||!deck)return;
     var updCards=(deck.cards||[]).filter(function(c){return c.id!==cardId;});
@@ -6016,6 +6017,7 @@ function LernSpaceView(p){
     function startCreateDeck(){setNewDeckName('');setNewDeckEmoji('\uD83D\uDCDA');setGroupStackPage('new-deck');}
 
     function createGroupDeck(){
+      if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
       if(!newDeckName.trim()){showToast('Name eingeben');return;}
       var deck={id:uid(),name:newDeckName.trim(),emoji:newDeckEmoji,cards:[],created:Date.now(),createdBy:MY_ID};
       var updDecks=[].concat(groupDecks,[deck]);
@@ -6027,6 +6029,7 @@ function LernSpaceView(p){
     }
 
     function saveGroupCard(){
+      if(!isOnline){showToast('Offline - bitte sp\u00E4ter erneut versuchen.');return;}
       if(!newCardFront.trim()||!newCardBack.trim()){showToast('Vorder- und R\u00FCckseite eingeben');return;}
       var card={id:uid(),front:newCardFront.trim(),back:newCardBack.trim(),lvl:0,nextReview:todayStr()};
       var updDeck=Object.assign({},selectedGroupDeck,{cards:[].concat(selectedGroupDeck.cards||[],[card])});
@@ -6044,6 +6047,7 @@ function LernSpaceView(p){
     }
 
     function saveEditGroupCard(){
+      if(!isOnline){showToast('Offline - bitte sp\u00E4ter erneut versuchen.');return;}
       if(!editGroupCardFront.trim()||!editGroupCardBack.trim()){showToast('Vorder- und R\u00FCckseite eingeben');return;}
       var updCards=(selectedGroupDeck.cards||[]).map(function(c){
         return c.id===editGroupCard.id?Object.assign({},c,{front:editGroupCardFront.trim(),back:editGroupCardBack.trim()}):c;
@@ -7256,7 +7260,19 @@ function App(p){
       if(cachedBuf)return cachedBuf;
       return driveFetch('https://www.googleapis.com/drive/v3/files/'+file.id+'?alt=media')
         .then(function(r){ if(!r.ok)throw new Error('Download fehlgeschlagen'); return r.arrayBuffer(); })
-        .then(function(buf){ pdfCachePut(file.id,buf).catch(function(){}); return buf; });
+        .then(function(buf){
+          /* Bug-Fix (Gesamt-Review): buf.slice(0) statt buf direkt an den
+             Cache uebergeben - pdf.js transferiert den ArrayBuffer beim
+             getDocument()-Aufruf in renderPdfPages an seinen Worker
+             (structured clone mit Transfer-Liste), wodurch das Original
+             "detached" wird. Ohne die Kopie haette pdfCachePut je nach
+             Zeitpunkt versucht, einen bereits entwerteten Buffer zu
+             klonen - IndexedDB haette das mit DataCloneError quittiert,
+             lautlos verschluckt durch das eigene .catch() unten, und der
+             PDF-Cache waere in der Praxis nie befuellt worden. */
+          pdfCachePut(file.id,buf.slice(0)).catch(function(){});
+          return buf;
+        });
     }).then(renderPdfPages)
       .then(function(pages){
         if(docPfCacheRef.current[file.id])docPfCacheRef.current[file.id].pages=pages;
@@ -8343,6 +8359,7 @@ function App(p){
     if((xpTab!=="unterlagen"&&!linkPickerOpen)||!googleUser||docsRootId)return;
     setDocsLoading(true);setDocsError(null);
     driveEnsureRootFolder().then(function(id){
+      try{localStorage.setItem('kkm-docs-root-id',id);}catch(e){}
       setDocsRootId(id);setDocsFolderId(id);setDocsPath([]);
       var cached=loadDocsCache(id);
       if(cached){
@@ -8360,6 +8377,24 @@ function App(p){
         dbg("❌ Drive-Fehler:",e.message);
       });
     }).catch(function(e){
+      /* Bug-Fix (Gesamt-Review): driveEnsureRootFolder() braucht Netzwerk
+         und schlaegt offline immer fehl - ohne Fallback bliebe docsRootId/
+         docsFolderId dann dauerhaft null, wodurch ein offline erstellter
+         Scan spaeter beim Nachhol-Upload ohne parentId landet (Drive
+         Root statt "Lernpuls Unterlagen"). Ein zuvor schon einmal online
+         aufgeloester Ordner wird deshalb aus localStorage uebernommen -
+         zumindest fuer wiederkehrende Nutzer:innen bleibt die Zuordnung
+         damit korrekt, auch wenn die App komplett offline startet. */
+      var cachedRootId=null;
+      try{cachedRootId=localStorage.getItem('kkm-docs-root-id');}catch(err){}
+      if(cachedRootId){
+        setDocsRootId(cachedRootId);setDocsFolderId(cachedRootId);setDocsPath([]);
+        var cachedList=loadDocsCache(cachedRootId);
+        if(cachedList){
+          setDocsFolders(cachedList.folders||[]);setDocsFiles(cachedList.files||[]);
+          setDocsFolderCounts(cachedList.counts||{});
+        }
+      }
       setDocsError("Verbindung zu Google Drive fehlgeschlagen. ("+e.message+")");setDocsLoading(false);
       dbg("❌ Drive-Fehler:",e.message);
     });
