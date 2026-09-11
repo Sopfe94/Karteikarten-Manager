@@ -1781,6 +1781,7 @@ function plainBoundingCrop(imgEl,corners){
 
 var _syncUser=null; var _syncTimeout=null; var _realtimeChannel=null; var _applyingRemote=false; var _preloadedLsData=null; var _unCache={};
 var _authUserInFlight=false;
+var _guestAuthBindInFlight=false;
 var _syncSetData=null; var _syncShowToast=null;
 /* Gate fuer die Hochzaehl-Animationen auf der Startseite: die
    Dashboard-Komponente steht schon waehrend des Splashs im DOM (nur
@@ -7012,6 +7013,33 @@ function App(p){
   var storeReadyRef=useRef(null);
   if(storeReadyRef.current===null) storeReadyRef.current=loadStoreInitial();
   var ds=useState(function(){ return loadStore(); }); var data=ds[0]; var setData=ds[1];
+  /* Bug-Fix (Datenverlust): _storeCache wurde bisher NUR verzoegert ueber
+     den Persist-Effect (saveStore(data), siehe unten - laeuft erst NACH
+     dem React-Commit, Standard-useEffect-Timing) mit dem echten data-
+     State synchronisiert. Die drei Sync-Vergleiche (Realtime, Login,
+     Push - alle nutzen loadStore()/_storeCache fuer localTs/knownTs)
+     lasen in genau diesem Zeitfenster (Millisekunden bis wenige
+     Sekunden) noch den ALTEN Stand. Traf in diesem Fenster ein Remote-
+     Update ein, dessen Zeitstempel zwar aelter als die gerade gemachte
+     lokale Aenderung war, aber neuer als der noch veraltete
+     _storeCache-Wert, galt remoteTs>localTs faelschlich als true - der
+     aeltere Remote-Stand ueberschrieb frischen, noch nicht persistierten
+     lokalen Fortschritt. Diese Zeile haelt _storeCache ab sofort bei
+     JEDEM Render synchron mit data - direkt im Funktionskoerper, laeuft
+     dadurch synchron vor jedem Effect (auch vor dem Persist-Effect).
+     Nur wenn der initiale Boot-Ladevorgang schon fertig ist
+     (_storeCache!==null - _storeCache ist null bis loadStoreInitial()
+     ihn befuellt, siehe loadStore()/loadStoreInitial() oben), sonst
+     wuerde der leere data-Platzhalter des allerersten Renders (das
+     ds=useState(...) oben liest via loadStore() einen frischen leeren
+     Platzhalter, solange _storeCache noch null ist) faelschlich schon
+     geladene echte Daten in _storeCache ueberschreiben, bevor der
+     eigentliche data-State nachgezogen hat. saveStore(data) im
+     bestehenden Persist-Effect bleibt UNVERAENDERT (setzt _storeCache
+     weiterhin selbst, redundant aber harmlos, und uebernimmt weiterhin
+     den eigentlichen IndexedDB-Schreibvorgang) - dieser Fix ergaenzt nur
+     eine zusaetzliche, fruehere, synchrone Aktualisierung. */
+  if(_storeCache!==null && _storeCache!==data){ _storeCache=data; }
   /* Bug-Fix: Der Splash wartete bisher nur auf eine feste Mindestlaufzeit
      und die Freunde-Daten - nicht auf die eigentlichen Karteikarten. Bei
      einem neuen Geraet (noch kein lokaler Stand) konnte der Splash so
@@ -7586,6 +7614,19 @@ function App(p){
     if(!dsgvoAccepted()){reportDataBootReady();return;}
     var myId=getLsId();
     if(!myId||!uid){reportDataBootReady();return;}
+    /* Bug-Fix: analog zum _authUserInFlight-Schutz bei handleAuthUser()
+       (siehe dort) - bestimmte Boot-Reihenfolgen (checkInitialAuth() via
+       getSession() und der fast zeitgleiche onAuthStateChange-Listener
+       mit INITIAL_SESSION) konnten beide bindGuestAuthUid(uid) fuer
+       denselben Gast-Login auf einmal auslösen: zwei parallele
+       ls_claim_own_id-RPCs plus doppelte refreshGateStatus()-Aufrufe.
+       Laeuft bereits ein Aufruf, wird ein weiterer ignoriert statt
+       parallel zu starten. */
+    if(_guestAuthBindInFlight){
+      dbg('⏭️ bindGuestAuthUid: laeuft bereits, ueberspringe ueberlappenden Aufruf.');
+      return;
+    }
+    _guestAuthBindInFlight=true;
     /* RPC statt Direkt-Upsert: Ein noch nicht gebundenes ls_users-Row
        (authUid IS NULL) ist unter RLS für UPDATE unsichtbar, weil Postgres
        fuer UPDATE zusaetzlich die SELECT-Policy prueft - die (bewusst,
@@ -7596,7 +7637,7 @@ function App(p){
       refreshGateStatus();
       if(deliberate)tryRedeemPendingGateCode();
       reportDataBootReady();
-    },function(){refreshGateStatus();reportDataBootReady();});
+    },function(){refreshGateStatus();reportDataBootReady();}).finally(function(){_guestAuthBindInFlight=false;});
   }
   /* Wird direkt beim Zustimmen zu Datenschutz+AGB aufgerufen (siehe
      showDsgvo-Screen oben) - holt das signInAnonymously()/
