@@ -1960,31 +1960,52 @@ function kkmIdbSet(key,value){
     });
   });
 }
+var _storeCache=null; // synchrone Quelle der Wahrheit, sobald befuellt
 function loadStore(){
-  try{
-    var r=localStorage.getItem(STORE_KEY);
-    var s=normalizeStore(r?JSON.parse(r):{decks:[],folders:[],reminder:null,arbeiten:[],settings:{lernTage:7,lernArten:['Klausur','Test']}});
-    /* Bug-Fix: sah der primaere Cache leer/kaputt aus (z.B. durch einen
-       vom Betriebssystem beim Force-Quit abgebrochenen Schreibvorgang),
-       gab es bisher nichts - Anzeige blieb leer bzw. zeigte den
-       Fehlerbildschirm, obwohl auf dem Geraet eigentlich noch Daten
-       vorhanden waren. Jetzt: faellt in diesem Fall lautlos auf die
-       letzte bekannt-gute, garantiert nicht-leere Sicherungskopie
-       zurueck (siehe saveStore). Offline gemachter Fortschritt bleibt
-       dabei erhalten, da jede lokale Aenderung _syncedAt neu stempelt
-       und beim naechsten Online-Sync ohnehin gegen die Cloud gewinnt. */
-    if(!storeHasContent(s)){
+  if(_storeCache) return _storeCache;
+  return normalizeStore({decks:[],folders:[],reminder:null,arbeiten:[],settings:{lernTage:7,lernArten:['Klausur','Test']}});
+}
+/* Ersetzt die alte, rein synchrone loadStore()-Implementierung: IndexedDB
+   ist von Natur aus asynchron, daher wird der eigentliche Lesevorgang nur
+   EINMAL beim Boot ausgefuehrt (siehe App() in Task 4) und fuellt
+   _storeCache - danach bleibt loadStore() ueberall im Code unveraendert
+   synchron nutzbar. Prueft IndexedDB (primaer, dann Backup), und
+   migriert als letzten Ausweg einmalig den alten localStorage-Stand
+   (fuer Nutzer, die von einer Version vor diesem Umbau aktualisieren -
+   deren Daten duerfen nicht verloren wirken). */
+function loadStoreInitial(){
+  return kkmIdbGet('data').then(function(idbData){
+    var normalized=idbData?normalizeStore(idbData):null;
+    if(storeHasContent(normalized)){
+      _storeCache=normalized;
+      return _storeCache;
+    }
+    return kkmIdbGet('dataBackup').then(function(idbBackup){
+      var normalizedBackup=idbBackup?normalizeStore(idbBackup):null;
+      if(storeHasContent(normalizedBackup)){
+        dbg('♻️ loadStoreInitial: IndexedDB primaer leer, nutze IndexedDB-Backup ('+(normalizedBackup.decks||[]).length+' Stapel).');
+        _storeCache=normalizedBackup;
+        return _storeCache;
+      }
       try{
-        var br=localStorage.getItem(STORE_BACKUP_KEY);
-        var b=br?normalizeStore(JSON.parse(br)):null;
-        if(storeHasContent(b)){
-          dbg('♻️ loadStore: primaerer Cache leer, nutze Backup ('+(b.decks||[]).length+' Stapel).');
-          return b;
+        var raw=localStorage.getItem(STORE_KEY);
+        if(raw){
+          var migrated=normalizeStore(JSON.parse(raw));
+          if(storeHasContent(migrated)){
+            dbg('📦➡️🗄️ Migration: uebernehme alten localStorage-Stand nach IndexedDB ('+(migrated.decks||[]).length+' Stapel).');
+            _storeCache=migrated;
+            return kkmIdbSet('data',migrated).then(function(){ return _storeCache; }).catch(function(){ return _storeCache; });
+          }
         }
       }catch(e){}
-    }
-    return s;
-  }catch(e){ return {decks:[],folders:[],reminder:null}; }
+      _storeCache=normalizeStore({decks:[],folders:[],reminder:null,arbeiten:[],settings:{lernTage:7,lernArten:['Klausur','Test']}});
+      return _storeCache;
+    });
+  }).catch(function(e){
+    dbg('❌❌ loadStoreInitial: IndexedDB-Fehler:',e&&e.name,e&&e.message);
+    _storeCache=normalizeStore({decks:[],folders:[],reminder:null,arbeiten:[],settings:{lernTage:7,lernArten:['Klausur','Test']}});
+    return _storeCache;
+  });
 }
 /* Merkt sich, ob der letzte saveStore()-Aufruf Stapel enthielt - damit
    ein Uebergang "vorher welche da, jetzt leer" beim naechsten Auftreten
