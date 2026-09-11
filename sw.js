@@ -9,13 +9,24 @@ const CDN = [
 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
 'https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.4.13/purify.min.js'
 ];
+const HEAVY = [
+BASE+'/opencv.js',
+BASE+'/ort.wasm.min.js',
+BASE+'/ort-wasm-simd-threaded.wasm',
+BASE+'/ort-wasm-simd-threaded.mjs',
+BASE+'/docaligner.onnx',
+BASE+'/pdf.min.js',
+BASE+'/pdf.worker.min.js'
+];
 /* opencv.js, ort.wasm.min.js, ort-wasm-simd-threaded.(wasm|mjs),
    docaligner.onnx sowie pdf.min.js/pdf.worker.min.js (PDF-Viewer)
-   liegen selbst gehostet (nicht von fremden Servern geladen) -
-   bewusst NICHT in STATIC (waere sofortiges Vorabladen bei jeder
-   Installation), sondern nur ueber den generischen Cache-First-
-   Handler ganz unten erreichbar: werden beim ersten Scan bzw. beim
-   ersten Oeffnen einer PDF angefordert und danach automatisch gecacht. */
+   liegen selbst gehostet. Absichtlich NICHT in STATIC/CDN (wuerde
+   die normale Installation um ca. 30MB verlangsamen, fuer alle
+   Nutzer:innen, auch ohne Scanner-Nutzung) - werden stattdessen
+   in HEAVY gelistet und erst NACH erfolgreichem activate() im
+   Hintergrund nachgeladen (siehe unten), damit der Scanner kurz
+   nach der Installation offline bereitsteht, ohne den normalen
+   App-Start zu verlangsamen. */
 
 function sleep(ms){ return new Promise(function(res){ setTimeout(res,ms); }); }
 /* Bug-Fix: c.add(url).catch(()=>{}) schluckte einen fehlgeschlagenen
@@ -73,6 +84,17 @@ keys.filter(function(k){ return k !== CACHE; })
 });
 }).then(function(){ return self.clients.claim(); })
 );
+});
+
+/* Scanner-Werkzeugkasten NICHT innerhalb von activate()s waitUntil,
+   damit die eigentliche Aktivierung (und damit "App ist offline-
+   bereit") nicht durch 30MB Hintergrund-Download verzoegert wird -
+   laeuft parallel dazu, sobald ein neuer SW aktiv wird. Retry-Logik
+   identisch zu cacheWithRetry oben (2 Versuche, kurze Pause). */
+self.addEventListener('activate', function(e){
+caches.open(CACHE).then(function(c){
+Promise.all(HEAVY.map(function(url){ return cacheWithRetry(c,url,2); }));
+});
 });
 
 self.addEventListener('fetch', function(e){
