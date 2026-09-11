@@ -7577,14 +7577,13 @@ function App(p){
         // App-Daten wiederherstellen wenn remote neuer
         if(known.app_data){
           var remoteTs=known.app_data._syncedAt||0;
-          /* Diagnose-Log: liest den primaeren Key roh direkt von der
-             Festplatte (ohne loadStore()s Backup-Fallback dazwischen),
-             damit im Debug-Log sichtbar ist, ob wirklich NICHTS mehr
-             auf dem Geraet steht oder ob nur der Vergleich unten aus
-             einem anderen Grund localTs=0 sieht. */
-          var _rawPrimary=null; try{ _rawPrimary=localStorage.getItem(STORE_KEY); }catch(e){}
+          /* Diagnose-Log: zeigt, ob der In-Memory-Cache (die neue
+             synchrone Quelle der Wahrheit seit der IndexedDB-Umstellung)
+             tatsaechlich Inhalt hat, damit im Debug-Log weiterhin
+             sichtbar ist, ob wirklich nichts lokal vorliegt oder der
+             Vergleich unten aus einem anderen Grund localTs=0 sieht. */
           var localTs=loadStore()._syncedAt||0;
-          dbg('🔍 Restore-Check (Login):','remoteTs='+remoteTs,'localTs='+localTs,'wird angewendet='+(remoteTs>localTs),'| primaer roh vorhanden='+(!!_rawPrimary)+' Laenge='+(_rawPrimary?_rawPrimary.length:0));
+          dbg('🔍 Restore-Check (Login):','remoteTs='+remoteTs,'localTs='+localTs,'wird angewendet='+(remoteTs>localTs),'| lokaler Cache Inhalt='+storeHasContent(_storeCache));
           if(remoteTs>localTs){
             _applyingRemote=true;
             var restored=applyRemoteExtras(known.app_data);
