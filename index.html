@@ -5490,6 +5490,7 @@ function LernSpaceView(p){
     var raw=inviteId.trim();
     if(!raw){showToast('Ung\u00fcltige ID');return;}
     function doSend(tid){
+      if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
       if(tid===MY_ID){showToast('Das bist du selbst \uD83D\uDE05');return;}
       var curFriends=(lsData&&lsData.friends)||[];
       var curSent=(lsData&&lsData.sentRequests)||[];
@@ -5571,6 +5572,7 @@ function LernSpaceView(p){
      betroffenen Stapel per id ersetzt - andere Stapel und Mitglieder
      bleiben unberuehrt, egal was lokal sonst noch im State steht. */
   function applyGroupUpdate(updG,changedDeck){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return Promise.resolve();}
     setSelectedGroup(updG);
     var newGroups=(lsData.groups||[]).map(function(gr){return gr.id===updG.id?updG:gr;});
     if(!newGroups.find(function(gr){return gr.id===updG.id;}))newGroups=newGroups.concat([updG]);
@@ -5612,6 +5614,7 @@ function LernSpaceView(p){
      veralteten lokalen lsData - sonst koennte eine zwischen Laden und Annehmen/
      Ablehnen frisch eingetroffene zweite Einladung stillschweigend verschwinden. */
   function acceptGroupInvite(invite){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     dbg('acceptGroupInvite:',invite.id);
     var groupEntry={id:invite.id,name:invite.name,emoji:invite.emoji,members:[],groupDecks:[],deckIds:[],created:invite.ts};
     setLsData(function(prev){
@@ -5711,6 +5714,7 @@ function LernSpaceView(p){
     }
   }
   function runTransferGroup(tid){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var g=selectedGroup;
     if(!g)return;
     var members=normalizeMembers(g.members);
@@ -5774,6 +5778,7 @@ function LernSpaceView(p){
     showToast('Karte gel\u00f6scht');
   }
   function runDeleteGroupDeck(deckId){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var g=selectedGroup;
     if(!g)return;
     var updDecks=(g.groupDecks||[]).filter(function(d){return d.id!==deckId;});
