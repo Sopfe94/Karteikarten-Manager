@@ -1960,6 +1960,66 @@ function kkmIdbSet(key,value){
     });
   });
 }
+function kkmIdbDelete(key){
+  return kkmIdbOpen().then(function(db){
+    return new Promise(function(resolve,reject){
+      var tx=db.transaction(KKM_IDB_STORE,'readwrite');
+      tx.objectStore(KKM_IDB_STORE).delete(key);
+      tx.oncomplete=function(){ resolve(); };
+      tx.onerror=function(){ reject(tx.error); };
+    });
+  });
+}
+/* PDF-Roh-Cache: persistiert die per driveFetch(...&alt=media)
+   geladenen PDF-Bytes (ArrayBuffer) in IndexedDB, damit einmal
+   geoeffnete Dokumente auch offline erneut oeffenbar sind - nicht
+   die gerenderten Seiten (docPfCacheRef), die waeren als Bilddaten
+   um ein Vielfaches groesser. Eigener Key-Namensraum im selben
+   kv-Store: 'pdfblob:<fileId>' fuer die Bytes, 'pdfCacheIndex' fuer
+   ein Verzeichnis {fileId: {size, lastAccess}} zur LRU-Verdraengung,
+   ohne bei jedem Zugriff den ganzen Object-Store durchsuchen zu
+   muessen. */
+var PDF_CACHE_MAX_BYTES=150*1024*1024;
+function pdfCacheGet(fileId){
+  return kkmIdbGet('pdfblob:'+fileId).then(function(buf){
+    if(!buf)return null;
+    return kkmIdbGet('pdfCacheIndex').then(function(idx){
+      idx=idx||{};
+      if(idx[fileId]){
+        idx[fileId].lastAccess=Date.now();
+        return kkmIdbSet('pdfCacheIndex',idx).then(function(){return buf;}).catch(function(){return buf;});
+      }
+      return buf;
+    }).catch(function(){return buf;});
+  }).catch(function(){return null;});
+}
+function pdfCachePut(fileId,arrayBuffer){
+  var size=arrayBuffer.byteLength;
+  return kkmIdbGet('pdfCacheIndex').then(function(idx){
+    idx=idx||{};
+    var entries=Object.keys(idx).map(function(id){return {id:id,size:idx[id].size,lastAccess:idx[id].lastAccess};});
+    var total=entries.reduce(function(sum,e){return sum+e.size;},0);
+    entries.sort(function(a,b){return a.lastAccess-b.lastAccess;}); // aeltester Zugriff zuerst
+    var evictChain=Promise.resolve();
+    var i=0;
+    while(total+size>PDF_CACHE_MAX_BYTES&&i<entries.length){
+      (function(entry){
+        evictChain=evictChain.then(function(){ return kkmIdbDelete('pdfblob:'+entry.id); }).catch(function(){});
+        delete idx[entry.id];
+      })(entries[i]);
+      total-=entries[i].size;
+      i++;
+    }
+    return evictChain.then(function(){
+      idx[fileId]={size:size,lastAccess:Date.now()};
+      return kkmIdbSet('pdfCacheIndex',idx);
+    }).then(function(){
+      return kkmIdbSet('pdfblob:'+fileId,arrayBuffer);
+    });
+  }).catch(function(e){
+    dbg('❌ pdfCachePut fehlgeschlagen:',e&&e.name,e&&e.message);
+  });
+}
 var _storeCache=null; // synchrone Quelle der Wahrheit, sobald befuellt
 function loadStore(){
   if(_storeCache) return _storeCache;
@@ -7115,9 +7175,12 @@ function App(p){
   function prefetchDocFile(file){
     var entry=docPfCacheRef.current[file.id];
     if(entry)return entry.promise;
-    var p=driveFetch('https://www.googleapis.com/drive/v3/files/'+file.id+'?alt=media')
-      .then(function(r){ if(!r.ok)throw new Error('Download fehlgeschlagen'); return r.arrayBuffer(); })
-      .then(renderPdfPages)
+    var p=pdfCacheGet(file.id).then(function(cachedBuf){
+      if(cachedBuf)return cachedBuf;
+      return driveFetch('https://www.googleapis.com/drive/v3/files/'+file.id+'?alt=media')
+        .then(function(r){ if(!r.ok)throw new Error('Download fehlgeschlagen'); return r.arrayBuffer(); })
+        .then(function(buf){ pdfCachePut(file.id,buf).catch(function(){}); return buf; });
+    }).then(renderPdfPages)
       .then(function(pages){
         if(docPfCacheRef.current[file.id])docPfCacheRef.current[file.id].pages=pages;
         return pages;
