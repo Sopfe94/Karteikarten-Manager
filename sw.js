@@ -91,9 +91,9 @@ keys.filter(function(k){ return k !== CACHE; })
    bereit") nicht durch 30MB Hintergrund-Download verzoegert wird -
    laeuft parallel dazu, sobald ein neuer SW aktiv wird. Retry-Logik
    identisch zu cacheWithRetry oben (2 Versuche, kurze Pause). */
-self.addEventListener('activate', function(e){
+self.addEventListener('activate', function(){
 caches.open(CACHE).then(function(c){
-Promise.all(HEAVY.map(function(url){ return cacheWithRetry(c,url,2); }));
+Promise.all(HEAVY.map(function(url){ return cacheWithRetry(c,url,2); })).catch(function(){});
 });
 });
 
