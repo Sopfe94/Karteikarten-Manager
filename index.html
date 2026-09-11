@@ -2056,24 +2056,28 @@ function dataURLToBlob(dataUrl){
   for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
   return new Blob([arr],{type:mime});
 }
+var _scanFlushInFlight=false;
 function flushScanQueue(){
+  if(_scanFlushInFlight)return Promise.resolve();
+  _scanFlushInFlight=true;
   return kkmIdbGet('scanUploadQueue').then(function(queue){
     if(!queue||!queue.length)return;
     var chain=Promise.resolve();
-    var remaining=queue.slice();
     queue.forEach(function(entry){
       chain=chain.then(function(){
         var blob=dataURLToBlob(entry.dataUrl);
         return driveUploadPdf(blob,entry.filename,entry.parentId,entry.pageCount).then(function(){
-          remaining=remaining.filter(function(e){return e.id!==entry.id;});
-          return kkmIdbSet('scanUploadQueue',remaining);
+          return kkmIdbGet('scanUploadQueue').then(function(current){
+            var updated=(current||[]).filter(function(e){return e.id!==entry.id;});
+            return kkmIdbSet('scanUploadQueue',updated);
+          });
         }).catch(function(e){
           dbg('❌ Warteschlangen-Upload fehlgeschlagen, bleibt in der Warteschlange:',entry.filename,e&&e.message);
         });
       });
     });
     return chain;
-  }).catch(function(){});
+  }).catch(function(){}).then(function(){ _scanFlushInFlight=false; });
 }
 var _storeCache=null; // synchrone Quelle der Wahrheit, sobald befuellt
 function loadStore(){
