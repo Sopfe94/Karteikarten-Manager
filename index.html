@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.135";
+var KKM_VERSION="1.8.136";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1973,7 +1973,21 @@ function saveStore(d){
       return dk.name+'='+deckPct(dk)+'%('+((dk.cards||[]).length)+'K)';
     }).join(' | '),'| _syncedAt:',d._syncedAt||0);
   }catch(e){}
-  try{ localStorage.setItem(STORE_KEY,JSON.stringify(d)); }catch(e){}
+  /* Bug-Fix: dieser Schreibvorgang war seit jeher komplett lautlos -
+     schlug localStorage.setItem() fehl (z.B. QuotaExceededError, wenn
+     Kartenbilder das Speicherlimit sprengen), gab es dafuer NIRGENDS
+     einen Hinweis: kein dbg()-Log, keine Fehlermeldung, einfach
+     stiller Datenverlust. Der Shutdown-Canary bewies bereits, dass
+     flushSave() bis zum Ende durchlaeuft, OBWOHL der primaere Cache
+     danach trotzdem leer war - das deutet stark genau auf diesen
+     bisher unsichtbaren Fehlerfall hin. Jetzt wird ein Fehlschlag
+     explizit geloggt, inkl. Groesse der Daten (fuer Quota-Verdacht). */
+  var _payload=null;
+  try{ _payload=JSON.stringify(d); }catch(e){ dbg('❌❌ saveStore: JSON.stringify fehlgeschlagen:',e&&e.message); }
+  if(_payload!==null){
+    try{ localStorage.setItem(STORE_KEY,_payload); }
+    catch(e){ dbg('❌❌ saveStore: localStorage.setItem FEHLGESCHLAGEN:',e&&e.name,e&&e.message,'| Groesse:',_payload.length,'Zeichen'); }
+  }
   /* Sicherungskopie: wird NUR geschrieben, wenn d tatsaechlich Inhalt
      hat - damit dieser Zweit-Key nie versehentlich selbst mit einem
      leeren/kaputten Stand ueberschrieben wird und garantiert die
@@ -1994,11 +2008,11 @@ function saveStore(d){
      bleibt. */
   try{
     var nowTs=Date.now();
-    if(storeHasContent(d)&&(_lastBackupWriteAt===0||(nowTs-_lastBackupWriteAt)>=30000)){
-      localStorage.setItem(STORE_BACKUP_KEY,JSON.stringify(d));
+    if(storeHasContent(d)&&_payload!==null&&(_lastBackupWriteAt===0||(nowTs-_lastBackupWriteAt)>=30000)){
+      localStorage.setItem(STORE_BACKUP_KEY,_payload);
       _lastBackupWriteAt=nowTs;
     }
-  }catch(e){}
+  }catch(e){ dbg('❌❌ saveStore: Backup-setItem FEHLGESCHLAGEN:',e&&e.name,e&&e.message); }
 }
 function swMsg(m){ if(navigator.serviceWorker&&navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage(m); }
 
