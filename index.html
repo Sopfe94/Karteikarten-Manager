@@ -2024,46 +2024,38 @@ function saveStore(d){
       return dk.name+'='+deckPct(dk)+'%('+((dk.cards||[]).length)+'K)';
     }).join(' | '),'| _syncedAt:',d._syncedAt||0);
   }catch(e){}
-  /* Bug-Fix: dieser Schreibvorgang war seit jeher komplett lautlos -
-     schlug localStorage.setItem() fehl (z.B. QuotaExceededError, wenn
-     Kartenbilder das Speicherlimit sprengen), gab es dafuer NIRGENDS
-     einen Hinweis: kein dbg()-Log, keine Fehlermeldung, einfach
-     stiller Datenverlust. Der Shutdown-Canary bewies bereits, dass
-     flushSave() bis zum Ende durchlaeuft, OBWOHL der primaere Cache
-     danach trotzdem leer war - das deutet stark genau auf diesen
-     bisher unsichtbaren Fehlerfall hin. Jetzt wird ein Fehlschlag
-     explizit geloggt, inkl. Groesse der Daten (fuer Quota-Verdacht). */
-  var _payload=null;
-  try{ _payload=JSON.stringify(d); }catch(e){ dbg('❌❌ saveStore: JSON.stringify fehlgeschlagen:',e&&e.message); }
-  if(_payload!==null){
-    try{ localStorage.setItem(STORE_KEY,_payload); }
-    catch(e){ dbg('❌❌ saveStore: localStorage.setItem FEHLGESCHLAGEN:',e&&e.name,e&&e.message,'| Groesse:',_payload.length,'Zeichen'); }
-  }
-  /* Sicherungskopie: wird NUR geschrieben, wenn d tatsaechlich Inhalt
-     hat - damit dieser Zweit-Key nie versehentlich selbst mit einem
-     leeren/kaputten Stand ueberschrieben wird und garantiert die
-     letzte bekannt-gute Version haelt (siehe loadStore-Fallback oben).
-     Bug-Fix: urspruenglich wurde die Sicherungskopie bei JEDEM Aufruf
-     zusammen mit dem primaeren Key geschrieben - das brachte in der
-     Praxis nichts, da localStorage-Schreibvorgaenge vom Betriebssystem
-     gebuendelt/verzoegert auf die Festplatte durchgeschrieben werden:
-     killt iOS die App genau in diesem Fenster, gehen primaerer Key UND
-     Sicherungskopie gemeinsam verloren, weil beide gleich "frisch" und
-     ungesichert waren (siehe Lernstreak, der als eigener, haeufiger
-     und daher laengst durchgeschriebener Key den Absturz ueberlebte,
-     waehrend Stapel+Backup zusammen weg waren). Jetzt bewusst zeitlich
-     entkoppelt: die Sicherungskopie wird hoechstens alle 30s neu
-     geschrieben (aber sofort beim allerersten Mal), damit sie im
-     Ernstfall bereits eine Weile sicher auf der Festplatte liegt,
-     waehrend der primaere Key weiter bei jeder Aenderung aktuell
-     bleibt. */
+  /* Persistiert jetzt nach IndexedDB statt localStorage - der urspruengliche
+     Grund fuer diesen ganzen Umbau: localStorage.setItem() warf bei
+     Kartenbildern oberhalb von ca. 3.3MB ein stillschweigend verschlucktes
+     QuotaExceededError (siehe Plan-Header, per Log am 2026-09-11 direkt
+     beim Nutzer bestaetigt). IndexedDB erlaubt um Groessenordnungen mehr
+     Speicherplatz. _storeCache wird SOFORT synchron aktualisiert, damit
+     jeder loadStore()-Aufruf direkt danach den neuen Stand sieht - der
+     eigentliche Schreibvorgang auf die Festplatte laeuft im Hintergrund
+     und wird bei einem Fehlschlag (jetzt: sollte praktisch nie mehr
+     vorkommen) weiterhin explizit geloggt statt lautlos zu verschwinden. */
+  _storeCache=d;
+  kkmIdbSet('data',d).catch(function(e){
+    dbg('❌❌ saveStore: IndexedDB setItem FEHLGESCHLAGEN:',e&&e.name,e&&e.message);
+  });
+  /* Sicherungskopie: wird NUR geschrieben, wenn d tatsaechlich Inhalt hat
+     - damit dieser Zweit-Key nie versehentlich selbst mit einem leeren/
+     kaputten Stand ueberschrieben wird und garantiert die letzte
+     bekannt-gute Version haelt (siehe loadStoreInitial()-Fallback).
+     Bewusst zeitlich entkoppelt vom primaeren Schreibvorgang: wird
+     hoechstens alle 30s neu geschrieben (aber sofort beim allerersten
+     Mal), damit sie im Ernstfall (z.B. der weiterhin ungeklaerte iOS-
+     Force-Quit-Timing-Fall) bereits eine Weile sicher persistiert ist,
+     waehrend der primaere Key weiter bei jeder Aenderung aktuell bleibt. */
   try{
     var nowTs=Date.now();
-    if(storeHasContent(d)&&_payload!==null&&(_lastBackupWriteAt===0||(nowTs-_lastBackupWriteAt)>=30000)){
-      localStorage.setItem(STORE_BACKUP_KEY,_payload);
+    if(storeHasContent(d)&&(_lastBackupWriteAt===0||(nowTs-_lastBackupWriteAt)>=30000)){
       _lastBackupWriteAt=nowTs;
+      kkmIdbSet('dataBackup',d).catch(function(e){
+        dbg('❌❌ saveStore: IndexedDB Backup-setItem FEHLGESCHLAGEN:',e&&e.name,e&&e.message);
+      });
     }
-  }catch(e){ dbg('❌❌ saveStore: Backup-setItem FEHLGESCHLAGEN:',e&&e.name,e&&e.message); }
+  }catch(e){}
 }
 function swMsg(m){ if(navigator.serviceWorker&&navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage(m); }
 
