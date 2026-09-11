@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.137";
+var KKM_VERSION="1.8.138";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1959,6 +1959,125 @@ function kkmIdbSet(key,value){
       tx.onerror=function(){ reject(tx.error); };
     });
   });
+}
+function kkmIdbDelete(key){
+  return kkmIdbOpen().then(function(db){
+    return new Promise(function(resolve,reject){
+      var tx=db.transaction(KKM_IDB_STORE,'readwrite');
+      tx.objectStore(KKM_IDB_STORE).delete(key);
+      tx.oncomplete=function(){ resolve(); };
+      tx.onerror=function(){ reject(tx.error); };
+    });
+  });
+}
+/* PDF-Roh-Cache: persistiert die per driveFetch(...&alt=media)
+   geladenen PDF-Bytes (ArrayBuffer) in IndexedDB, damit einmal
+   geoeffnete Dokumente auch offline erneut oeffenbar sind - nicht
+   die gerenderten Seiten (docPfCacheRef), die waeren als Bilddaten
+   um ein Vielfaches groesser. Eigener Key-Namensraum im selben
+   kv-Store: 'pdfblob:<fileId>' fuer die Bytes, 'pdfCacheIndex' fuer
+   ein Verzeichnis {fileId: {size, lastAccess}} zur LRU-Verdraengung,
+   ohne bei jedem Zugriff den ganzen Object-Store durchsuchen zu
+   muessen. */
+var PDF_CACHE_MAX_BYTES=150*1024*1024;
+function pdfCacheGet(fileId){
+  return kkmIdbGet('pdfblob:'+fileId).then(function(buf){
+    if(!buf)return null;
+    return kkmIdbGet('pdfCacheIndex').then(function(idx){
+      idx=idx||{};
+      if(idx[fileId]){
+        idx[fileId].lastAccess=Date.now();
+        return kkmIdbSet('pdfCacheIndex',idx).then(function(){return buf;}).catch(function(){return buf;});
+      }
+      return buf;
+    }).catch(function(){return buf;});
+  }).catch(function(){return null;});
+}
+function pdfCachePut(fileId,arrayBuffer){
+  var size=arrayBuffer.byteLength;
+  return kkmIdbGet('pdfCacheIndex').then(function(idx){
+    idx=idx||{};
+    var entries=Object.keys(idx).filter(function(id){return id!==fileId;}).map(function(id){return {id:id,size:idx[id].size,lastAccess:idx[id].lastAccess};});
+    var total=entries.reduce(function(sum,e){return sum+e.size;},0);
+    entries.sort(function(a,b){return a.lastAccess-b.lastAccess;}); // aeltester Zugriff zuerst
+    var evictChain=Promise.resolve();
+    var i=0;
+    while(total+size>PDF_CACHE_MAX_BYTES&&i<entries.length){
+      (function(entry){
+        evictChain=evictChain.then(function(){
+          return kkmIdbDelete('pdfblob:'+entry.id).then(function(){
+            delete idx[entry.id];
+          });
+        }).catch(function(){});
+      })(entries[i]);
+      total-=entries[i].size;
+      i++;
+    }
+    return evictChain.then(function(){
+      idx[fileId]={size:size,lastAccess:Date.now()};
+      return kkmIdbSet('pdfCacheIndex',idx);
+    }).then(function(){
+      return kkmIdbSet('pdfblob:'+fileId,arrayBuffer);
+    });
+  }).catch(function(e){
+    dbg('❌ pdfCachePut fehlgeschlagen:',e&&e.name,e&&e.message);
+  });
+}
+/* Scan-Upload-Warteschlange: ein Scan (Bild-Erfassung + Zuschnitt +
+   PDF-Zusammenbau) laeuft komplett lokal ab - nur der letzte Schritt
+   (driveUploadPdf) braucht Netzwerk. Schlaegt der Upload wegen
+   fehlender Verbindung fehl, landet der fertige PDF-Blob hier in
+   IndexedDB (als Base64-String, da Blobs nicht direkt strukturiert
+   klonbar in aelteren IndexedDB-Implementierungen sind - matcht das
+   bestehende Bild-Speicherformat der Karten) statt verloren zu gehen,
+   und wird automatisch nachgeholt, sobald 'online' feuert. */
+function queueScanForUpload(blob,filename,parentId,pageCount){
+  return blobToDataURL(blob).then(function(dataUrl){
+    return kkmIdbGet('scanUploadQueue').then(function(queue){
+      queue=queue||[];
+      queue.push({id:'scan-'+Date.now()+'-'+Math.random().toString(36).slice(2),dataUrl:dataUrl,filename:filename,parentId:parentId,pageCount:pageCount,queuedAt:Date.now()});
+      return kkmIdbSet('scanUploadQueue',queue);
+    });
+  });
+}
+function blobToDataURL(blob){
+  return new Promise(function(resolve,reject){
+    var fr=new FileReader();
+    fr.onload=function(){resolve(fr.result);};
+    fr.onerror=function(){reject(fr.error);};
+    fr.readAsDataURL(blob);
+  });
+}
+function dataURLToBlob(dataUrl){
+  var parts=dataUrl.split(',');
+  var mime=parts[0].match(/:(.*?);/)[1];
+  var bin=atob(parts[1]);
+  var arr=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+  return new Blob([arr],{type:mime});
+}
+var _scanFlushInFlight=false;
+function flushScanQueue(){
+  if(_scanFlushInFlight)return Promise.resolve();
+  _scanFlushInFlight=true;
+  return kkmIdbGet('scanUploadQueue').then(function(queue){
+    if(!queue||!queue.length)return;
+    var chain=Promise.resolve();
+    queue.forEach(function(entry){
+      chain=chain.then(function(){
+        var blob=dataURLToBlob(entry.dataUrl);
+        return driveUploadPdf(blob,entry.filename,entry.parentId,entry.pageCount).then(function(){
+          return kkmIdbGet('scanUploadQueue').then(function(current){
+            var updated=(current||[]).filter(function(e){return e.id!==entry.id;});
+            return kkmIdbSet('scanUploadQueue',updated);
+          });
+        }).catch(function(e){
+          dbg('❌ Warteschlangen-Upload fehlgeschlagen, bleibt in der Warteschlange:',entry.filename,e&&e.message);
+        });
+      });
+    });
+    return chain;
+  }).catch(function(){}).then(function(){ _scanFlushInFlight=false; });
 }
 var _storeCache=null; // synchrone Quelle der Wahrheit, sobald befuellt
 function loadStore(){
@@ -5371,6 +5490,7 @@ function LernSpaceView(p){
     var raw=inviteId.trim();
     if(!raw){showToast('Ung\u00fcltige ID');return;}
     function doSend(tid){
+      if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
       if(tid===MY_ID){showToast('Das bist du selbst \uD83D\uDE05');return;}
       var curFriends=(lsData&&lsData.friends)||[];
       var curSent=(lsData&&lsData.sentRequests)||[];
@@ -5392,6 +5512,7 @@ function LernSpaceView(p){
   }
 
   function cancelRequest(toId){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     getSb().rpc('ls_cancel_friend_request',{p_target_ls_id:toId}).then(function(){},function(){});
     var newSent=(lsData.sentRequests||[]).filter(function(r){return r.toId!==toId;});
     saveData({sentRequests:newSent});
@@ -5399,6 +5520,7 @@ function LernSpaceView(p){
   }
 
   function acceptRequest(req){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var newFriends=(lsData.friends||[]).find(function(f){return f.id===req.fromId;})?lsData.friends:[].concat(lsData.friends||[],[{id:req.fromId,since:Date.now()}]);
     var newReqs=(lsData.requests||[]).filter(function(r){return r.fromId!==req.fromId;});
     var newActs=[{type:'friend',text:(_unCache[req.fromId]||req.fromId)+' ist jetzt dein Freund',ts:Date.now()}].concat(lsData.activities||[]).slice(0,20);
@@ -5412,6 +5534,7 @@ function LernSpaceView(p){
   }
 
   function removeFriend(fid){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var newFriends=(lsData.friends||[]).filter(function(f){return f.id!==fid;});
     saveDataRemove({friends:newFriends});
     getSb().rpc('ls_remove_friend',{p_target_ls_id:fid}).then(function(){},function(){});
@@ -5419,6 +5542,7 @@ function LernSpaceView(p){
   }
 
   function createGroup(){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     if(!groupName.trim()){showToast('Name eingeben');return;}
     var gid=uid();
     var g={id:gid,name:groupName.trim(),emoji:groupEmoji,members:[{id:MY_ID,role:'admin'}],deckIds:[],created:Date.now()};
@@ -5448,6 +5572,7 @@ function LernSpaceView(p){
      betroffenen Stapel per id ersetzt - andere Stapel und Mitglieder
      bleiben unberuehrt, egal was lokal sonst noch im State steht. */
   function applyGroupUpdate(updG,changedDeck){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return Promise.resolve();}
     setSelectedGroup(updG);
     var newGroups=(lsData.groups||[]).map(function(gr){return gr.id===updG.id?updG:gr;});
     if(!newGroups.find(function(gr){return gr.id===updG.id;}))newGroups=newGroups.concat([updG]);
@@ -5458,6 +5583,7 @@ function LernSpaceView(p){
   }
 
   function inviteMember(){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var raw=inviteMemberId.trim();
     var g=selectedGroup;
     if(!g)return;
@@ -5488,6 +5614,7 @@ function LernSpaceView(p){
      veralteten lokalen lsData - sonst koennte eine zwischen Laden und Annehmen/
      Ablehnen frisch eingetroffene zweite Einladung stillschweigend verschwinden. */
   function acceptGroupInvite(invite){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     dbg('acceptGroupInvite:',invite.id);
     var groupEntry={id:invite.id,name:invite.name,emoji:invite.emoji,members:[],groupDecks:[],deckIds:[],created:invite.ts};
     setLsData(function(prev){
@@ -5527,6 +5654,7 @@ function LernSpaceView(p){
   }
 
   function changeMemberRole(targetId,newRole){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var g=selectedGroup;
     if(!g)return;
     if(!isGroupAdmin(g,MY_ID)){showToast('Nur Admins');return;}
@@ -5552,6 +5680,7 @@ function LernSpaceView(p){
     setGroupActionConfirm({type:'removeMember',targetId:targetId});
   }
   function runRemoveMember(targetId){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var g=selectedGroup;
     if(!g)return;
     getSb().rpc('ls_group_remove_member',{p_group_id:g.id,p_target_ls_id:targetId}).then(function(res){
@@ -5585,6 +5714,7 @@ function LernSpaceView(p){
     }
   }
   function runTransferGroup(tid){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var g=selectedGroup;
     if(!g)return;
     var members=normalizeMembers(g.members);
@@ -5606,6 +5736,7 @@ function LernSpaceView(p){
     }).catch(function(e){dbg('transferGroup: \u274c catch',e&&e.message);showToast('Fehler');});
   }
   function runDeleteGroup(){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var g=selectedGroup;
     if(!g)return;
     dbg('deleteGroup: starte '+g.id);
@@ -5623,6 +5754,7 @@ function LernSpaceView(p){
     }).catch(function(e){dbg('deleteGroup: \u274c catch',e&&e.message);showToast('Fehler beim L\u00f6schen');});
   }
   function runLeaveGroup(){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var g=selectedGroup;
     if(!g)return;
     dbg('leaveGroup: starte '+g.id);
@@ -5635,6 +5767,7 @@ function LernSpaceView(p){
     }).catch(function(e){dbg('leaveGroup: \u274c catch',e&&e.message);showToast('Fehler');});
   }
   function runDeleteGroupCard(cardId){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var g=selectedGroup,deck=selectedGroupDeck;
     if(!g||!deck)return;
     var updCards=(deck.cards||[]).filter(function(c){return c.id!==cardId;});
@@ -5646,6 +5779,7 @@ function LernSpaceView(p){
     showToast('Karte gel\u00f6scht');
   }
   function runDeleteGroupDeck(deckId){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var g=selectedGroup;
     if(!g)return;
     var updDecks=(g.groupDecks||[]).filter(function(d){return d.id!==deckId;});
@@ -5660,6 +5794,7 @@ function LernSpaceView(p){
   }
 
   function shareStackWith(deck,friendId){
+    if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
     var copy=copyDeckNewIds(deck);
     getSb().rpc('ls_share_deck',{p_target_ls_id:friendId,p_deck:copy}).then(function(res){
       if(res.error)throw res.error;
@@ -5882,6 +6017,7 @@ function LernSpaceView(p){
     function startCreateDeck(){setNewDeckName('');setNewDeckEmoji('\uD83D\uDCDA');setGroupStackPage('new-deck');}
 
     function createGroupDeck(){
+      if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
       if(!newDeckName.trim()){showToast('Name eingeben');return;}
       var deck={id:uid(),name:newDeckName.trim(),emoji:newDeckEmoji,cards:[],created:Date.now(),createdBy:MY_ID};
       var updDecks=[].concat(groupDecks,[deck]);
@@ -5893,6 +6029,7 @@ function LernSpaceView(p){
     }
 
     function saveGroupCard(){
+      if(!isOnline){showToast('Offline - bitte sp\u00E4ter erneut versuchen.');return;}
       if(!newCardFront.trim()||!newCardBack.trim()){showToast('Vorder- und R\u00FCckseite eingeben');return;}
       var card={id:uid(),front:newCardFront.trim(),back:newCardBack.trim(),lvl:0,nextReview:todayStr()};
       var updDeck=Object.assign({},selectedGroupDeck,{cards:[].concat(selectedGroupDeck.cards||[],[card])});
@@ -5910,6 +6047,7 @@ function LernSpaceView(p){
     }
 
     function saveEditGroupCard(){
+      if(!isOnline){showToast('Offline - bitte sp\u00E4ter erneut versuchen.');return;}
       if(!editGroupCardFront.trim()||!editGroupCardBack.trim()){showToast('Vorder- und R\u00FCckseite eingeben');return;}
       var updCards=(selectedGroupDeck.cards||[]).map(function(c){
         return c.id===editGroupCard.id?Object.assign({},c,{front:editGroupCardFront.trim(),back:editGroupCardBack.trim()}):c;
@@ -6103,6 +6241,7 @@ function LernSpaceView(p){
     }
 
     function sendMsg(){
+      if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
       var txt=chatInput.trim();
       if(!txt)return;
       var ts=Date.now();
@@ -6213,6 +6352,7 @@ function LernSpaceView(p){
     showGroupAvPicker&&selectedGroup&&h(GroupAvatarPickerModal,{
       currentPhoto:selectedGroup.avatarPhoto||null,
       onSavePhoto:function(photo){
+        if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
         var gid=selectedGroup.id;
         var upd=Object.assign({},selectedGroup,{avatar:'photo',avatarPhoto:photo});
         setSelectedGroup(upd);
@@ -6298,7 +6438,8 @@ function LernSpaceView(p){
       onAccept:function(){localStorage.setItem(LS_CONSENT_KEY,'1');window.dispatchEvent(new Event('lp-ls-consent-given'));setShowConsent(false);},
       onDecline:function(){localStorage.setItem(LS_CONSENT_KEY,'0');setShowConsent(false);if(p.onBack)p.onBack();},
       onShowDat:p.onShowDat||function(){}
-    })
+    }),
+    h(Toast,{msg:toast})
   );
 }
 
@@ -7115,9 +7256,24 @@ function App(p){
   function prefetchDocFile(file){
     var entry=docPfCacheRef.current[file.id];
     if(entry)return entry.promise;
-    var p=driveFetch('https://www.googleapis.com/drive/v3/files/'+file.id+'?alt=media')
-      .then(function(r){ if(!r.ok)throw new Error('Download fehlgeschlagen'); return r.arrayBuffer(); })
-      .then(renderPdfPages)
+    var p=pdfCacheGet(file.id).then(function(cachedBuf){
+      if(cachedBuf)return cachedBuf;
+      return driveFetch('https://www.googleapis.com/drive/v3/files/'+file.id+'?alt=media')
+        .then(function(r){ if(!r.ok)throw new Error('Download fehlgeschlagen'); return r.arrayBuffer(); })
+        .then(function(buf){
+          /* Bug-Fix (Gesamt-Review): buf.slice(0) statt buf direkt an den
+             Cache uebergeben - pdf.js transferiert den ArrayBuffer beim
+             getDocument()-Aufruf in renderPdfPages an seinen Worker
+             (structured clone mit Transfer-Liste), wodurch das Original
+             "detached" wird. Ohne die Kopie haette pdfCachePut je nach
+             Zeitpunkt versucht, einen bereits entwerteten Buffer zu
+             klonen - IndexedDB haette das mit DataCloneError quittiert,
+             lautlos verschluckt durch das eigene .catch() unten, und der
+             PDF-Cache waere in der Praxis nie befuellt worden. */
+          pdfCachePut(file.id,buf.slice(0)).catch(function(){});
+          return buf;
+        });
+    }).then(renderPdfPages)
       .then(function(pages){
         if(docPfCacheRef.current[file.id])docPfCacheRef.current[file.id].pages=pages;
         return pages;
@@ -7481,6 +7637,13 @@ function App(p){
       }
     });
     return function(){ window.removeEventListener('online',onBackOnline); if(sub&&sub.data&&sub.data.subscription)sub.data.subscription.unsubscribe(); };
+  },[]);
+
+  useEffect(function(){
+    function onBackOnlineFlushScans(){ flushScanQueue(); }
+    window.addEventListener('online',onBackOnlineFlushScans);
+    flushScanQueue(); // auch direkt beim Boot versuchen, falls schon online
+    return function(){ window.removeEventListener('online',onBackOnlineFlushScans); };
   },[]);
 
   function setupRealtimeSync(){
@@ -8196,6 +8359,7 @@ function App(p){
     if((xpTab!=="unterlagen"&&!linkPickerOpen)||!googleUser||docsRootId)return;
     setDocsLoading(true);setDocsError(null);
     driveEnsureRootFolder().then(function(id){
+      try{localStorage.setItem('kkm-docs-root-id',id);}catch(e){}
       setDocsRootId(id);setDocsFolderId(id);setDocsPath([]);
       var cached=loadDocsCache(id);
       if(cached){
@@ -8213,6 +8377,24 @@ function App(p){
         dbg("❌ Drive-Fehler:",e.message);
       });
     }).catch(function(e){
+      /* Bug-Fix (Gesamt-Review): driveEnsureRootFolder() braucht Netzwerk
+         und schlaegt offline immer fehl - ohne Fallback bliebe docsRootId/
+         docsFolderId dann dauerhaft null, wodurch ein offline erstellter
+         Scan spaeter beim Nachhol-Upload ohne parentId landet (Drive
+         Root statt "Lernpuls Unterlagen"). Ein zuvor schon einmal online
+         aufgeloester Ordner wird deshalb aus localStorage uebernommen -
+         zumindest fuer wiederkehrende Nutzer:innen bleibt die Zuordnung
+         damit korrekt, auch wenn die App komplett offline startet. */
+      var cachedRootId=null;
+      try{cachedRootId=localStorage.getItem('kkm-docs-root-id');}catch(err){}
+      if(cachedRootId){
+        setDocsRootId(cachedRootId);setDocsFolderId(cachedRootId);setDocsPath([]);
+        var cachedList=loadDocsCache(cachedRootId);
+        if(cachedList){
+          setDocsFolders(cachedList.folders||[]);setDocsFiles(cachedList.files||[]);
+          setDocsFolderCounts(cachedList.counts||{});
+        }
+      }
       setDocsError("Verbindung zu Google Drive fehlgeschlagen. ("+e.message+")");setDocsLoading(false);
       dbg("❌ Drive-Fehler:",e.message);
     });
@@ -8439,11 +8621,16 @@ function App(p){
     setScanNameModalOpen(false);setScanNamePending(null);
     setScanBusy(true);
     buildPdfBlobFromImages(pages).then(function(blob){
-      return driveUploadPdf(blob,name,docsFolderId,pages.length);
-    }).then(function(){
-      setScanBusy(false);setScanModalOpen(false);setScanMode(null);setScanPages([]);
-      loadDocsFolder(docsFolderId);
-      showToast("Dokument gespeichert.");
+      return driveUploadPdf(blob,name,docsFolderId,pages.length).then(function(){
+        setScanBusy(false);setScanModalOpen(false);setScanMode(null);setScanPages([]);
+        loadDocsFolder(docsFolderId);
+        showToast("Dokument gespeichert.");
+      }).catch(function(e){
+        return queueScanForUpload(blob,name,docsFolderId,pages.length).then(function(){
+          setScanBusy(false);setScanModalOpen(false);setScanMode(null);setScanPages([]);
+          showToast("Kein Internet - Scan wird automatisch hochgeladen, sobald du wieder online bist.");
+        });
+      });
     }).catch(function(e){
       setScanBusy(false);
       showToast("Scan konnte nicht gespeichert werden.");
