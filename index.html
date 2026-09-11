@@ -6787,15 +6787,9 @@ function App(p){
 
   var _kkOC=parseInt(localStorage.getItem('kkm-open-count')||'0')+1;localStorage.setItem('kkm-open-count',String(_kkOC));
   var slo=useState(!localStorage.getItem('kkm-onboarded'));var showLogin=slo[0];var setShowLogin=slo[1];
-  var ds=useState(function(){
-    var s=loadStore();
-    try{
-      dbg('📦 Boot-Daten:',(s.decks||[]).map(function(d){
-        return d.name+'='+deckPct(d)+'%('+((d.cards||[]).length)+'K,upd:'+String(d.updatedAt||'').slice(0,16)+')';
-      }).join(' | '),'| _syncedAt:',s._syncedAt||0);
-    }catch(e){}
-    return s;
-  }); var data=ds[0]; var setData=ds[1];
+  var storeReadyRef=useRef(null);
+  if(storeReadyRef.current===null) storeReadyRef.current=loadStoreInitial();
+  var ds=useState(function(){ return loadStore(); }); var data=ds[0]; var setData=ds[1];
   /* Bug-Fix: Der Splash wartete bisher nur auf eine feste Mindestlaufzeit
      und die Freunde-Daten - nicht auf die eigentlichen Karteikarten. Bei
      einem neuen Geraet (noch kein lokaler Stand) konnte der Splash so
@@ -6814,12 +6808,18 @@ function App(p){
      inhaltlich falsche) "Noch keine Stapel"-Dashboard statt der Keine-
      Internetverbindung-Meldung, obwohl in Wahrheit gar nichts Echtes
      lokal vorlag. */
-  var hasLocalDataRef=useRef((function(){
-    try{
-      var st=loadStore();
-      return !!((st.decks&&st.decks.length>0)||(st.folders&&st.folders.length>0)||(st.arbeiten&&st.arbeiten.length>0));
-    }catch(e){ return false; }
-  })());
+  var hasLocalDataRef=useRef(false); // sicherer Default - wird unten befuellt, sobald storeReadyRef aufgeloest ist
+  useEffect(function(){
+    storeReadyRef.current.then(function(s){
+      hasLocalDataRef.current=!!((s.decks&&s.decks.length>0)||(s.folders&&s.folders.length>0)||(s.arbeiten&&s.arbeiten.length>0));
+      try{
+        dbg('📦 Boot-Daten:',(s.decks||[]).map(function(d){
+          return d.name+'='+deckPct(d)+'%('+((d.cards||[]).length)+'K,upd:'+String(d.updatedAt||'').slice(0,16)+')';
+        }).join(' | '),'| _syncedAt:',s._syncedAt||0);
+      }catch(e){}
+      setData(s);
+    });
+  },[]);
   var dataBootReportedRef=useRef(false);
   function reportDataBootReady(){
     if(dataBootReportedRef.current)return;
@@ -6831,8 +6831,15 @@ function App(p){
     dataBootReportedRef.current=true;
     if(p.onDataError)p.onDataError();
   }
+  function reportDataBootReadyOrError(){
+    storeReadyRef.current.then(function(){
+      if(hasLocalDataRef.current)reportDataBootReady();else reportDataBootError();
+    });
+  }
   useEffect(function(){
-    if(hasLocalDataRef.current)reportDataBootReady();
+    storeReadyRef.current.then(function(){
+      if(hasLocalDataRef.current)reportDataBootReady();
+    });
   },[]);
   var vs=useState("decks"); var view=vs[0]; var setView=vs[1];
   var dis=useState(null); var deckId=dis[0]; var setDeckId=dis[1];
@@ -7408,7 +7415,7 @@ function App(p){
              "Noch keine Stapel"-Dashboard statt einer klaren Fehler-
              meldung. Sah aus wie kompletter Datenverlust, obwohl online
              alles wiederhergestellt wird. */
-          if(hasLocalDataRef.current)reportDataBootReady();else reportDataBootError(); // offline - mit lokalem Stand weiterarbeiten, Check kommt per 'online' erneut
+          reportDataBootReadyOrError(); // offline - mit lokalem Stand weiterarbeiten, Check kommt per 'online' erneut
         } else if(dsgvoAccepted()){
           /* Ohne Zustimmung wird hier bewusst gar nichts getan - kein
              signInAnonymously(), kein Supabase-Kontakt ueberhaupt. Der
@@ -7423,14 +7430,14 @@ function App(p){
                fehl. Mit lokalem Stand (wiederkehrendes Geraet) einfach
                weiter - ohne kann hier ohnehin nichts geladen werden, das
                loest den Fehlerzustand in Boot() aus (siehe onDataError). */
-            if(hasLocalDataRef.current)reportDataBootReady();else reportDataBootError();
+            reportDataBootReadyOrError();
           });
         } else {
           reportDataBootReady(); // blockiert auf den DSGVO-Screen, nicht auf Netzwerk
         }
       }
     }).catch(function(){
-      if(hasLocalDataRef.current)reportDataBootReady();else reportDataBootError();
+      reportDataBootReadyOrError();
     });
     }
     checkInitialAuth();
@@ -7666,15 +7673,17 @@ function App(p){
      wird. */
   var _authRetryCount=0;
   function handleAuthUserFailure(user){
-    if(hasLocalDataRef.current){ reportDataBootReady(); return; }
-    if(_authRetryCount<2){
-      _authRetryCount++;
-      var delay=_authRetryCount===1?4000:8000;
-      dbg('🔁 Automatischer Wiederholungsversuch '+_authRetryCount+'/2 in '+delay+'ms...');
-      setTimeout(function(){ handleAuthUser(user,true); },delay);
-    } else {
-      reportDataBootError();
-    }
+    storeReadyRef.current.then(function(){
+      if(hasLocalDataRef.current){ reportDataBootReady(); return; }
+      if(_authRetryCount<2){
+        _authRetryCount++;
+        var delay=_authRetryCount===1?4000:8000;
+        dbg('🔁 Automatischer Wiederholungsversuch '+_authRetryCount+'/2 in '+delay+'ms...');
+        setTimeout(function(){ handleAuthUser(user,true); },delay);
+      } else {
+        reportDataBootError();
+      }
+    });
   }
   function handleAuthUser(user,isRetry){
     /* Bug-Fix: handleAuthUser() wird aus mehreren, voneinander
