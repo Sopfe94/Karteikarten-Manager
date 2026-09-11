@@ -1930,6 +1930,36 @@ function storeHasContent(s){
   return !!(s&&((s.decks&&s.decks.length>0)||(s.folders&&s.folders.length>0)||(s.arbeiten&&s.arbeiten.length>0)));
 }
 var STORE_BACKUP_KEY=STORE_KEY+'-backup';
+var KKM_IDB_NAME='kkm-store-db';
+var KKM_IDB_STORE='kv';
+function kkmIdbOpen(){
+  return new Promise(function(resolve,reject){
+    var req=indexedDB.open(KKM_IDB_NAME,1);
+    req.onupgradeneeded=function(){ req.result.createObjectStore(KKM_IDB_STORE); };
+    req.onsuccess=function(){ resolve(req.result); };
+    req.onerror=function(){ reject(req.error); };
+  });
+}
+function kkmIdbGet(key){
+  return kkmIdbOpen().then(function(db){
+    return new Promise(function(resolve,reject){
+      var tx=db.transaction(KKM_IDB_STORE,'readonly');
+      var req=tx.objectStore(KKM_IDB_STORE).get(key);
+      req.onsuccess=function(){ resolve(req.result); };
+      req.onerror=function(){ reject(req.error); };
+    });
+  });
+}
+function kkmIdbSet(key,value){
+  return kkmIdbOpen().then(function(db){
+    return new Promise(function(resolve,reject){
+      var tx=db.transaction(KKM_IDB_STORE,'readwrite');
+      tx.objectStore(KKM_IDB_STORE).put(value,key);
+      tx.oncomplete=function(){ resolve(); };
+      tx.onerror=function(){ reject(tx.error); };
+    });
+  });
+}
 function loadStore(){
   try{
     var r=localStorage.getItem(STORE_KEY);
