@@ -1997,15 +1997,18 @@ function pdfCachePut(fileId,arrayBuffer){
   var size=arrayBuffer.byteLength;
   return kkmIdbGet('pdfCacheIndex').then(function(idx){
     idx=idx||{};
-    var entries=Object.keys(idx).map(function(id){return {id:id,size:idx[id].size,lastAccess:idx[id].lastAccess};});
+    var entries=Object.keys(idx).filter(function(id){return id!==fileId;}).map(function(id){return {id:id,size:idx[id].size,lastAccess:idx[id].lastAccess};});
     var total=entries.reduce(function(sum,e){return sum+e.size;},0);
     entries.sort(function(a,b){return a.lastAccess-b.lastAccess;}); // aeltester Zugriff zuerst
     var evictChain=Promise.resolve();
     var i=0;
     while(total+size>PDF_CACHE_MAX_BYTES&&i<entries.length){
       (function(entry){
-        evictChain=evictChain.then(function(){ return kkmIdbDelete('pdfblob:'+entry.id); }).catch(function(){});
-        delete idx[entry.id];
+        evictChain=evictChain.then(function(){
+          return kkmIdbDelete('pdfblob:'+entry.id).then(function(){
+            delete idx[entry.id];
+          });
+        }).catch(function(){});
       })(entries[i]);
       total-=entries[i].size;
       i++;
