@@ -1196,6 +1196,29 @@ function driveFetch(url,opts){
     return r;
   });
 }
+/* Bug-Fix (Gruppe B, Fix 1 - Critical): driveFetch() gibt bei JEDEM
+   Nicht-401-Fehlerstatus (403 Speicher voll, 404 Ordner geloescht, 500
+   Server-Fehler, ...) unveraendert die rohe Response weiter. Schreibende
+   Aufrufer, die direkt r.json() aufgerufen haben, haben dadurch ein
+   Google-Error-JSON-Objekt als "Erfolg" behandelt - z.B. beim PDF-Upload
+   mit stillem, endgueltigem Datenverlust (lokale Scan-Seiten wurden
+   verworfen, obwohl in Drive nichts ankam). Alle schreibenden
+   driveFetch-Aufrufe laufen deshalb ueber diese Hilfsfunktion, die bei
+   !r.ok die Promise tatsaechlich rejected statt (fälschlich) Erfolg zu
+   melden. */
+function driveFetchJson(url,opts){
+  return driveFetch(url,opts).then(function(r){
+    return r.json().then(function(data){
+      if(!r.ok){
+        var err=new Error((data&&data.error&&data.error.message)||('Drive-Fehler '+r.status));
+        err.status=r.status;
+        err.driveError=data;
+        throw err;
+      }
+      return data;
+    });
+  });
+}
 function driveFindFolder(name,parentId){
   var safeName=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
   var q="name='"+safeName+"' and mimeType='"+DRIVE_FOLDER_MIME+"' and trashed=false and '"+(parentId||'root')+"' in parents";
@@ -1204,10 +1227,10 @@ function driveFindFolder(name,parentId){
     .then(function(d){return (d.files&&d.files[0])?d.files[0].id:null;});
 }
 function driveCreateFolder(name,parentId){
-  return driveFetch('https://www.googleapis.com/drive/v3/files?fields=id,name',{
+  return driveFetchJson('https://www.googleapis.com/drive/v3/files?fields=id,name',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({name:name,mimeType:DRIVE_FOLDER_MIME,parents:parentId?[parentId]:undefined})
-  }).then(function(r){return r.json();});
+  });
 }
 function driveEnsureRootFolder(){
   return driveFindFolder(DRIVE_ROOT_NAME,null).then(function(id){
@@ -1222,7 +1245,18 @@ function driveListChildren(folderId){
     .then(function(d){return d.files||[];});
 }
 function driveDeleteFile(id){
-  return driveFetch('https://www.googleapis.com/drive/v3/files/'+id,{method:'DELETE'});
+  /* Bug-Fix (Gruppe B, Fix 1): DELETE hat kein JSON-Response-Body (204 bei
+     Erfolg), faellt also nicht unter driveFetchJson - der r.ok-Check wird
+     deshalb hier direkt nachgebildet, damit ein Fehlschlag (403/404/500)
+     nicht stillschweigend als Erfolg durchgereicht wird. */
+  return driveFetch('https://www.googleapis.com/drive/v3/files/'+id,{method:'DELETE'}).then(function(r){
+    if(!r.ok){
+      var err=new Error('Drive-Fehler '+r.status);
+      err.status=r.status;
+      throw err;
+    }
+    return r;
+  });
 }
 function driveCountFiles(folderId){
   var q="'"+folderId+"' in parents and trashed=false and mimeType!='"+DRIVE_FOLDER_MIME+"'";
@@ -1272,13 +1306,12 @@ function saveDocPrefetchPref(v){
   try{ localStorage.setItem('kkm-doc-prefetch',v?'1':'0'); }catch(e){}
 }
 function driveMoveFile(fileId,addParentId,removeParentId){
-  return driveFetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?addParents='+addParentId+'&removeParents='+removeParentId+'&fields=id,parents',{method:'PATCH'})
-    .then(function(r){return r.json();});
+  return driveFetchJson('https://www.googleapis.com/drive/v3/files/'+fileId+'?addParents='+addParentId+'&removeParents='+removeParentId+'&fields=id,parents',{method:'PATCH'});
 }
 function driveRenameFile(fileId,name){
-  return driveFetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?fields=id,name',{
+  return driveFetchJson('https://www.googleapis.com/drive/v3/files/'+fileId+'?fields=id,name',{
     method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name})
-  }).then(function(r){return r.json();});
+  });
 }
 function driveUploadPdf(blob,filename,parentId,pageCount){
   var metadata={name:filename,mimeType:'application/pdf',parents:parentId?[parentId]:undefined,
@@ -1286,9 +1319,9 @@ function driveUploadPdf(blob,filename,parentId,pageCount){
   var form=new FormData();
   form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));
   form.append('file',blob);
-  return driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',{
+  return driveFetchJson('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',{
     method:'POST',body:form
-  }).then(function(r){return r.json();});
+  });
 }
 function loadImageDims(dataUrl){
   return new Promise(function(resolve){
@@ -7376,6 +7409,17 @@ function App(p){
   var scimgsz=useState(null); var scanCropImgSize=scimgsz[0]; var setScanCropImgSize=scimgsz[1];
   var scanCropImgRef=useRef(null);
   var scanCropDragRef=useRef(null);
+  /* Bug-Fix (Gruppe B, Fix 3): Kantenerkennung (onScanCropImageLoad) und
+     Zuschnitt-Berechnung (confirmScanCrop) laufen bis zu 15s asynchron im
+     Hintergrund. Der "×"-Abbrechen-Button hat - anders als "Neu aufnehmen"
+     - keinen disabled-Zustand, ist also waehrend dieser Zeit jederzeit
+     klickbar. Startet danach sofort eine neue Foto-/Crop-Session, kann die
+     noch laufende ALTE Operation trotzdem noch aufloesen und mit
+     veralteten Daten den dann schon aktuellen State ueberschreiben. Dieses
+     Generation-Token macht jede Session eindeutig identifizierbar - ein
+     .then()-Handler, dessen Generation nicht mehr der aktuellen entspricht,
+     verwirft sein Ergebnis statt es in den State zu schreiben. */
+  var scanCropGenerationRef=useRef(0);
   var docFileInputRef=useRef(null);
   var docPdfInputRef=useRef(null);
   var recentDocs=data.recentDocs||[];
@@ -8615,17 +8659,34 @@ function App(p){
     if(!files.length){ if(all.length)showToast("Nur PDF-Dateien werden unterstützt."); return; }
     setScanBusy(true);
     setScanUploadProgress({done:0,total:files.length});
+    /* Bug-Fix (Gruppe B, Fix 2): anders als der Scan-Weg (confirmScanName)
+       ging ein fehlgeschlagener Direkt-Upload bisher komplett verloren -
+       nur eine Fehlermeldung, keine Warteschlange. Jede Datei wird deshalb
+       einzeln abgefangen: schlaegt der Upload fehl (offline, Drive-Fehler),
+       landet sie stattdessen in derselben scanUploadQueue wie beim Scan-Weg
+       und wird automatisch nachgeholt, sobald wieder online. */
+    var queuedCount=0;
     var chain=Promise.resolve();
     files.forEach(function(file,idx){
       chain=chain.then(function(){
         setScanUploadProgress({done:idx,total:files.length});
-        return driveUploadPdf(file,file.name,docsFolderId,null);
+        return driveUploadPdf(file,file.name,docsFolderId,null).catch(function(e){
+          dbg("❌ PDF-Direkt-Upload fehlgeschlagen, wird in Warteschlange gelegt:",file.name,e&&e.message);
+          queuedCount++;
+          return queueScanForUpload(file,file.name,docsFolderId,null);
+        });
       });
     });
     chain.then(function(){
       setScanBusy(false);setScanModalOpen(false);setScanMode(null);setScanScanChosen(false);setScanUploadProgress(null);
       loadDocsFolder(docsFolderId);
-      showToast(files.length===1?"Dokument hochgeladen.":files.length+" Dokumente hochgeladen.");
+      if(queuedCount>0){
+        showToast(queuedCount===files.length
+          ? "Kein Internet - wird automatisch hochgeladen, sobald du wieder online bist."
+          : (files.length-queuedCount)+" von "+files.length+" hochgeladen, Rest wird automatisch hochgeladen, sobald du wieder online bist.");
+      }else{
+        showToast(files.length===1?"Dokument hochgeladen.":files.length+" Dokumente hochgeladen.");
+      }
     }).catch(function(err){
       setScanBusy(false);setScanUploadProgress(null);
       showToast("Hochladen fehlgeschlagen.");
@@ -8687,6 +8748,11 @@ function App(p){
   }
   function onScanCropImageLoad(e){
     var img=e.target;
+    /* Neue Foto-Session: Generation erhoehen und lokal festhalten, bevor
+       die asynchrone Kantenerkennung startet (siehe Fix-3-Kommentar bei
+       scanCropGenerationRef). */
+    scanCropGenerationRef.current++;
+    var myGeneration=scanCropGenerationRef.current;
     setScanCropImgSize({w:img.naturalWidth,h:img.naturalHeight});
     /* Fallback = das ganze Foto (keine Einrueckung): schlaegt die
        Auto-Erkennung fehl oder braucht zu lange, soll der Nutzer das
@@ -8705,6 +8771,7 @@ function App(p){
        die Bedienung waehrenddessen immer reagierbar, ein Timeout heisst
        hier nur "manuelle Ecken statt Auto-Erkennung", kein Einfrieren. */
     withCvFallback(cvDetectDocumentCorners(img).catch(function(){return null;}),15000,null).then(function(pts){
+      if(scanCropGenerationRef.current!==myGeneration)return; // veraltete/abgebrochene Session - verwerfen
       setScanCropCorners(pts||fallback);
       setScanCropBusy(false);
     });
@@ -8748,16 +8815,24 @@ function App(p){
   function confirmScanCrop(){
     var img=scanCropImgRef.current;
     if(!img||!scanCropCorners)return;
+    /* Aktuelle Generation nur festhalten (nicht erhoehen - das Bestaetigen
+       gehoert noch zur laufenden Session), damit ein Abbruch/Neustart
+       waehrend der Zuschnitt-Berechnung erkannt und das dann veraltete
+       Ergebnis verworfen wird (siehe Fix-3-Kommentar bei
+       scanCropGenerationRef). */
+    var myGeneration=scanCropGenerationRef.current;
     setScanCropBusy(true);
     withCvFallback(cvWarpCrop(img,scanCropCorners).catch(function(){return null;}),15000,null).then(function(dataUrl){
       return dataUrl||plainBoundingCrop(img,scanCropCorners);
     }).then(function(dataUrl){
+      if(scanCropGenerationRef.current!==myGeneration)return; // Session zwischenzeitlich abgebrochen/neu gestartet
       var next=scanPages.concat([dataUrl]);
       setScanCropOpen(false);setScanCropSrc(null);setScanCropCorners(null);
       setScanCropImgSize(null);setScanCropBusy(false);
       setScanPages(next);
       if(scanMode==="single")finishScanWithPages(next);
     }).catch(function(e){
+      if(scanCropGenerationRef.current!==myGeneration)return;
       setScanCropBusy(false);
       showToast("Zuschneiden fehlgeschlagen.");
       dbg("❌ Scan-Zuschnitt-Fehler:",e.message);
@@ -8769,6 +8844,11 @@ function App(p){
     triggerCameraCapture();
   }
   function cancelScanCrop(){
+    /* Macht jede fuer diese Session noch laufende asynchrone Operation
+       (Kantenerkennung/Zuschnitt) ungueltig, auch wenn direkt danach keine
+       neue Session startet - siehe Fix-3-Kommentar bei
+       scanCropGenerationRef. */
+    scanCropGenerationRef.current++;
     setScanCropOpen(false);setScanCropSrc(null);setScanCropCorners(null);
     setScanCropImgSize(null);setScanCropBusy(false);
   }
