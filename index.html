@@ -5403,7 +5403,9 @@ function LernSpaceView(p){
           var updG=Object.assign({},selectedGroup,{
             groupDecks:row.group_decks||[],
             members:row.members||selectedGroup.members,
-            name:row.name||selectedGroup.name
+            name:row.name||selectedGroup.name,
+            avatar:row.avatar!==undefined&&row.avatar!==null?row.avatar:selectedGroup.avatar,
+            avatarPhoto:row.avatarPhoto!==undefined&&row.avatarPhoto!==null?row.avatarPhoto:selectedGroup.avatarPhoto
           });
           setSelectedGroup(updG);
           setSelectedGroupDeck(function(prev){
@@ -5600,20 +5602,40 @@ function LernSpaceView(p){
 
   function cancelRequest(toId){
     if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
-    getSb().rpc('ls_cancel_friend_request',{p_target_ls_id:toId}).then(function(){},function(){});
+    var prevSent=lsData.sentRequests;
     var newSent=(lsData.sentRequests||[]).filter(function(r){return r.toId!==toId;});
     saveData({sentRequests:newSent});
-    showToast('Anfrage zur\u00fcckgezogen');
+    getSb().rpc('ls_cancel_friend_request',{p_target_ls_id:toId}).then(function(res){
+      if(res.error){
+        saveData({sentRequests:prevSent});
+        showToast('Fehler - bitte erneut versuchen');
+        return;
+      }
+      showToast('Anfrage zur\u00fcckgezogen');
+    },function(){
+      saveData({sentRequests:prevSent});
+      showToast('Fehler - bitte erneut versuchen');
+    });
   }
 
   function acceptRequest(req){
     if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
+    var prevFriends=lsData.friends;var prevReqs=lsData.requests;var prevActs=lsData.activities;
     var newFriends=(lsData.friends||[]).find(function(f){return f.id===req.fromId;})?lsData.friends:[].concat(lsData.friends||[],[{id:req.fromId,since:Date.now()}]);
     var newReqs=(lsData.requests||[]).filter(function(r){return r.fromId!==req.fromId;});
     var newActs=[{type:'friend',text:(_unCache[req.fromId]||req.fromId)+' ist jetzt dein Freund',ts:Date.now()}].concat(lsData.activities||[]).slice(0,20);
     saveDataAccept({friends:newFriends,requests:newReqs,activities:newActs},req.fromId);
-    getSb().rpc('ls_accept_friend_request',{p_requester_ls_id:req.fromId}).then(function(){},function(){});
-    showToast('Freund hinzugef\u00fcgt!');
+    getSb().rpc('ls_accept_friend_request',{p_requester_ls_id:req.fromId}).then(function(res){
+      if(res.error){
+        saveData({friends:prevFriends,requests:prevReqs,activities:prevActs});
+        showToast('Fehler - bitte erneut versuchen');
+        return;
+      }
+      showToast('Freund hinzugef\u00fcgt!');
+    },function(){
+      saveData({friends:prevFriends,requests:prevReqs,activities:prevActs});
+      showToast('Fehler - bitte erneut versuchen');
+    });
   }
 
   function declineRequest(req){
@@ -5622,10 +5644,20 @@ function LernSpaceView(p){
 
   function removeFriend(fid){
     if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
+    var prevFriends=lsData.friends;
     var newFriends=(lsData.friends||[]).filter(function(f){return f.id!==fid;});
     saveDataRemove({friends:newFriends});
-    getSb().rpc('ls_remove_friend',{p_target_ls_id:fid}).then(function(){},function(){});
-    showToast('Freundschaft beendet');
+    getSb().rpc('ls_remove_friend',{p_target_ls_id:fid}).then(function(res){
+      if(res.error){
+        saveDataRemove({friends:prevFriends});
+        showToast('Fehler - bitte erneut versuchen');
+        return;
+      }
+      showToast('Freundschaft beendet');
+    },function(){
+      saveDataRemove({friends:prevFriends});
+      showToast('Fehler - bitte erneut versuchen');
+    });
   }
 
   function createGroup(){
@@ -5633,10 +5665,10 @@ function LernSpaceView(p){
     if(!groupName.trim()){showToast('Name eingeben');return;}
     var gid=uid();
     var g={id:gid,name:groupName.trim(),emoji:groupEmoji,members:[{id:MY_ID,role:'admin'}],deckIds:[],created:Date.now()};
+    var prevGroups=lsData.groups;
     var newGroups=[].concat(lsData.groups||[],[g]);
     saveData({groups:newGroups});
     setGroupName('');
-    showToast('Gruppe erstellt!');
     /* RPC statt Direkt-Insert: Postgres wendet bei INSERT...RETURNING
        zusaetzlich die SELECT-Policy auf die neue Zeile an (dokumentiertes
        RLS-Verhalten) - is_ls_group_member() sieht die eigene, gerade erst
@@ -5645,7 +5677,17 @@ function LernSpaceView(p){
        Supabase-Client standardmaessig anfordert) faelschlich an der
        Select-Policy scheitert. Die SECURITY DEFINER-Funktion umgeht RLS
        komplett, exakt wie ls_claim_own_id und alle anderen Cross-Row-Writes. */
-    getSb().rpc('ls_create_group',{p_id:gid,p_name:g.name,p_emoji:g.emoji||null,p_created:String(g.created)}).then(function(){},function(){});
+    getSb().rpc('ls_create_group',{p_id:gid,p_name:g.name,p_emoji:g.emoji||null,p_created:String(g.created)}).then(function(res){
+      if(res.error){
+        saveData({groups:prevGroups});
+        showToast('Fehler - Gruppe konnte nicht erstellt werden');
+        return;
+      }
+      showToast('Gruppe erstellt!');
+    },function(){
+      saveData({groups:prevGroups});
+      showToast('Fehler - Gruppe konnte nicht erstellt werden');
+    });
   }
 
   /* Frueher ein roher Client-Upsert der KOMPLETTEN Gruppen-Zeile (inkl.
