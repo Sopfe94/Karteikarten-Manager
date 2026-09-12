@@ -2597,7 +2597,8 @@ function DeckModal(p){
   var es=useState(p.deck?p.deck.emoji:"\uD83D\uDCDA"); var e=es[0]; var se=es[1];
   var fs=useState(p.deck?p.deck.folderId||"":""); var fid=fs[0]; var setFid=fs[1];
   var folders=p.folders||[];
-  function save(){ if(n.trim()) p.onSave({name:n.trim(),emoji:e,folderId:fid||null}); }
+  var tm=useToast(); var toast=tm[0]; var showToast=tm[1];
+  function save(){ if(n.trim()) p.onSave({name:n.trim(),emoji:e,folderId:fid||null}); else showToast("Namen eingeben."); }
   return h("div",{className:"lp-modal-ov",onClick:p.onClose},
     h("div",{className:"lp-modal-box",onClick:function(ev){ev.stopPropagation();}},
       h("div",{className:"lp-modal-title grad"},p.deck?"Stapel bearbeiten":"Neuer Stapel"),
@@ -2607,7 +2608,8 @@ function DeckModal(p){
         h("select",{className:"lp-dark-input",value:fid,onChange:function(ev){setFid(ev.target.value);}},
           h("option",{value:""},"Kein Fach"),
           folders.map(function(f){return h("option",{key:f.id,value:f.id},f.name);}))),
-      h("div",{className:"lp-modal-actions"},h(DsButton,{variant:"danger",onClick:p.onClose},"Abbrechen"),h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:save},h("span",{className:"lp-btn-glow-label"},"Speichern")))));
+      h("div",{className:"lp-modal-actions"},h(DsButton,{variant:"danger",onClick:p.onClose},"Abbrechen"),h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:save},h("span",{className:"lp-btn-glow-label"},"Speichern"))),
+      h(Toast,{msg:toast})));
 }
 
 function CardModal(p){
@@ -2615,24 +2617,40 @@ function CardModal(p){
   var bs=useState(p.card?p.card.back:""); var b=bs[0]; var sb=bs[1];
   var fos=useState(p.card?p.card.folderId||"":""); var fid=fos[0]; var setFid=fos[1];
   var folders=p.folders||[];
-  function save(){ if(f.trim()&&b.trim()) p.onSave({front:f.trim(),back:b.trim(),folderId:fid||null}); }
+  /* Karten, die bereits mit dem Karteikarten-Editor erstellt wurden, haben
+     strukturierte frontElements/backElements - diese werden beim Rendern
+     IMMER bevorzugt (siehe LpCardFace). Klartext-Aenderungen hier ueber
+     die einfachen Felder waeren dann unsichtbar (Fix 3a), deshalb werden
+     die Felder in diesem Fall deaktiviert und auf den Editor verwiesen. */
+  var hasElements=!!(p.card&&(((p.card.frontElements||[]).length)||((p.card.backElements||[]).length)));
+  var tm=useToast(); var toast=tm[0]; var showToast=tm[1];
+  function save(){ if(!hasElements&&f.trim()&&b.trim()) p.onSave({front:f.trim(),back:b.trim(),folderId:fid||null}); else if(!hasElements) showToast("Vorder- und Rückseite eingeben."); }
+  function openEditor(){
+    var origFront=p.card?p.card.front:"";
+    var origBack=p.card?p.card.back:"";
+    if(!hasElements&&(f!==origFront||b!==origBack)){
+      if(!window.confirm('Du hast ungespeicherten Text - beim Wechsel in den Vollmodus geht er verloren. Trotzdem wechseln?'))return;
+    }
+    var seedFront=(p.card&&p.card.frontElements&&p.card.frontElements.length)?p.card.frontElements:(f.trim()?[makeSeedTextEl(f.trim())]:[]);
+    var seedBack=(p.card&&p.card.backElements&&p.card.backElements.length)?p.card.backElements:(b.trim()?[makeSeedTextEl(b.trim())]:[]);
+    p.onOpenEditor({folderId:fid||null,frontElements:seedFront,backElements:seedBack});
+  }
   return h("div",{className:"lp-modal-ov",onClick:p.onClose},
     h("div",{className:"lp-modal-box",onClick:function(ev){ev.stopPropagation();}},
       h("div",{className:"lp-modal-title"},p.card?"Karte bearbeiten":"Neue Karte"),
-      h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Frage"),h("textarea",{className:"lp-dark-input ta",rows:2,value:f,onInput:function(ev){sf(ev.target.value);},placeholder:"Frage eingeben...",autoFocus:true})),
-      h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Antwort"),h("textarea",{className:"lp-dark-input ta",rows:2,value:b,onInput:function(ev){sb(ev.target.value);},placeholder:"Antwort eingeben..."})),
+      hasElements&&h("div",{style:{fontSize:12,color:"rgba(255,255,255,.6)",marginBottom:4}},
+        "Diese Karte nutzt den Karteikarten-Editor mit Formatierungen - bitte dort bearbeiten."),
+      h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Frage"),h("textarea",{className:"lp-dark-input ta",rows:2,value:f,disabled:hasElements,onInput:function(ev){sf(ev.target.value);},placeholder:"Frage eingeben...",autoFocus:!hasElements})),
+      h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Antwort"),h("textarea",{className:"lp-dark-input ta",rows:2,value:b,disabled:hasElements,onInput:function(ev){sb(ev.target.value);},placeholder:"Antwort eingeben..."})),
       folders.length>0&&h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Ordner"),
         h("select",{className:"lp-dark-input",value:fid,onChange:function(ev){setFid(ev.target.value);}},
           h("option",{value:""},"Ohne Ordner"),
           folders.map(function(fo){return h("option",{key:fo.id,value:fo.id},fo.emoji+" "+fo.name);}))),
       p.onOpenEditor&&h("div",{style:{fontSize:12,color:"rgba(255,255,255,.4)",marginTop:-4}},
         "Mehr Gestaltungsmöglichkeiten (Bilder, Formatierung, freie Platzierung) im ",
-        h("a",{onClick:function(){
-          var seedFront=(p.card&&p.card.frontElements&&p.card.frontElements.length)?p.card.frontElements:(f.trim()?[makeSeedTextEl(f.trim())]:[]);
-          var seedBack=(p.card&&p.card.backElements&&p.card.backElements.length)?p.card.backElements:(b.trim()?[makeSeedTextEl(b.trim())]:[]);
-          p.onOpenEditor({folderId:fid||null,frontElements:seedFront,backElements:seedBack});
-        },style:{color:"var(--color-violet-light)",cursor:"pointer"}},"Karteikarten Editor"),"."),
-      h("div",{className:"lp-modal-actions"},h(DsButton,{variant:"danger",onClick:p.onClose},"Abbrechen"),h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:save},h("span",{className:"lp-btn-glow-label"},"Speichern")))));
+        h("a",{onClick:openEditor,style:{color:"var(--color-violet-light)",cursor:"pointer"}},"Karteikarten Editor"),"."),
+      h("div",{className:"lp-modal-actions"},h(DsButton,{variant:"danger",onClick:p.onClose},"Abbrechen"),!hasElements&&h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:save},h("span",{className:"lp-btn-glow-label"},"Speichern"))),
+      h(Toast,{msg:toast})));
 }
 
 /* ---- Karteikarten Editor (freie Textfelder/Bilder, Drag/Resize, Formatierung) ---- */
@@ -3015,6 +3033,12 @@ function LpCardEditor(p){
        tatsaechlich gespeicherte Groesse wird davon unabhaengig durch
        maxDim/JPEG-Qualitaet begrenzt. */
     if(file.size>15*1024*1024){ if(p.showToast)p.showToast("Bild zu groß (max. 15 MB)"); return; }
+    /* pushHistory() bewusst SYNCHRON hier am Anfang, nicht erst im
+       asynchronen onload-Callback weiter unten - der Undo-Schnappschuss
+       muss den Zustand VOR Beginn des Uploads festhalten, unabhaengig
+       davon wie lange das Lesen/Laden dauert oder was der Nutzer
+       waehrenddessen an einem anderen Element aendert. */
+    pushHistory();
     var sideAtCall=side;
     var reader=new FileReader();
     reader.onerror=function(){ if(p.showToast)p.showToast("Bild konnte nicht gelesen werden."); };
@@ -3030,7 +3054,6 @@ function LpCardEditor(p){
         var ctx=canvas.getContext("2d");
         ctx.drawImage(img,0,0,cw,ch);
         var dataUrl=canvas.toDataURL("image/jpeg",0.85);
-        pushHistory();
         var el=newImageEl(dataUrl);
         if(sideAtCall==="front") setFrontEls(function(prev){return prev.concat([el]);});
         else setBackEls(function(prev){return prev.concat([el]);});
@@ -3128,6 +3151,9 @@ function LpCardEditor(p){
     if(!isPro||!selected)return;
     var el=curEls.find(function(x){return x.id===selected;});
     if(!el)return;
+    if(el.html&&/style\s*=\s*["'][^"']*color\s*:/i.test(el.html)){
+      if(!window.confirm('Aufzählung umschalten entfernt alle Textfarben in diesem Feld. Fortfahren?'))return;
+    }
     var willBullet=!el.bullet;
     var lines=(el.text||"").split("\n").map(function(l){return l.replace(/^•\s*/,"");});
     var newText=willBullet?lines.map(function(l){return "• "+l;}).join("\n"):lines.join("\n");
@@ -3224,6 +3250,13 @@ function LpCardEditor(p){
     if(!selected)return;
     var el=curEls.find(function(x){return x.id===selected;});
     if(!el||!el.src)return;
+    /* pushHistory() SYNCHRON hier am Anfang (statt implizit ueber
+       updateElement() erst im asynchronen img.onload unten) - sonst
+       wuerde der Undo-Schnappschuss erst NACH dem Laden des Bildes
+       gemacht und faelschlich einen zwischenzeitlichen Bearbeitungsstand
+       eines anderen Elements festhalten. updateElement() bekommt daher
+       skipHistory=true, damit hier nicht doppelt gepusht wird (Fix 2). */
+    pushHistory();
     var img=new Image();
     img.onload=function(){
       var canvas=document.createElement("canvas");
@@ -3235,7 +3268,7 @@ function LpCardEditor(p){
       ctx.drawImage(img,-img.naturalWidth/2,-img.naturalHeight/2);
       var dataUrl=canvas.toDataURL("image/jpeg",0.9);
       var w=el.width||120, h=el.height||w;
-      updateElement(el.id,{src:dataUrl,width:h,height:w});
+      updateElement(el.id,{src:dataUrl,width:h,height:w},true);
     };
     img.src=el.src;
   }
@@ -3496,7 +3529,7 @@ function LpCardEditor(p){
 
     cropMaskEl&&h(LpCropMaskModal,{
       el:curEls.find(function(x){return x.id===cropMaskEl;}),
-      onConfirm:function(patch){pushHistory();updateElement(cropMaskEl,patch);setCropMaskEl(null);},
+      onConfirm:function(patch){updateElement(cropMaskEl,patch);setCropMaskEl(null);},
       onCancel:function(){setCropMaskEl(null);}
     }),
 
@@ -5043,7 +5076,7 @@ function lsSet(col,docId,data){
 function copyDeckNewIds(deck){
   var newDeck=Object.assign({},deck,{id:uid()});
   newDeck.cards=(deck.cards||[]).map(function(c){return Object.assign({},c,{id:uid(),lvl:0,nextReview:null});});
-  if(newDeck.folders)(newDeck.folders||[]).map(function(f){return Object.assign({},f,{id:uid()});});
+  if(newDeck.folders)newDeck.folders=(newDeck.folders||[]).map(function(f){return Object.assign({},f,{id:uid()});});
   return newDeck;
 }
 
