@@ -7694,7 +7694,7 @@ function App(p){
         tryRedeemPendingGateCode();
       }
       reportDataBootReady();
-    },function(){refreshGateStatus();reportDataBootReady();}).finally(function(){_guestAuthBindInFlight=false;});
+    },function(){_pendingDeliberateGuestBind=false;refreshGateStatus();reportDataBootReady();}).finally(function(){_guestAuthBindInFlight=false;});
   }
   /* Wird direkt beim Zustimmen zu Datenschutz+AGB aufgerufen (siehe
      showDsgvo-Screen oben) - holt das signInAnonymously()/
