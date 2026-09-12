@@ -1782,6 +1782,7 @@ function plainBoundingCrop(imgEl,corners){
 var _syncUser=null; var _syncTimeout=null; var _realtimeChannel=null; var _applyingRemote=false; var _preloadedLsData=null; var _unCache={};
 var _authUserInFlight=false;
 var _guestAuthBindInFlight=false;
+var _pendingDeliberateGuestBind=false; // merkt eine bewusste "Als Gast fortfahren"-Absicht vor, falls sie waehrend eines schon laufenden Hintergrund-Binds uebersprungen wurde (siehe bindGuestAuthUid)
 var _syncSetData=null; var _syncShowToast=null;
 /* Gate fuer die Hochzaehl-Animationen auf der Startseite: die
    Dashboard-Komponente steht schon waehrend des Splashs im DOM (nur
@@ -7038,8 +7039,42 @@ function App(p){
      bestehenden Persist-Effect bleibt UNVERAENDERT (setzt _storeCache
      weiterhin selbst, redundant aber harmlos, und uebernimmt weiterhin
      den eigentlichen IndexedDB-Schreibvorgang) - dieser Fix ergaenzt nur
-     eine zusaetzliche, fruehere, synchrone Aktualisierung. */
-  if(_storeCache!==null && _storeCache!==data){ _storeCache=data; }
+     eine zusaetzliche, fruehere, synchrone Aktualisierung.
+
+     Nachbesserung (Review-Gegenfund, exakt umgekehrter Datenverlust-Bug):
+     Die ursprüngliche Bedingung oben (_storeCache!==null) prüfte nur
+     EXISTENZ, nicht INHALT. Ablauf, der den Bug auslöste: loadStoreInitial()
+     setzt _storeCache SYNCHRON auf die echten geladenen Daten, sobald seine
+     Promise aufloest - das passiert BEVOR der useEffect oben (der
+     storeReadyRef.current.then(...) mit setData(s) abschliesst) ueberhaupt
+     reagiert, denn React 18 (createRoot) committet setData(s) nicht sofort
+     synchron, sondern ueber den Scheduler verzoegert. In diesem Fenster ist
+     _storeCache!==null bereits erfuellt (echte Daten), aber data (der
+     State in JEDEM Render vor dem setData(s)-Commit) ist noch der leere
+     Platzhalter aus dem allerersten useState(...). Loeste in genau diesem
+     Fenster IRGENDEIN anderer State-Wechsel in App() einen Re-Render aus
+     (Auth-State, Timer, isOnline-Toggle - beim Boot laufen viele parallele
+     State-Aenderungen), griff die alte Zeile und ueberschrieb die frisch
+     geladenen ECHTEN Daten in _storeCache mit dem leeren Platzhalter -
+     dieselbe Datenverlust-Klasse, nur umgekehrt: Sync-Vergleiche sahen
+     danach faelschlich _syncedAt=0 und wendeten einen aelteren Cloud-Stand
+     ueber frischere lokale Aenderungen an.
+
+     Korrektur: Statt nach Existenz/Identitaet wird jetzt nach INHALT
+     verglichen (_syncedAt-Zeitstempel). Nach einem echten patch()-Aufruf
+     bekommt data ein NEUES, groesseres _syncedAt (siehe patch() unten,
+     Object.assign(...,{_syncedAt:Date.now()})) - im Render, der das
+     reflektiert, ist data._syncedAt immer >= das (noch alte)
+     _storeCache._syncedAt, die Bedingung feuert korrekt und synchronisiert
+     sofort (behebt weiterhin den urspruenglichen Bug). Im gefaehrlichen
+     Zwischen-Render-Fenster (echte Daten schon in _storeCache, data noch
+     Platzhalter) ist data._syncedAt (0, leerer Platzhalter) IMMER KLEINER
+     als _storeCache._syncedAt (die echten Daten haben so gut wie immer
+     einen echten, groesseren Zeitstempel als 0) - die Bedingung feuert
+     NICHT, _storeCache bleibt unangetastet. Nur im Randfall "beide sind
+     leere Platzhalter mit _syncedAt=0" feuert sie (0>=0), was harmlos ist,
+     da beide Seiten inhaltlich gleichwertig leer sind. */
+  if(_storeCache && data && (data._syncedAt||0)>=(_storeCache._syncedAt||0) && _storeCache!==data){ _storeCache=data; }
   /* Bug-Fix: Der Splash wartete bisher nur auf eine feste Mindestlaufzeit
      und die Freunde-Daten - nicht auf die eigentlichen Karteikarten. Bei
      einem neuen Geraet (noch kein lokaler Stand) konnte der Splash so
@@ -7621,9 +7656,23 @@ function App(p){
        denselben Gast-Login auf einmal auslösen: zwei parallele
        ls_claim_own_id-RPCs plus doppelte refreshGateStatus()-Aufrufe.
        Laeuft bereits ein Aufruf, wird ein weiterer ignoriert statt
-       parallel zu starten. */
+       parallel zu starten.
+
+       Nachbesserung, Lücke B: ein uebersprungener Aufruf konnte eine
+       BEWUSSTE Absicht verlieren. Laeuft bereits ein Hintergrund-Bind
+       (deliberate=false, z.B. beim Boot ausgeloest) und klickt der
+       Nutzer in genau diesem Moment bewusst "Als Gast fortfahren"
+       (deliberate=true), wurde dieser Aufruf bisher komplett
+       uebersprungen - tryRedeemPendingGateCode() lief dadurch nie,
+       obwohl der Nutzer aktiv einen Code einloesen wollte. Das neue
+       _pendingDeliberateGuestBind-Flag merkt diese Absicht vor; der noch
+       laufende Aufruf loest sie beim eigenen Abschluss mit ein
+       (reportDataBootReady() wird im uebersprungenen Zweig bewusst NICHT
+       zusaetzlich aufgerufen - der noch laufende Aufruf uebernimmt das
+       weiterhin selbst bei seinem eigenen Abschluss, exakt wie zuvor). */
     if(_guestAuthBindInFlight){
       dbg('⏭️ bindGuestAuthUid: laeuft bereits, ueberspringe ueberlappenden Aufruf.');
+      if(deliberate)_pendingDeliberateGuestBind=true;
       return;
     }
     _guestAuthBindInFlight=true;
@@ -7632,10 +7681,18 @@ function App(p){
        fuer UPDATE zusaetzlich die SELECT-Policy prueft - die (bewusst,
        gegen Erraten fremder ls_id) keine authUid-IS-NULL-Ausnahme hat.
        Die SECURITY DEFINER-Funktion umgeht RLS komplett, exakt wie die
-       anderen Cross-Row-Writes (ls_invite_group_member etc.). */
-    getSb().rpc('ls_claim_own_id',{p_ls_id:myId}).then(function(){
+       anderen Cross-Row-Writes (ls_invite_group_member etc.).
+       Bug-Fix, Lücke A: analog zum withTimeout()-Schutz bei
+       handleAuthUser() (siehe dort, ca. Zeile 8057-8065) - ohne Timeout
+       bliebe _guestAuthBindInFlight bei einer haengenden Verbindung
+       dauerhaft gesetzt und wuerde JEDEN weiteren Versuch fuer den Rest
+       der Sitzung blockieren (auch spaetere bewusste Klicks). */
+    withTimeout(getSb().rpc('ls_claim_own_id',{p_ls_id:myId}),12000).then(function(){
       refreshGateStatus();
-      if(deliberate)tryRedeemPendingGateCode();
+      if(deliberate||_pendingDeliberateGuestBind){
+        _pendingDeliberateGuestBind=false;
+        tryRedeemPendingGateCode();
+      }
       reportDataBootReady();
     },function(){refreshGateStatus();reportDataBootReady();}).finally(function(){_guestAuthBindInFlight=false;});
   }
