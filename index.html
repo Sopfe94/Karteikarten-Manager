@@ -4114,10 +4114,21 @@ function KalenderView(p){
   var MONTHS=['Jan','Feb','M\u00e4r','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
   var today=todayStr();
   var curYear=new Date().getFullYear();
-  var TAG_OPTIONS=Array.from({length:31},function(_,i){return String(i+1).padStart(2,'0');});
+  function daysInMonth(monat,jahr){
+    if(!monat||!jahr)return 31;
+    return new Date(parseInt(jahr,10),parseInt(monat,10),0).getDate();
+  }
+  var TAG_OPTIONS=Array.from({length:daysInMonth(dateParts.monat,dateParts.jahr)},function(_,i){return String(i+1).padStart(2,'0');});
   var JAHR_OPTIONS=[curYear,curYear+1];
   function typeInfo(t){ return APPOINTMENT_TYPES.find(function(x){return x.id===t;})||APPOINTMENT_TYPES[APPOINTMENT_TYPES.length-1]; }
-  function setDatePart(part,val){ setDateParts(Object.assign({},dateParts,(function(){var o={};o[part]=val;return o;})())); }
+  function setDatePart(part,val){
+    var next=Object.assign({},dateParts,(function(){var o={};o[part]=val;return o;})());
+    if((part==='monat'||part==='jahr')&&next.tag){
+      var maxDay=daysInMonth(next.monat,next.jahr);
+      if(parseInt(next.tag,10)>maxDay){ next.tag=String(maxDay).padStart(2,'0'); }
+    }
+    setDateParts(next);
+  }
 
   function closeAdd(){
     setForm({title:'',type:'Klausur',fachId:'',note:''});
@@ -4149,9 +4160,13 @@ function KalenderView(p){
     showToast('Arbeit gespeichert!');
   }
 
-  var sorted=[].concat(arbeiten).sort(function(a,b){return a.date<b.date?-1:1;});
-  var overdue=sorted.filter(function(a){return a.date<today;});
-  var upcoming=sorted.filter(function(a){return a.date>=today;});
+  var sorted=[].concat(arbeiten).sort(function(a,b){
+    if(a.date<b.date)return -1;
+    if(a.date>b.date)return 1;
+    return 0;
+  });
+  var overdue=sorted.filter(function(a){return a.date<=today;});
+  var upcoming=sorted.filter(function(a){return a.date>today;});
 
   function renderItem(a,isOverdueGroup){
     var d=new Date(a.date+'T12:00:00');
