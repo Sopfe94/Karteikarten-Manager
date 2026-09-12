@@ -4090,8 +4090,21 @@ function UpdatesView(p){
   var store=loadUpdStore();
   var ls=useState(false); var dlLoading=ls[0]; var setDlLoading=ls[1];
   var es=useState(false); var dlErr=es[0]; var setDlErr=es[1];
-  useEffect(function(){fetchUpdates().then(function(d){setData(d);});},[]);
+  var les=useState(false); var loadError=les[0]; var setLoadError=les[1];
+  function loadData(){
+    setLoadError(false);
+    fetchUpdates().then(function(d){
+      if(d===null){setLoadError(true);return;}
+      setData(d);
+    });
+  }
+  useEffect(function(){loadData();},[]);
   function doDownload(){ setDlLoading(true);setDlErr(false); fetch("./index.html",{cache:"no-store"}).then(function(){var s=loadUpdStore();s.installed=data.current.version;s.pendingReload=false;saveUpdStore(s);window.location.reload();}).catch(function(){setDlLoading(false);setDlErr(true);}); }
+  if(loadError) return h("div",null,h("button",{className:"back-btn",onClick:p.onBack},"\u2190 Zur\u00fcck"),
+    h("div",{style:{textAlign:"center",padding:"48px",color:"var(--c-dim)",fontWeight:700}},
+      h("div",null,"Updates konnten nicht geladen werden."),
+      h("div",{className:"upd-err",style:{display:"inline-block",marginTop:12}},"Kein Internet oder Server nicht erreichbar."),
+      h("div",{style:{marginTop:16}},h("button",{className:"btn btn-p",style:{justifyContent:"center",padding:"12px 20px"},onClick:loadData},"Erneut versuchen"))));
   if(!data) return h("div",null,h("button",{className:"back-btn",onClick:p.onBack},"\u2190 Zur\u00fcck"),h("div",{style:{textAlign:"center",padding:"48px",color:"var(--c-dim)",fontWeight:700}},"Lade Updates\u2026"));
   var all=[data.current].concat(data.history||[]);
   var hasNew=data.current.version!==store.installed;
