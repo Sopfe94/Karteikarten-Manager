@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.138";
+var KKM_VERSION="1.8.139";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -2089,7 +2089,7 @@ function queueScanForUpload(blob,filename,parentId,pageCount){
   return blobToDataURL(blob).then(function(dataUrl){
     return kkmIdbGet('scanUploadQueue').then(function(queue){
       queue=queue||[];
-      queue.push({id:'scan-'+Date.now()+'-'+Math.random().toString(36).slice(2),dataUrl:dataUrl,filename:filename,parentId:parentId,pageCount:pageCount,queuedAt:Date.now()});
+      queue.push({id:'scan-'+Date.now()+'-'+Math.random().toString(36).slice(2),dataUrl:dataUrl,filename:filename,parentId:parentId,pageCount:pageCount,queuedAt:Date.now(),attempts:0});
       return kkmIdbSet('scanUploadQueue',queue);
     });
   });
@@ -2126,7 +2126,23 @@ function flushScanQueue(){
             return kkmIdbSet('scanUploadQueue',updated);
           });
         }).catch(function(e){
+          var status=e&&e.status;
+          var isPermanent=status&&status>=400&&status<500&&status!==401;
+          var attempts=(entry.attempts||0)+1;
+          if(isPermanent||attempts>=5){
+            dbg('❌ Warteschlangen-Upload endgueltig fehlgeschlagen, wird verworfen:',entry.filename,e&&e.message);
+            return kkmIdbGet('scanUploadQueue').then(function(current){
+              var updated=(current||[]).filter(function(e2){return e2.id!==entry.id;});
+              return kkmIdbSet('scanUploadQueue',updated).then(function(){
+                if(_syncShowToast)_syncShowToast('"'+entry.filename+'" konnte nicht hochgeladen werden.');
+              });
+            });
+          }
           dbg('❌ Warteschlangen-Upload fehlgeschlagen, bleibt in der Warteschlange:',entry.filename,e&&e.message);
+          return kkmIdbGet('scanUploadQueue').then(function(current){
+            var updated=(current||[]).map(function(e2){return e2.id===entry.id?Object.assign({},e2,{attempts:attempts}):e2;});
+            return kkmIdbSet('scanUploadQueue',updated);
+          });
         });
       });
     });
@@ -5673,13 +5689,13 @@ function LernSpaceView(p){
     saveDataAccept({friends:newFriends,requests:newReqs,activities:newActs},req.fromId);
     getSb().rpc('ls_accept_friend_request',{p_requester_ls_id:req.fromId}).then(function(res){
       if(res.error){
-        saveData({friends:prevFriends,requests:prevReqs,activities:prevActs});
+        saveDataRemove({friends:prevFriends,requests:prevReqs,activities:prevActs});
         showToast('Fehler - bitte erneut versuchen');
         return;
       }
       showToast('Freund hinzugef\u00fcgt!');
     },function(){
-      saveData({friends:prevFriends,requests:prevReqs,activities:prevActs});
+      saveDataRemove({friends:prevFriends,requests:prevReqs,activities:prevActs});
       showToast('Fehler - bitte erneut versuchen');
     });
   }
