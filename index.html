@@ -4734,6 +4734,7 @@ function DatenschutzModal(p){
 function UsernamePickerModal(p){
   var iv=useState(''); var input=iv[0]; var setInput=iv[1];
   var sv=useState(null); var status=sv[0]; var setStatus=sv[1];
+  var ses=useState(false); var saveError=ses[0]; var setSaveError=ses[1];
   var dtRef=useRef(null);
   function checkAvailability(val){
     val=val.trim();
@@ -4747,9 +4748,10 @@ function UsernamePickerModal(p){
       }).catch(function(){setStatus(null);});
     },400);
   }
-  function handleInput(e){var val=e.target.value;setInput(val);checkAvailability(val);}
+  function handleInput(e){setSaveError(false);var val=e.target.value;setInput(val);checkAvailability(val);}
   function handleSave(){
     if(status!=='available')return;
+    setSaveError(false);
     var val=input.trim();
     var myId=localStorage.getItem('kkm-ls-id');
     function finish(){_unCache[myId]=val;saveSocialUsername(val);p.onDone(val);}
@@ -4759,10 +4761,10 @@ function UsernamePickerModal(p){
         if(r.error){
           if(r.error.code==='23505'){setStatus('taken');return;}
           dbg('❌ Username upsert Fehler:',r.error.message||r.error);
-          finish();return;
+          setSaveError(true);return;
         }
         finish();
-      }).catch(function(e){dbg('❌ Username upsert catch:',e);finish();});
+      }).catch(function(e){dbg('❌ Username upsert catch:',e);setSaveError(true);});
   }
   var statusEl=null;
   if(status==='checking')statusEl=h('span',{style:{color:'#aaa'}},'⏳ Prüfe…');
@@ -4776,6 +4778,7 @@ function UsernamePickerModal(p){
       h('input',{type:'text',className:'lp-dark-input',placeholder:'z. B. LernProfi42',value:input,onInput:handleInput,autoFocus:true,
         onKeyDown:function(e){if(e.key==='Enter'&&status==='available')handleSave();}}),
       h('div',{style:{minHeight:24,fontSize:13}},statusEl),
+      saveError&&h('div',{style:{color:'#f44336',fontSize:12,marginTop:6}},'Fehler beim Speichern - bitte erneut versuchen.'),
       h('div',{className:'lp-modal-actions'},
         h(DsButton,{variant:'primary',style:{width:'auto',padding:'0 24px',height:40,opacity:status==='available'?1:0.5},onClick:handleSave,disabled:status!=='available'},h('span',{className:'lp-btn-glow-label'},'Speichern')))));
 }
