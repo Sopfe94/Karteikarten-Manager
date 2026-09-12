@@ -1077,7 +1077,7 @@ var useEffect = R.useEffect;
 var useRef = R.useRef;
 
 /* ---- DEBUG LOGGER (v1.1.30) ---- */
-var KKM_VERSION="1.8.138";
+var KKM_VERSION="1.8.139";
 window.__KKM_LOG = [];
 function dbg(){
   var parts=[];
@@ -1196,6 +1196,29 @@ function driveFetch(url,opts){
     return r;
   });
 }
+/* Bug-Fix (Gruppe B, Fix 1 - Critical): driveFetch() gibt bei JEDEM
+   Nicht-401-Fehlerstatus (403 Speicher voll, 404 Ordner geloescht, 500
+   Server-Fehler, ...) unveraendert die rohe Response weiter. Schreibende
+   Aufrufer, die direkt r.json() aufgerufen haben, haben dadurch ein
+   Google-Error-JSON-Objekt als "Erfolg" behandelt - z.B. beim PDF-Upload
+   mit stillem, endgueltigem Datenverlust (lokale Scan-Seiten wurden
+   verworfen, obwohl in Drive nichts ankam). Alle schreibenden
+   driveFetch-Aufrufe laufen deshalb ueber diese Hilfsfunktion, die bei
+   !r.ok die Promise tatsaechlich rejected statt (fälschlich) Erfolg zu
+   melden. */
+function driveFetchJson(url,opts){
+  return driveFetch(url,opts).then(function(r){
+    return r.json().then(function(data){
+      if(!r.ok){
+        var err=new Error((data&&data.error&&data.error.message)||('Drive-Fehler '+r.status));
+        err.status=r.status;
+        err.driveError=data;
+        throw err;
+      }
+      return data;
+    });
+  });
+}
 function driveFindFolder(name,parentId){
   var safeName=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
   var q="name='"+safeName+"' and mimeType='"+DRIVE_FOLDER_MIME+"' and trashed=false and '"+(parentId||'root')+"' in parents";
@@ -1204,10 +1227,10 @@ function driveFindFolder(name,parentId){
     .then(function(d){return (d.files&&d.files[0])?d.files[0].id:null;});
 }
 function driveCreateFolder(name,parentId){
-  return driveFetch('https://www.googleapis.com/drive/v3/files?fields=id,name',{
+  return driveFetchJson('https://www.googleapis.com/drive/v3/files?fields=id,name',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({name:name,mimeType:DRIVE_FOLDER_MIME,parents:parentId?[parentId]:undefined})
-  }).then(function(r){return r.json();});
+  });
 }
 function driveEnsureRootFolder(){
   return driveFindFolder(DRIVE_ROOT_NAME,null).then(function(id){
@@ -1222,7 +1245,18 @@ function driveListChildren(folderId){
     .then(function(d){return d.files||[];});
 }
 function driveDeleteFile(id){
-  return driveFetch('https://www.googleapis.com/drive/v3/files/'+id,{method:'DELETE'});
+  /* Bug-Fix (Gruppe B, Fix 1): DELETE hat kein JSON-Response-Body (204 bei
+     Erfolg), faellt also nicht unter driveFetchJson - der r.ok-Check wird
+     deshalb hier direkt nachgebildet, damit ein Fehlschlag (403/404/500)
+     nicht stillschweigend als Erfolg durchgereicht wird. */
+  return driveFetch('https://www.googleapis.com/drive/v3/files/'+id,{method:'DELETE'}).then(function(r){
+    if(!r.ok){
+      var err=new Error('Drive-Fehler '+r.status);
+      err.status=r.status;
+      throw err;
+    }
+    return r;
+  });
 }
 function driveCountFiles(folderId){
   var q="'"+folderId+"' in parents and trashed=false and mimeType!='"+DRIVE_FOLDER_MIME+"'";
@@ -1272,13 +1306,12 @@ function saveDocPrefetchPref(v){
   try{ localStorage.setItem('kkm-doc-prefetch',v?'1':'0'); }catch(e){}
 }
 function driveMoveFile(fileId,addParentId,removeParentId){
-  return driveFetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?addParents='+addParentId+'&removeParents='+removeParentId+'&fields=id,parents',{method:'PATCH'})
-    .then(function(r){return r.json();});
+  return driveFetchJson('https://www.googleapis.com/drive/v3/files/'+fileId+'?addParents='+addParentId+'&removeParents='+removeParentId+'&fields=id,parents',{method:'PATCH'});
 }
 function driveRenameFile(fileId,name){
-  return driveFetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?fields=id,name',{
+  return driveFetchJson('https://www.googleapis.com/drive/v3/files/'+fileId+'?fields=id,name',{
     method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name})
-  }).then(function(r){return r.json();});
+  });
 }
 function driveUploadPdf(blob,filename,parentId,pageCount){
   var metadata={name:filename,mimeType:'application/pdf',parents:parentId?[parentId]:undefined,
@@ -1286,9 +1319,9 @@ function driveUploadPdf(blob,filename,parentId,pageCount){
   var form=new FormData();
   form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));
   form.append('file',blob);
-  return driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',{
+  return driveFetchJson('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',{
     method:'POST',body:form
-  }).then(function(r){return r.json();});
+  });
 }
 function loadImageDims(dataUrl){
   return new Promise(function(resolve){
@@ -1748,6 +1781,8 @@ function plainBoundingCrop(imgEl,corners){
 
 var _syncUser=null; var _syncTimeout=null; var _realtimeChannel=null; var _applyingRemote=false; var _preloadedLsData=null; var _unCache={};
 var _authUserInFlight=false;
+var _guestAuthBindInFlight=false;
+var _pendingDeliberateGuestBind=false; // merkt eine bewusste "Als Gast fortfahren"-Absicht vor, falls sie waehrend eines schon laufenden Hintergrund-Binds uebersprungen wurde (siehe bindGuestAuthUid)
 var _syncSetData=null; var _syncShowToast=null;
 /* Gate fuer die Hochzaehl-Animationen auf der Startseite: die
    Dashboard-Komponente steht schon waehrend des Splashs im DOM (nur
@@ -1932,13 +1967,32 @@ function storeHasContent(s){
 var STORE_BACKUP_KEY=STORE_KEY+'-backup';
 var KKM_IDB_NAME='kkm-store-db';
 var KKM_IDB_STORE='kv';
+/* Bug-Fix: jeder kkmIdbOpen()-Aufruf oeffnete bisher eine neue
+   indexedDB.open()-Verbindung, die nie mit db.close() geschlossen wurde -
+   bei intensiver Nutzung (viele PDF-Cache-/Scan-Queue-Zugriffe)
+   akkumulierten sich offene Verbindungen. Jetzt wird die offene
+   Verbindung in einer Modul-Variable gemerkt und wiederverwendet.
+   onclose/onversionchange setzt die Merk-Variable zurueck, falls die
+   Verbindung von aussen geschlossen wird (z.B. anderer Tab mit neuerer
+   DB-Version), damit der naechste Aufruf sauber neu oeffnet. */
+var _kkmIdbInstance=null;
+var _kkmIdbOpenPromise=null;
 function kkmIdbOpen(){
-  return new Promise(function(resolve,reject){
+  if(_kkmIdbInstance) return Promise.resolve(_kkmIdbInstance);
+  if(_kkmIdbOpenPromise) return _kkmIdbOpenPromise;
+  _kkmIdbOpenPromise=new Promise(function(resolve,reject){
     var req=indexedDB.open(KKM_IDB_NAME,1);
     req.onupgradeneeded=function(){ req.result.createObjectStore(KKM_IDB_STORE); };
-    req.onsuccess=function(){ resolve(req.result); };
-    req.onerror=function(){ reject(req.error); };
+    req.onsuccess=function(){
+      _kkmIdbInstance=req.result;
+      _kkmIdbOpenPromise=null;
+      _kkmIdbInstance.onclose=function(){ _kkmIdbInstance=null; };
+      _kkmIdbInstance.onversionchange=function(){ _kkmIdbInstance.close(); _kkmIdbInstance=null; };
+      resolve(req.result);
+    };
+    req.onerror=function(){ _kkmIdbOpenPromise=null; reject(req.error); };
   });
+  return _kkmIdbOpenPromise;
 }
 function kkmIdbGet(key){
   return kkmIdbOpen().then(function(db){
@@ -2035,7 +2089,7 @@ function queueScanForUpload(blob,filename,parentId,pageCount){
   return blobToDataURL(blob).then(function(dataUrl){
     return kkmIdbGet('scanUploadQueue').then(function(queue){
       queue=queue||[];
-      queue.push({id:'scan-'+Date.now()+'-'+Math.random().toString(36).slice(2),dataUrl:dataUrl,filename:filename,parentId:parentId,pageCount:pageCount,queuedAt:Date.now()});
+      queue.push({id:'scan-'+Date.now()+'-'+Math.random().toString(36).slice(2),dataUrl:dataUrl,filename:filename,parentId:parentId,pageCount:pageCount,queuedAt:Date.now(),attempts:0});
       return kkmIdbSet('scanUploadQueue',queue);
     });
   });
@@ -2072,7 +2126,23 @@ function flushScanQueue(){
             return kkmIdbSet('scanUploadQueue',updated);
           });
         }).catch(function(e){
+          var status=e&&e.status;
+          var isPermanent=status&&status>=400&&status<500&&status!==401;
+          var attempts=(entry.attempts||0)+1;
+          if(isPermanent||attempts>=5){
+            dbg('❌ Warteschlangen-Upload endgueltig fehlgeschlagen, wird verworfen:',entry.filename,e&&e.message);
+            return kkmIdbGet('scanUploadQueue').then(function(current){
+              var updated=(current||[]).filter(function(e2){return e2.id!==entry.id;});
+              return kkmIdbSet('scanUploadQueue',updated).then(function(){
+                if(_syncShowToast)_syncShowToast('"'+entry.filename+'" konnte nicht hochgeladen werden.');
+              });
+            });
+          }
           dbg('❌ Warteschlangen-Upload fehlgeschlagen, bleibt in der Warteschlange:',entry.filename,e&&e.message);
+          return kkmIdbGet('scanUploadQueue').then(function(current){
+            var updated=(current||[]).map(function(e2){return e2.id===entry.id?Object.assign({},e2,{attempts:attempts}):e2;});
+            return kkmIdbSet('scanUploadQueue',updated);
+          });
         });
       });
     });
@@ -2146,6 +2216,7 @@ function loadStoreInitial(){
    unterzugehen. */
 var _lastSaveHadDecks=null;
 var _lastBackupWriteAt=0;
+var _lastStorageErrorToastAt=0;
 function saveStore(d){
   try{
     var deckCount=(d.decks||[]).length;
@@ -2170,6 +2241,20 @@ function saveStore(d){
   _storeCache=d;
   kkmIdbSet('data',d).catch(function(e){
     dbg('❌❌ saveStore: IndexedDB setItem FEHLGESCHLAGEN:',e&&e.name,e&&e.message);
+    /* Bug-Fix: bisher landete ein fehlgeschlagener Schreibversuch nur im
+       RAM-Log (window.__KKM_LOG) - bei Force-Quit/Reload verloren, der
+       Nutzer sah nie, dass sein letzter Speicherversuch fehlschlug.
+       Nutzt das bestehende globale Toast-Muster (_syncShowToast, siehe
+       syncAppData weiter oben), gedrosselt wie _lastBackupWriteAt (max.
+       1x pro 30s), damit bei anhaltendem Problem nicht bei jeder
+       einzelnen Aenderung ein Toast aufploppt. */
+    try{
+      var nowTs2=Date.now();
+      if(_syncShowToast&&(nowTs2-_lastStorageErrorToastAt)>=30000){
+        _lastStorageErrorToastAt=nowTs2;
+        _syncShowToast('Speichern fehlgeschlagen – bitte Browser/App neu starten.');
+      }
+    }catch(e2){}
   });
   /* Sicherungskopie: wird NUR geschrieben, wenn d tatsaechlich Inhalt hat
      - damit dieser Zweit-Key nie versehentlich selbst mit einem leeren/
@@ -2528,7 +2613,8 @@ function DeckModal(p){
   var es=useState(p.deck?p.deck.emoji:"\uD83D\uDCDA"); var e=es[0]; var se=es[1];
   var fs=useState(p.deck?p.deck.folderId||"":""); var fid=fs[0]; var setFid=fs[1];
   var folders=p.folders||[];
-  function save(){ if(n.trim()) p.onSave({name:n.trim(),emoji:e,folderId:fid||null}); }
+  var tm=useToast(); var toast=tm[0]; var showToast=tm[1];
+  function save(){ if(n.trim()) p.onSave({name:n.trim(),emoji:e,folderId:fid||null}); else showToast("Namen eingeben."); }
   return h("div",{className:"lp-modal-ov",onClick:p.onClose},
     h("div",{className:"lp-modal-box",onClick:function(ev){ev.stopPropagation();}},
       h("div",{className:"lp-modal-title grad"},p.deck?"Stapel bearbeiten":"Neuer Stapel"),
@@ -2538,7 +2624,8 @@ function DeckModal(p){
         h("select",{className:"lp-dark-input",value:fid,onChange:function(ev){setFid(ev.target.value);}},
           h("option",{value:""},"Kein Fach"),
           folders.map(function(f){return h("option",{key:f.id,value:f.id},f.name);}))),
-      h("div",{className:"lp-modal-actions"},h(DsButton,{variant:"danger",onClick:p.onClose},"Abbrechen"),h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:save},h("span",{className:"lp-btn-glow-label"},"Speichern")))));
+      h("div",{className:"lp-modal-actions"},h(DsButton,{variant:"danger",onClick:p.onClose},"Abbrechen"),h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:save},h("span",{className:"lp-btn-glow-label"},"Speichern"))),
+      h(Toast,{msg:toast})));
 }
 
 function CardModal(p){
@@ -2546,24 +2633,40 @@ function CardModal(p){
   var bs=useState(p.card?p.card.back:""); var b=bs[0]; var sb=bs[1];
   var fos=useState(p.card?p.card.folderId||"":""); var fid=fos[0]; var setFid=fos[1];
   var folders=p.folders||[];
-  function save(){ if(f.trim()&&b.trim()) p.onSave({front:f.trim(),back:b.trim(),folderId:fid||null}); }
+  /* Karten, die bereits mit dem Karteikarten-Editor erstellt wurden, haben
+     strukturierte frontElements/backElements - diese werden beim Rendern
+     IMMER bevorzugt (siehe LpCardFace). Klartext-Aenderungen hier ueber
+     die einfachen Felder waeren dann unsichtbar (Fix 3a), deshalb werden
+     die Felder in diesem Fall deaktiviert und auf den Editor verwiesen. */
+  var hasElements=!!(p.card&&(((p.card.frontElements||[]).length)||((p.card.backElements||[]).length)));
+  var tm=useToast(); var toast=tm[0]; var showToast=tm[1];
+  function save(){ if(!hasElements&&f.trim()&&b.trim()) p.onSave({front:f.trim(),back:b.trim(),folderId:fid||null}); else if(!hasElements) showToast("Vorder- und Rückseite eingeben."); }
+  function openEditor(){
+    var origFront=p.card?p.card.front:"";
+    var origBack=p.card?p.card.back:"";
+    if(!hasElements&&(f!==origFront||b!==origBack)){
+      if(!window.confirm('Du hast ungespeicherten Text - beim Wechsel in den Vollmodus geht er verloren. Trotzdem wechseln?'))return;
+    }
+    var seedFront=(p.card&&p.card.frontElements&&p.card.frontElements.length)?p.card.frontElements:(f.trim()?[makeSeedTextEl(f.trim())]:[]);
+    var seedBack=(p.card&&p.card.backElements&&p.card.backElements.length)?p.card.backElements:(b.trim()?[makeSeedTextEl(b.trim())]:[]);
+    p.onOpenEditor({folderId:fid||null,frontElements:seedFront,backElements:seedBack});
+  }
   return h("div",{className:"lp-modal-ov",onClick:p.onClose},
     h("div",{className:"lp-modal-box",onClick:function(ev){ev.stopPropagation();}},
       h("div",{className:"lp-modal-title"},p.card?"Karte bearbeiten":"Neue Karte"),
-      h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Frage"),h("textarea",{className:"lp-dark-input ta",rows:2,value:f,onInput:function(ev){sf(ev.target.value);},placeholder:"Frage eingeben...",autoFocus:true})),
-      h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Antwort"),h("textarea",{className:"lp-dark-input ta",rows:2,value:b,onInput:function(ev){sb(ev.target.value);},placeholder:"Antwort eingeben..."})),
+      hasElements&&h("div",{style:{fontSize:12,color:"rgba(255,255,255,.6)",marginBottom:4}},
+        "Diese Karte nutzt den Karteikarten-Editor mit Formatierungen - bitte dort bearbeiten."),
+      h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Frage"),h("textarea",{className:"lp-dark-input ta",rows:2,value:f,disabled:hasElements,onInput:function(ev){sf(ev.target.value);},placeholder:"Frage eingeben...",autoFocus:!hasElements})),
+      h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Antwort"),h("textarea",{className:"lp-dark-input ta",rows:2,value:b,disabled:hasElements,onInput:function(ev){sb(ev.target.value);},placeholder:"Antwort eingeben..."})),
       folders.length>0&&h("div",{className:"lp-field"},h("label",{className:"lp-field-label"},"Ordner"),
         h("select",{className:"lp-dark-input",value:fid,onChange:function(ev){setFid(ev.target.value);}},
           h("option",{value:""},"Ohne Ordner"),
           folders.map(function(fo){return h("option",{key:fo.id,value:fo.id},fo.emoji+" "+fo.name);}))),
       p.onOpenEditor&&h("div",{style:{fontSize:12,color:"rgba(255,255,255,.4)",marginTop:-4}},
         "Mehr Gestaltungsmöglichkeiten (Bilder, Formatierung, freie Platzierung) im ",
-        h("a",{onClick:function(){
-          var seedFront=(p.card&&p.card.frontElements&&p.card.frontElements.length)?p.card.frontElements:(f.trim()?[makeSeedTextEl(f.trim())]:[]);
-          var seedBack=(p.card&&p.card.backElements&&p.card.backElements.length)?p.card.backElements:(b.trim()?[makeSeedTextEl(b.trim())]:[]);
-          p.onOpenEditor({folderId:fid||null,frontElements:seedFront,backElements:seedBack});
-        },style:{color:"var(--color-violet-light)",cursor:"pointer"}},"Karteikarten Editor"),"."),
-      h("div",{className:"lp-modal-actions"},h(DsButton,{variant:"danger",onClick:p.onClose},"Abbrechen"),h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:save},h("span",{className:"lp-btn-glow-label"},"Speichern")))));
+        h("a",{onClick:openEditor,style:{color:"var(--color-violet-light)",cursor:"pointer"}},"Karteikarten Editor"),"."),
+      h("div",{className:"lp-modal-actions"},h(DsButton,{variant:"danger",onClick:p.onClose},"Abbrechen"),!hasElements&&h(DsButton,{variant:"primary",style:{width:"auto",padding:"0 24px",height:40},onClick:save},h("span",{className:"lp-btn-glow-label"},"Speichern"))),
+      h(Toast,{msg:toast})));
 }
 
 /* ---- Karteikarten Editor (freie Textfelder/Bilder, Drag/Resize, Formatierung) ---- */
@@ -2946,6 +3049,12 @@ function LpCardEditor(p){
        tatsaechlich gespeicherte Groesse wird davon unabhaengig durch
        maxDim/JPEG-Qualitaet begrenzt. */
     if(file.size>15*1024*1024){ if(p.showToast)p.showToast("Bild zu groß (max. 15 MB)"); return; }
+    /* pushHistory() bewusst SYNCHRON hier am Anfang, nicht erst im
+       asynchronen onload-Callback weiter unten - der Undo-Schnappschuss
+       muss den Zustand VOR Beginn des Uploads festhalten, unabhaengig
+       davon wie lange das Lesen/Laden dauert oder was der Nutzer
+       waehrenddessen an einem anderen Element aendert. */
+    pushHistory();
     var sideAtCall=side;
     var reader=new FileReader();
     reader.onerror=function(){ if(p.showToast)p.showToast("Bild konnte nicht gelesen werden."); };
@@ -2961,7 +3070,6 @@ function LpCardEditor(p){
         var ctx=canvas.getContext("2d");
         ctx.drawImage(img,0,0,cw,ch);
         var dataUrl=canvas.toDataURL("image/jpeg",0.85);
-        pushHistory();
         var el=newImageEl(dataUrl);
         if(sideAtCall==="front") setFrontEls(function(prev){return prev.concat([el]);});
         else setBackEls(function(prev){return prev.concat([el]);});
@@ -3059,6 +3167,9 @@ function LpCardEditor(p){
     if(!isPro||!selected)return;
     var el=curEls.find(function(x){return x.id===selected;});
     if(!el)return;
+    if(el.html&&/style\s*=\s*["'][^"']*color\s*:/i.test(el.html)){
+      if(!window.confirm('Aufzählung umschalten entfernt alle Textfarben in diesem Feld. Fortfahren?'))return;
+    }
     var willBullet=!el.bullet;
     var lines=(el.text||"").split("\n").map(function(l){return l.replace(/^•\s*/,"");});
     var newText=willBullet?lines.map(function(l){return "• "+l;}).join("\n"):lines.join("\n");
@@ -3155,6 +3266,13 @@ function LpCardEditor(p){
     if(!selected)return;
     var el=curEls.find(function(x){return x.id===selected;});
     if(!el||!el.src)return;
+    /* pushHistory() SYNCHRON hier am Anfang (statt implizit ueber
+       updateElement() erst im asynchronen img.onload unten) - sonst
+       wuerde der Undo-Schnappschuss erst NACH dem Laden des Bildes
+       gemacht und faelschlich einen zwischenzeitlichen Bearbeitungsstand
+       eines anderen Elements festhalten. updateElement() bekommt daher
+       skipHistory=true, damit hier nicht doppelt gepusht wird (Fix 2). */
+    pushHistory();
     var img=new Image();
     img.onload=function(){
       var canvas=document.createElement("canvas");
@@ -3166,7 +3284,7 @@ function LpCardEditor(p){
       ctx.drawImage(img,-img.naturalWidth/2,-img.naturalHeight/2);
       var dataUrl=canvas.toDataURL("image/jpeg",0.9);
       var w=el.width||120, h=el.height||w;
-      updateElement(el.id,{src:dataUrl,width:h,height:w});
+      updateElement(el.id,{src:dataUrl,width:h,height:w},true);
     };
     img.src=el.src;
   }
@@ -3427,7 +3545,7 @@ function LpCardEditor(p){
 
     cropMaskEl&&h(LpCropMaskModal,{
       el:curEls.find(function(x){return x.id===cropMaskEl;}),
-      onConfirm:function(patch){pushHistory();updateElement(cropMaskEl,patch);setCropMaskEl(null);},
+      onConfirm:function(patch){updateElement(cropMaskEl,patch);setCropMaskEl(null);},
       onCancel:function(){setCropMaskEl(null);}
     }),
 
@@ -3988,8 +4106,21 @@ function UpdatesView(p){
   var store=loadUpdStore();
   var ls=useState(false); var dlLoading=ls[0]; var setDlLoading=ls[1];
   var es=useState(false); var dlErr=es[0]; var setDlErr=es[1];
-  useEffect(function(){fetchUpdates().then(function(d){setData(d);});},[]);
+  var les=useState(false); var loadError=les[0]; var setLoadError=les[1];
+  function loadData(){
+    setLoadError(false);
+    fetchUpdates().then(function(d){
+      if(d===null){setLoadError(true);return;}
+      setData(d);
+    });
+  }
+  useEffect(function(){loadData();},[]);
   function doDownload(){ setDlLoading(true);setDlErr(false); fetch("./index.html",{cache:"no-store"}).then(function(){var s=loadUpdStore();s.installed=data.current.version;s.pendingReload=false;saveUpdStore(s);window.location.reload();}).catch(function(){setDlLoading(false);setDlErr(true);}); }
+  if(loadError) return h("div",null,h("button",{className:"back-btn",onClick:p.onBack},"\u2190 Zur\u00fcck"),
+    h("div",{style:{textAlign:"center",padding:"48px",color:"var(--c-dim)",fontWeight:700}},
+      h("div",null,"Updates konnten nicht geladen werden."),
+      h("div",{className:"upd-err",style:{display:"inline-block",marginTop:12}},"Kein Internet oder Server nicht erreichbar."),
+      h("div",{style:{marginTop:16}},h("button",{className:"btn btn-p",style:{justifyContent:"center",padding:"12px 20px"},onClick:loadData},"Erneut versuchen"))));
   if(!data) return h("div",null,h("button",{className:"back-btn",onClick:p.onBack},"\u2190 Zur\u00fcck"),h("div",{style:{textAlign:"center",padding:"48px",color:"var(--c-dim)",fontWeight:700}},"Lade Updates\u2026"));
   var all=[data.current].concat(data.history||[]);
   var hasNew=data.current.version!==store.installed;
@@ -4045,10 +4176,21 @@ function KalenderView(p){
   var MONTHS=['Jan','Feb','M\u00e4r','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
   var today=todayStr();
   var curYear=new Date().getFullYear();
-  var TAG_OPTIONS=Array.from({length:31},function(_,i){return String(i+1).padStart(2,'0');});
+  function daysInMonth(monat,jahr){
+    if(!monat||!jahr)return 31;
+    return new Date(parseInt(jahr,10),parseInt(monat,10),0).getDate();
+  }
+  var TAG_OPTIONS=Array.from({length:daysInMonth(dateParts.monat,dateParts.jahr)},function(_,i){return String(i+1).padStart(2,'0');});
   var JAHR_OPTIONS=[curYear,curYear+1];
   function typeInfo(t){ return APPOINTMENT_TYPES.find(function(x){return x.id===t;})||APPOINTMENT_TYPES[APPOINTMENT_TYPES.length-1]; }
-  function setDatePart(part,val){ setDateParts(Object.assign({},dateParts,(function(){var o={};o[part]=val;return o;})())); }
+  function setDatePart(part,val){
+    var next=Object.assign({},dateParts,(function(){var o={};o[part]=val;return o;})());
+    if((part==='monat'||part==='jahr')&&next.tag){
+      var maxDay=daysInMonth(next.monat,next.jahr);
+      if(parseInt(next.tag,10)>maxDay){ next.tag=String(maxDay).padStart(2,'0'); }
+    }
+    setDateParts(next);
+  }
 
   function closeAdd(){
     setForm({title:'',type:'Klausur',fachId:'',note:''});
@@ -4080,9 +4222,13 @@ function KalenderView(p){
     showToast('Arbeit gespeichert!');
   }
 
-  var sorted=[].concat(arbeiten).sort(function(a,b){return a.date<b.date?-1:1;});
-  var overdue=sorted.filter(function(a){return a.date<today;});
-  var upcoming=sorted.filter(function(a){return a.date>=today;});
+  var sorted=[].concat(arbeiten).sort(function(a,b){
+    if(a.date<b.date)return -1;
+    if(a.date>b.date)return 1;
+    return 0;
+  });
+  var overdue=sorted.filter(function(a){return a.date<=today;});
+  var upcoming=sorted.filter(function(a){return a.date>today;});
 
   function renderItem(a,isOverdueGroup){
     var d=new Date(a.date+'T12:00:00');
@@ -4650,6 +4796,7 @@ function DatenschutzModal(p){
 function UsernamePickerModal(p){
   var iv=useState(''); var input=iv[0]; var setInput=iv[1];
   var sv=useState(null); var status=sv[0]; var setStatus=sv[1];
+  var ses=useState(false); var saveError=ses[0]; var setSaveError=ses[1];
   var dtRef=useRef(null);
   function checkAvailability(val){
     val=val.trim();
@@ -4663,9 +4810,10 @@ function UsernamePickerModal(p){
       }).catch(function(){setStatus(null);});
     },400);
   }
-  function handleInput(e){var val=e.target.value;setInput(val);checkAvailability(val);}
+  function handleInput(e){setSaveError(false);var val=e.target.value;setInput(val);checkAvailability(val);}
   function handleSave(){
     if(status!=='available')return;
+    setSaveError(false);
     var val=input.trim();
     var myId=localStorage.getItem('kkm-ls-id');
     function finish(){_unCache[myId]=val;saveSocialUsername(val);p.onDone(val);}
@@ -4675,10 +4823,10 @@ function UsernamePickerModal(p){
         if(r.error){
           if(r.error.code==='23505'){setStatus('taken');return;}
           dbg('❌ Username upsert Fehler:',r.error.message||r.error);
-          finish();return;
+          setSaveError(true);return;
         }
         finish();
-      }).catch(function(e){dbg('❌ Username upsert catch:',e);finish();});
+      }).catch(function(e){dbg('❌ Username upsert catch:',e);setSaveError(true);});
   }
   var statusEl=null;
   if(status==='checking')statusEl=h('span',{style:{color:'#aaa'}},'⏳ Prüfe…');
@@ -4692,6 +4840,7 @@ function UsernamePickerModal(p){
       h('input',{type:'text',className:'lp-dark-input',placeholder:'z. B. LernProfi42',value:input,onInput:handleInput,autoFocus:true,
         onKeyDown:function(e){if(e.key==='Enter'&&status==='available')handleSave();}}),
       h('div',{style:{minHeight:24,fontSize:13}},statusEl),
+      saveError&&h('div',{style:{color:'#f44336',fontSize:12,marginTop:6}},'Fehler beim Speichern - bitte erneut versuchen.'),
       h('div',{className:'lp-modal-actions'},
         h(DsButton,{variant:'primary',style:{width:'auto',padding:'0 24px',height:40,opacity:status==='available'?1:0.5},onClick:handleSave,disabled:status!=='available'},h('span',{className:'lp-btn-glow-label'},'Speichern')))));
 }
@@ -4956,7 +5105,7 @@ function lsSet(col,docId,data){
 function copyDeckNewIds(deck){
   var newDeck=Object.assign({},deck,{id:uid()});
   newDeck.cards=(deck.cards||[]).map(function(c){return Object.assign({},c,{id:uid(),lvl:0,nextReview:null});});
-  if(newDeck.folders)(newDeck.folders||[]).map(function(f){return Object.assign({},f,{id:uid()});});
+  if(newDeck.folders)newDeck.folders=(newDeck.folders||[]).map(function(f){return Object.assign({},f,{id:uid()});});
   return newDeck;
 }
 
@@ -5316,7 +5465,9 @@ function LernSpaceView(p){
           var updG=Object.assign({},selectedGroup,{
             groupDecks:row.group_decks||[],
             members:row.members||selectedGroup.members,
-            name:row.name||selectedGroup.name
+            name:row.name||selectedGroup.name,
+            avatar:row.avatar!==undefined&&row.avatar!==null?row.avatar:selectedGroup.avatar,
+            avatarPhoto:row.avatarPhoto!==undefined&&row.avatarPhoto!==null?row.avatarPhoto:selectedGroup.avatarPhoto
           });
           setSelectedGroup(updG);
           setSelectedGroupDeck(function(prev){
@@ -5513,20 +5664,40 @@ function LernSpaceView(p){
 
   function cancelRequest(toId){
     if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
-    getSb().rpc('ls_cancel_friend_request',{p_target_ls_id:toId}).then(function(){},function(){});
+    var prevSent=lsData.sentRequests;
     var newSent=(lsData.sentRequests||[]).filter(function(r){return r.toId!==toId;});
     saveData({sentRequests:newSent});
-    showToast('Anfrage zur\u00fcckgezogen');
+    getSb().rpc('ls_cancel_friend_request',{p_target_ls_id:toId}).then(function(res){
+      if(res.error){
+        saveData({sentRequests:prevSent});
+        showToast('Fehler - bitte erneut versuchen');
+        return;
+      }
+      showToast('Anfrage zur\u00fcckgezogen');
+    },function(){
+      saveData({sentRequests:prevSent});
+      showToast('Fehler - bitte erneut versuchen');
+    });
   }
 
   function acceptRequest(req){
     if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
+    var prevFriends=lsData.friends;var prevReqs=lsData.requests;var prevActs=lsData.activities;
     var newFriends=(lsData.friends||[]).find(function(f){return f.id===req.fromId;})?lsData.friends:[].concat(lsData.friends||[],[{id:req.fromId,since:Date.now()}]);
     var newReqs=(lsData.requests||[]).filter(function(r){return r.fromId!==req.fromId;});
     var newActs=[{type:'friend',text:(_unCache[req.fromId]||req.fromId)+' ist jetzt dein Freund',ts:Date.now()}].concat(lsData.activities||[]).slice(0,20);
     saveDataAccept({friends:newFriends,requests:newReqs,activities:newActs},req.fromId);
-    getSb().rpc('ls_accept_friend_request',{p_requester_ls_id:req.fromId}).then(function(){},function(){});
-    showToast('Freund hinzugef\u00fcgt!');
+    getSb().rpc('ls_accept_friend_request',{p_requester_ls_id:req.fromId}).then(function(res){
+      if(res.error){
+        saveDataRemove({friends:prevFriends,requests:prevReqs,activities:prevActs});
+        showToast('Fehler - bitte erneut versuchen');
+        return;
+      }
+      showToast('Freund hinzugef\u00fcgt!');
+    },function(){
+      saveDataRemove({friends:prevFriends,requests:prevReqs,activities:prevActs});
+      showToast('Fehler - bitte erneut versuchen');
+    });
   }
 
   function declineRequest(req){
@@ -5535,10 +5706,20 @@ function LernSpaceView(p){
 
   function removeFriend(fid){
     if(!isOnline){showToast('Offline - bitte später erneut versuchen.');return;}
+    var prevFriends=lsData.friends;
     var newFriends=(lsData.friends||[]).filter(function(f){return f.id!==fid;});
     saveDataRemove({friends:newFriends});
-    getSb().rpc('ls_remove_friend',{p_target_ls_id:fid}).then(function(){},function(){});
-    showToast('Freundschaft beendet');
+    getSb().rpc('ls_remove_friend',{p_target_ls_id:fid}).then(function(res){
+      if(res.error){
+        saveDataRemove({friends:prevFriends});
+        showToast('Fehler - bitte erneut versuchen');
+        return;
+      }
+      showToast('Freundschaft beendet');
+    },function(){
+      saveDataRemove({friends:prevFriends});
+      showToast('Fehler - bitte erneut versuchen');
+    });
   }
 
   function createGroup(){
@@ -5546,10 +5727,10 @@ function LernSpaceView(p){
     if(!groupName.trim()){showToast('Name eingeben');return;}
     var gid=uid();
     var g={id:gid,name:groupName.trim(),emoji:groupEmoji,members:[{id:MY_ID,role:'admin'}],deckIds:[],created:Date.now()};
+    var prevGroups=lsData.groups;
     var newGroups=[].concat(lsData.groups||[],[g]);
     saveData({groups:newGroups});
     setGroupName('');
-    showToast('Gruppe erstellt!');
     /* RPC statt Direkt-Insert: Postgres wendet bei INSERT...RETURNING
        zusaetzlich die SELECT-Policy auf die neue Zeile an (dokumentiertes
        RLS-Verhalten) - is_ls_group_member() sieht die eigene, gerade erst
@@ -5558,7 +5739,17 @@ function LernSpaceView(p){
        Supabase-Client standardmaessig anfordert) faelschlich an der
        Select-Policy scheitert. Die SECURITY DEFINER-Funktion umgeht RLS
        komplett, exakt wie ls_claim_own_id und alle anderen Cross-Row-Writes. */
-    getSb().rpc('ls_create_group',{p_id:gid,p_name:g.name,p_emoji:g.emoji||null,p_created:String(g.created)}).then(function(){},function(){});
+    getSb().rpc('ls_create_group',{p_id:gid,p_name:g.name,p_emoji:g.emoji||null,p_created:String(g.created)}).then(function(res){
+      if(res.error){
+        saveData({groups:prevGroups});
+        showToast('Fehler - Gruppe konnte nicht erstellt werden');
+        return;
+      }
+      showToast('Gruppe erstellt!');
+    },function(){
+      saveData({groups:prevGroups});
+      showToast('Fehler - Gruppe konnte nicht erstellt werden');
+    });
   }
 
   /* Frueher ein roher Client-Upsert der KOMPLETTEN Gruppen-Zeile (inkl.
@@ -6945,6 +7136,67 @@ function App(p){
   var storeReadyRef=useRef(null);
   if(storeReadyRef.current===null) storeReadyRef.current=loadStoreInitial();
   var ds=useState(function(){ return loadStore(); }); var data=ds[0]; var setData=ds[1];
+  /* Bug-Fix (Datenverlust): _storeCache wurde bisher NUR verzoegert ueber
+     den Persist-Effect (saveStore(data), siehe unten - laeuft erst NACH
+     dem React-Commit, Standard-useEffect-Timing) mit dem echten data-
+     State synchronisiert. Die drei Sync-Vergleiche (Realtime, Login,
+     Push - alle nutzen loadStore()/_storeCache fuer localTs/knownTs)
+     lasen in genau diesem Zeitfenster (Millisekunden bis wenige
+     Sekunden) noch den ALTEN Stand. Traf in diesem Fenster ein Remote-
+     Update ein, dessen Zeitstempel zwar aelter als die gerade gemachte
+     lokale Aenderung war, aber neuer als der noch veraltete
+     _storeCache-Wert, galt remoteTs>localTs faelschlich als true - der
+     aeltere Remote-Stand ueberschrieb frischen, noch nicht persistierten
+     lokalen Fortschritt. Diese Zeile haelt _storeCache ab sofort bei
+     JEDEM Render synchron mit data - direkt im Funktionskoerper, laeuft
+     dadurch synchron vor jedem Effect (auch vor dem Persist-Effect).
+     Nur wenn der initiale Boot-Ladevorgang schon fertig ist
+     (_storeCache!==null - _storeCache ist null bis loadStoreInitial()
+     ihn befuellt, siehe loadStore()/loadStoreInitial() oben), sonst
+     wuerde der leere data-Platzhalter des allerersten Renders (das
+     ds=useState(...) oben liest via loadStore() einen frischen leeren
+     Platzhalter, solange _storeCache noch null ist) faelschlich schon
+     geladene echte Daten in _storeCache ueberschreiben, bevor der
+     eigentliche data-State nachgezogen hat. saveStore(data) im
+     bestehenden Persist-Effect bleibt UNVERAENDERT (setzt _storeCache
+     weiterhin selbst, redundant aber harmlos, und uebernimmt weiterhin
+     den eigentlichen IndexedDB-Schreibvorgang) - dieser Fix ergaenzt nur
+     eine zusaetzliche, fruehere, synchrone Aktualisierung.
+
+     Nachbesserung (Review-Gegenfund, exakt umgekehrter Datenverlust-Bug):
+     Die ursprüngliche Bedingung oben (_storeCache!==null) prüfte nur
+     EXISTENZ, nicht INHALT. Ablauf, der den Bug auslöste: loadStoreInitial()
+     setzt _storeCache SYNCHRON auf die echten geladenen Daten, sobald seine
+     Promise aufloest - das passiert BEVOR der useEffect oben (der
+     storeReadyRef.current.then(...) mit setData(s) abschliesst) ueberhaupt
+     reagiert, denn React 18 (createRoot) committet setData(s) nicht sofort
+     synchron, sondern ueber den Scheduler verzoegert. In diesem Fenster ist
+     _storeCache!==null bereits erfuellt (echte Daten), aber data (der
+     State in JEDEM Render vor dem setData(s)-Commit) ist noch der leere
+     Platzhalter aus dem allerersten useState(...). Loeste in genau diesem
+     Fenster IRGENDEIN anderer State-Wechsel in App() einen Re-Render aus
+     (Auth-State, Timer, isOnline-Toggle - beim Boot laufen viele parallele
+     State-Aenderungen), griff die alte Zeile und ueberschrieb die frisch
+     geladenen ECHTEN Daten in _storeCache mit dem leeren Platzhalter -
+     dieselbe Datenverlust-Klasse, nur umgekehrt: Sync-Vergleiche sahen
+     danach faelschlich _syncedAt=0 und wendeten einen aelteren Cloud-Stand
+     ueber frischere lokale Aenderungen an.
+
+     Korrektur: Statt nach Existenz/Identitaet wird jetzt nach INHALT
+     verglichen (_syncedAt-Zeitstempel). Nach einem echten patch()-Aufruf
+     bekommt data ein NEUES, groesseres _syncedAt (siehe patch() unten,
+     Object.assign(...,{_syncedAt:Date.now()})) - im Render, der das
+     reflektiert, ist data._syncedAt immer >= das (noch alte)
+     _storeCache._syncedAt, die Bedingung feuert korrekt und synchronisiert
+     sofort (behebt weiterhin den urspruenglichen Bug). Im gefaehrlichen
+     Zwischen-Render-Fenster (echte Daten schon in _storeCache, data noch
+     Platzhalter) ist data._syncedAt (0, leerer Platzhalter) IMMER KLEINER
+     als _storeCache._syncedAt (die echten Daten haben so gut wie immer
+     einen echten, groesseren Zeitstempel als 0) - die Bedingung feuert
+     NICHT, _storeCache bleibt unangetastet. Nur im Randfall "beide sind
+     leere Platzhalter mit _syncedAt=0" feuert sie (0>=0), was harmlos ist,
+     da beide Seiten inhaltlich gleichwertig leer sind. */
+  if(_storeCache && data && (data._syncedAt||0)>=(_storeCache._syncedAt||0) && _storeCache!==data){ _storeCache=data; }
   /* Bug-Fix: Der Splash wartete bisher nur auf eine feste Mindestlaufzeit
      und die Freunde-Daten - nicht auf die eigentlichen Karteikarten. Bei
      einem neuen Geraet (noch kein lokaler Stand) konnte der Splash so
@@ -7342,6 +7594,17 @@ function App(p){
   var scimgsz=useState(null); var scanCropImgSize=scimgsz[0]; var setScanCropImgSize=scimgsz[1];
   var scanCropImgRef=useRef(null);
   var scanCropDragRef=useRef(null);
+  /* Bug-Fix (Gruppe B, Fix 3): Kantenerkennung (onScanCropImageLoad) und
+     Zuschnitt-Berechnung (confirmScanCrop) laufen bis zu 15s asynchron im
+     Hintergrund. Der "×"-Abbrechen-Button hat - anders als "Neu aufnehmen"
+     - keinen disabled-Zustand, ist also waehrend dieser Zeit jederzeit
+     klickbar. Startet danach sofort eine neue Foto-/Crop-Session, kann die
+     noch laufende ALTE Operation trotzdem noch aufloesen und mit
+     veralteten Daten den dann schon aktuellen State ueberschreiben. Dieses
+     Generation-Token macht jede Session eindeutig identifizierbar - ein
+     .then()-Handler, dessen Generation nicht mehr der aktuellen entspricht,
+     verwirft sein Ergebnis statt es in den State zu schreiben. */
+  var scanCropGenerationRef=useRef(0);
   var docFileInputRef=useRef(null);
   var docPdfInputRef=useRef(null);
   var recentDocs=data.recentDocs||[];
@@ -7508,17 +7771,52 @@ function App(p){
     if(!dsgvoAccepted()){reportDataBootReady();return;}
     var myId=getLsId();
     if(!myId||!uid){reportDataBootReady();return;}
+    /* Bug-Fix: analog zum _authUserInFlight-Schutz bei handleAuthUser()
+       (siehe dort) - bestimmte Boot-Reihenfolgen (checkInitialAuth() via
+       getSession() und der fast zeitgleiche onAuthStateChange-Listener
+       mit INITIAL_SESSION) konnten beide bindGuestAuthUid(uid) fuer
+       denselben Gast-Login auf einmal auslösen: zwei parallele
+       ls_claim_own_id-RPCs plus doppelte refreshGateStatus()-Aufrufe.
+       Laeuft bereits ein Aufruf, wird ein weiterer ignoriert statt
+       parallel zu starten.
+
+       Nachbesserung, Lücke B: ein uebersprungener Aufruf konnte eine
+       BEWUSSTE Absicht verlieren. Laeuft bereits ein Hintergrund-Bind
+       (deliberate=false, z.B. beim Boot ausgeloest) und klickt der
+       Nutzer in genau diesem Moment bewusst "Als Gast fortfahren"
+       (deliberate=true), wurde dieser Aufruf bisher komplett
+       uebersprungen - tryRedeemPendingGateCode() lief dadurch nie,
+       obwohl der Nutzer aktiv einen Code einloesen wollte. Das neue
+       _pendingDeliberateGuestBind-Flag merkt diese Absicht vor; der noch
+       laufende Aufruf loest sie beim eigenen Abschluss mit ein
+       (reportDataBootReady() wird im uebersprungenen Zweig bewusst NICHT
+       zusaetzlich aufgerufen - der noch laufende Aufruf uebernimmt das
+       weiterhin selbst bei seinem eigenen Abschluss, exakt wie zuvor). */
+    if(_guestAuthBindInFlight){
+      dbg('⏭️ bindGuestAuthUid: laeuft bereits, ueberspringe ueberlappenden Aufruf.');
+      if(deliberate)_pendingDeliberateGuestBind=true;
+      return;
+    }
+    _guestAuthBindInFlight=true;
     /* RPC statt Direkt-Upsert: Ein noch nicht gebundenes ls_users-Row
        (authUid IS NULL) ist unter RLS für UPDATE unsichtbar, weil Postgres
        fuer UPDATE zusaetzlich die SELECT-Policy prueft - die (bewusst,
        gegen Erraten fremder ls_id) keine authUid-IS-NULL-Ausnahme hat.
        Die SECURITY DEFINER-Funktion umgeht RLS komplett, exakt wie die
-       anderen Cross-Row-Writes (ls_invite_group_member etc.). */
-    getSb().rpc('ls_claim_own_id',{p_ls_id:myId}).then(function(){
+       anderen Cross-Row-Writes (ls_invite_group_member etc.).
+       Bug-Fix, Lücke A: analog zum withTimeout()-Schutz bei
+       handleAuthUser() (siehe dort, ca. Zeile 8057-8065) - ohne Timeout
+       bliebe _guestAuthBindInFlight bei einer haengenden Verbindung
+       dauerhaft gesetzt und wuerde JEDEN weiteren Versuch fuer den Rest
+       der Sitzung blockieren (auch spaetere bewusste Klicks). */
+    withTimeout(getSb().rpc('ls_claim_own_id',{p_ls_id:myId}),12000).then(function(){
       refreshGateStatus();
-      if(deliberate)tryRedeemPendingGateCode();
+      if(deliberate||_pendingDeliberateGuestBind){
+        _pendingDeliberateGuestBind=false;
+        tryRedeemPendingGateCode();
+      }
       reportDataBootReady();
-    },function(){refreshGateStatus();reportDataBootReady();});
+    },function(){_pendingDeliberateGuestBind=false;refreshGateStatus();reportDataBootReady();}).finally(function(){_guestAuthBindInFlight=false;});
   }
   /* Wird direkt beim Zustimmen zu Datenschutz+AGB aufgerufen (siehe
      showDsgvo-Screen oben) - holt das signInAnonymously()/
@@ -8581,17 +8879,34 @@ function App(p){
     if(!files.length){ if(all.length)showToast("Nur PDF-Dateien werden unterstützt."); return; }
     setScanBusy(true);
     setScanUploadProgress({done:0,total:files.length});
+    /* Bug-Fix (Gruppe B, Fix 2): anders als der Scan-Weg (confirmScanName)
+       ging ein fehlgeschlagener Direkt-Upload bisher komplett verloren -
+       nur eine Fehlermeldung, keine Warteschlange. Jede Datei wird deshalb
+       einzeln abgefangen: schlaegt der Upload fehl (offline, Drive-Fehler),
+       landet sie stattdessen in derselben scanUploadQueue wie beim Scan-Weg
+       und wird automatisch nachgeholt, sobald wieder online. */
+    var queuedCount=0;
     var chain=Promise.resolve();
     files.forEach(function(file,idx){
       chain=chain.then(function(){
         setScanUploadProgress({done:idx,total:files.length});
-        return driveUploadPdf(file,file.name,docsFolderId,null);
+        return driveUploadPdf(file,file.name,docsFolderId,null).catch(function(e){
+          dbg("❌ PDF-Direkt-Upload fehlgeschlagen, wird in Warteschlange gelegt:",file.name,e&&e.message);
+          queuedCount++;
+          return queueScanForUpload(file,file.name,docsFolderId,null);
+        });
       });
     });
     chain.then(function(){
       setScanBusy(false);setScanModalOpen(false);setScanMode(null);setScanScanChosen(false);setScanUploadProgress(null);
       loadDocsFolder(docsFolderId);
-      showToast(files.length===1?"Dokument hochgeladen.":files.length+" Dokumente hochgeladen.");
+      if(queuedCount>0){
+        showToast(queuedCount===files.length
+          ? "Kein Internet - wird automatisch hochgeladen, sobald du wieder online bist."
+          : (files.length-queuedCount)+" von "+files.length+" hochgeladen, Rest wird automatisch hochgeladen, sobald du wieder online bist.");
+      }else{
+        showToast(files.length===1?"Dokument hochgeladen.":files.length+" Dokumente hochgeladen.");
+      }
     }).catch(function(err){
       setScanBusy(false);setScanUploadProgress(null);
       showToast("Hochladen fehlgeschlagen.");
@@ -8653,6 +8968,11 @@ function App(p){
   }
   function onScanCropImageLoad(e){
     var img=e.target;
+    /* Neue Foto-Session: Generation erhoehen und lokal festhalten, bevor
+       die asynchrone Kantenerkennung startet (siehe Fix-3-Kommentar bei
+       scanCropGenerationRef). */
+    scanCropGenerationRef.current++;
+    var myGeneration=scanCropGenerationRef.current;
     setScanCropImgSize({w:img.naturalWidth,h:img.naturalHeight});
     /* Fallback = das ganze Foto (keine Einrueckung): schlaegt die
        Auto-Erkennung fehl oder braucht zu lange, soll der Nutzer das
@@ -8671,6 +8991,7 @@ function App(p){
        die Bedienung waehrenddessen immer reagierbar, ein Timeout heisst
        hier nur "manuelle Ecken statt Auto-Erkennung", kein Einfrieren. */
     withCvFallback(cvDetectDocumentCorners(img).catch(function(){return null;}),15000,null).then(function(pts){
+      if(scanCropGenerationRef.current!==myGeneration)return; // veraltete/abgebrochene Session - verwerfen
       setScanCropCorners(pts||fallback);
       setScanCropBusy(false);
     });
@@ -8714,16 +9035,24 @@ function App(p){
   function confirmScanCrop(){
     var img=scanCropImgRef.current;
     if(!img||!scanCropCorners)return;
+    /* Aktuelle Generation nur festhalten (nicht erhoehen - das Bestaetigen
+       gehoert noch zur laufenden Session), damit ein Abbruch/Neustart
+       waehrend der Zuschnitt-Berechnung erkannt und das dann veraltete
+       Ergebnis verworfen wird (siehe Fix-3-Kommentar bei
+       scanCropGenerationRef). */
+    var myGeneration=scanCropGenerationRef.current;
     setScanCropBusy(true);
     withCvFallback(cvWarpCrop(img,scanCropCorners).catch(function(){return null;}),15000,null).then(function(dataUrl){
       return dataUrl||plainBoundingCrop(img,scanCropCorners);
     }).then(function(dataUrl){
+      if(scanCropGenerationRef.current!==myGeneration)return; // Session zwischenzeitlich abgebrochen/neu gestartet
       var next=scanPages.concat([dataUrl]);
       setScanCropOpen(false);setScanCropSrc(null);setScanCropCorners(null);
       setScanCropImgSize(null);setScanCropBusy(false);
       setScanPages(next);
       if(scanMode==="single")finishScanWithPages(next);
     }).catch(function(e){
+      if(scanCropGenerationRef.current!==myGeneration)return;
       setScanCropBusy(false);
       showToast("Zuschneiden fehlgeschlagen.");
       dbg("❌ Scan-Zuschnitt-Fehler:",e.message);
@@ -8735,6 +9064,11 @@ function App(p){
     triggerCameraCapture();
   }
   function cancelScanCrop(){
+    /* Macht jede fuer diese Session noch laufende asynchrone Operation
+       (Kantenerkennung/Zuschnitt) ungueltig, auch wenn direkt danach keine
+       neue Session startet - siehe Fix-3-Kommentar bei
+       scanCropGenerationRef. */
+    scanCropGenerationRef.current++;
     setScanCropOpen(false);setScanCropSrc(null);setScanCropCorners(null);
     setScanCropImgSize(null);setScanCropBusy(false);
   }
